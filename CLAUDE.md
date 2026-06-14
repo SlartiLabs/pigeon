@@ -1,5 +1,5 @@
 <!-- agentctx:generated — DO NOT EDIT -->
-<!-- agentctx:source AGENTS.md sha256:326eeebec7ae -->
+<!-- agentctx:source AGENTS.md sha256:3f54b2e9314a -->
 
 # CLAUDE — generated pointer
 

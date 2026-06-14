@@ -42,6 +42,27 @@ heavier machinery where measurement proves it is the bottleneck.**
   pointers are never an assumption.
 - **Tooling language: Python 3.11+.** Minimal, pinned deps.
 
+## Validation status
+
+The coordinate fan-out (`coordinate.py`) is validated in real use on a ladder of
+increasing ambition (as of 2026-06-14):
+
+- **Rung 1 — the edit→review→verify→concord spine: validated.** Worktree
+  isolation, full-diff materialization to the shared tree, `receives:` pointer
+  injection, and the review/verify/concord artifact convention confirmed
+  end-to-end (claude-only).
+- **Rung 2 — bounded verdict-and-fix re-entry, multi-runner: validated.** A
+  `reentry:` task re-queues itself on `verdict: rework` (its prior fix list
+  injected) up to `max_reentry`; confirmed live across an `agy`→`sonnet`→`opus`
+  army with per-model token measurement.
+- **Rung 3 — free-model (opencode) army: blocked** on provider billing; the
+  pigeon side (per-model telemetry parsing) is ready.
+- **Rung 4 — recall-proof gate (outcome-aware `pack`, ≥ 20 sessions): pending** —
+  a measurement, not a feature (`docs/design/measuring-recall.md`).
+
+Detail lives in `docs/design/` and the decision ledger
+(`.pigeon/memory/decisions.md`).
+
 ## Repo map
 
 The authoritative, machine-readable map is the generated manifest at
