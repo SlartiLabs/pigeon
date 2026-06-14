@@ -578,21 +578,26 @@ def telemetry_warnings(config: Config, spec: dict[str, Any],
     return warnings
 
 
-def _resolve_receives(config: Config, task: dict[str, Any]) -> list[str]:
+def _resolve_receives(config: Config, task: dict[str, Any],
+                      *, quiet: bool = False) -> list[str]:
     """Expand a task's ``receives:`` globs into ``repo://`` pointers for files
     that exist *now*, dropping (with a warning) any pattern that matches none.
 
     The whole point of deferring this to spawn time: a glob like
     ``repo://.pigeon/coordinate/diffs/<run>/*.diff`` is empty up-front and
-    populated only once the upstream tasks have run."""
+    populated only once the upstream tasks have run. ``quiet`` suppresses the
+    no-match warning for the up-front *speculative* pass (which runs before any
+    upstream has produced anything, so a miss there is expected, not a failure)
+    — only the real spawn-time resolution should warn."""
     out: list[str] = []
     for pat in (task.get("receives") or []):
         rel = pat[len("repo://"):] if pat.startswith("repo://") else pat
         files = sorted(m for m in config.root.glob(rel) if m.is_file())
         if not files:
-            with _print_lock:
-                print(f"[{task['id']}] receives: nothing matched {pat!r} — skipped",
-                      file=sys.stderr)
+            if not quiet:
+                with _print_lock:
+                    print(f"[{task['id']}] receives: nothing matched {pat!r} — skipped",
+                          file=sys.stderr)
             continue
         out += [f"repo://{m.relative_to(config.root)}" for m in files]
     return out
@@ -1680,7 +1685,7 @@ def run_coordinate(
         # `reentry:` task defers so every attempt writes a fresh handoff (its
         # prior verdict's fix list injected). Both write once per spawn.
         if task.get("receives") or task.get("reentry"):
-            injected = _resolve_receives(config, task)
+            injected = _resolve_receives(config, task, quiet=True)  # speculative
             tokens.account_handoff(
                 config, _make_handoff(task, injected, do_pack=False),
                 path="(speculative)")

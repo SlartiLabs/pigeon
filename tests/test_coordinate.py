@@ -1249,6 +1249,23 @@ def test_receives_dry_run_is_speculative_and_defers_write(repo, capsys):
     assert "cons" not in written    # receives task: no file written in dry-run
 
 
+def test_receives_speculative_pass_is_quiet_real_spawn_warns(repo, capsys):
+    # F7: the up-front speculative receives-resolution (dry-run, and before any
+    # upstream runs) must NOT print the alarming "nothing matched ... skipped" —
+    # that warning belongs only to the real spawn-time resolution.
+    cfg = _setup(repo, runners={"py": _PY_OK})
+    tasks = _write_tasks(repo.root, {"sid": "rc", "tasks": [
+        {"id": "prod", "runner": "py", "doing": "x"},
+        {"id": "cons", "runner": "py", "doing": "y", "needs": ["prod"],
+         "receives": ["repo://never_created.txt"]},
+    ]})
+    assert co.run_coordinate(tasks, cfg, dry_run=True) == 0
+    assert "nothing matched" not in capsys.readouterr().err   # speculative: quiet
+    # a real run where the pattern truly never appears still warns at spawn
+    assert co.run_coordinate(tasks, cfg) == 0
+    assert "nothing matched" in capsys.readouterr().err       # real spawn: warns
+
+
 def test_receives_from_worktree_upstream_warns(repo, capsys):
     cfg = _setup(repo, runners={"py": _PY_OK})
     _real_git(repo.root)
