@@ -105,3 +105,18 @@ coordinate:
     sonnet: [--dangerously-skip-permissions]
     opus: [--dangerously-skip-permissions]
     agy: [--dangerously-skip-permissions]
+  # Appended under --telemetry so the child emits a usage report we mine for
+  # MEASURED tokens/cost. sonnet/opus wrap `claude`, whose `--output-format
+  # json` usage doc is verified — the flag is valid in any template position.
+  # Runners with no usable usage flag are listed as [] so they are EXPLICITLY
+  # unmeasured (coordinate warns at dispatch instead of silently recording
+  # zero). opencode (oc-*) exposes `--format json` + `opencode stats`, but
+  # free-model usage reporting is unverified, so it stays [] until confirmed.
+  telemetry_flags:
+    oc-nemotron: []
+    oc-deepseek: []
+    oc-mimo: []
+    oc-north: []
+    sonnet: [--output-format, json]
+    opus: [--output-format, json]
+    agy: []

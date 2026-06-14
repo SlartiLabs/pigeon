@@ -554,6 +554,30 @@ def receives_warnings(config: Config, spec: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def telemetry_warnings(config: Config, spec: dict[str, Any],
+                       run_telemetry: bool = False) -> list[str]:
+    """Telemetry was requested (run-level ``--telemetry`` or a task's
+    ``telemetry: true``) for a runner with no ``telemetry_flags`` — so its CLI
+    emits no usage report and the child's tokens/cost are recorded as zero.
+    Surface that instead of silently measuring nothing (a known gap beats a
+    confident zero): the operator must add the runner's real usage flag, or
+    accept it is unmeasured. One advisory per distinct runner."""
+    tflags = config.coordinate_cfg.get("telemetry_flags", {})
+    warnings: list[str] = []
+    seen: set[str] = set()
+    for task in spec["tasks"]:
+        runner = task["runner"]
+        if runner in seen:
+            continue
+        if task.get("telemetry", run_telemetry) and not tflags.get(runner):
+            seen.add(runner)
+            warnings.append(
+                f"runner {runner!r}: telemetry requested but no 'telemetry_flags' "
+                "configured — its child tokens/cost are recorded as zero"
+            )
+    return warnings
+
+
 def _resolve_receives(config: Config, task: dict[str, Any]) -> list[str]:
     """Expand a task's ``receives:`` globs into ``repo://`` pointers for files
     that exist *now*, dropping (with a warning) any pattern that matches none.
@@ -1533,7 +1557,8 @@ def run_coordinate(
         recorder.finish("refused", preflight_errors=errors)
         return 2
 
-    for warning in model_warnings(config, spec) + receives_warnings(config, spec):
+    for warning in (model_warnings(config, spec) + receives_warnings(config, spec)
+                    + telemetry_warnings(config, spec, run_telemetry=telemetry)):
         print(f"coordinate: warning: {warning}", file=sys.stderr)
 
     print(

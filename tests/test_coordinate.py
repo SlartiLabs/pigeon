@@ -598,6 +598,28 @@ def test_telemetry_flags_appended_only_when_requested(repo, capsys):
     assert "--output-format" not in capsys.readouterr().out
 
 
+def test_telemetry_warns_when_runner_unmeasured(repo):
+    # F4 regression: telemetry requested for a runner with no telemetry_flags is
+    # SURFACED (its tokens would be recorded as zero), never silently measured
+    # as nothing; a configured runner stays quiet.
+    spec = _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}])
+    bare = _setup(repo, runners={"py": _PY_OK})            # py has no telemetry_flags
+    assert co.telemetry_warnings(bare, spec, run_telemetry=True)       # warns
+    assert not co.telemetry_warnings(bare, spec, run_telemetry=False)  # only when requested
+    # a per-task `telemetry: true` triggers it without the run-level flag
+    spec_task = _spec(tasks=[{"id": "a", "runner": "py", "doing": "x", "telemetry": True}])
+    assert co.telemetry_warnings(bare, spec_task, run_telemetry=False)
+
+    # a runner WITH telemetry_flags is silent
+    (repo.root / ".git").mkdir(exist_ok=True)
+    (repo.root / ".agentctx" / "config.yaml").write_text(yaml.safe_dump({
+        "coordinate": {"runners": {"py": _PY_OK},
+                       "telemetry_flags": {"py": ["--output-format", "json"]}},
+    }), encoding="utf-8")
+    configured = load_config(repo.root)
+    assert not co.telemetry_warnings(configured, spec, run_telemetry=True)
+
+
 def test_handoffs_are_token_accounted(repo):
     cfg = _setup(repo)
     tasks = _write_tasks(repo.root, _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}]))
