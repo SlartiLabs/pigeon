@@ -620,6 +620,41 @@ def test_telemetry_warns_when_runner_unmeasured(repo):
     assert not co.telemetry_warnings(configured, spec, run_telemetry=True)
 
 
+def test_extract_telemetry_parses_opencode_tokens_shape():
+    # opencode `run --format json` emits NDJSON; its assistant message carries
+    # `tokens:{total,input,output,reasoning,cache}` + `cost`, NOT claude's
+    # `usage:{*_tokens}`. Schema sampled verbatim from opencode.db.
+    stream = "\n".join([
+        '{"type":"step_start"}',
+        '{"role":"assistant","modelID":"deepseek-v4-flash-free",'
+        '"tokens":{"total":38509,"input":38483,"output":2,"reasoning":24,'
+        '"cache":{"read":0,"write":0}},"cost":0}',
+    ])
+    t = co._extract_telemetry(stream)
+    assert t and t["total_tokens"] == 38509
+    assert t["total_cost_usd"] == 0
+    assert t["model"] == "deepseek-v4-flash-free"
+
+    # cost-bearing (nvidia) example
+    t2 = co._extract_telemetry(
+        '{"role":"assistant","providerID":"nvidia","tokens":{"total":51815,'
+        '"input":51727,"output":88,"reasoning":0,"cache":{"read":0,"write":0}},'
+        '"cost":0.0260835}')
+    assert t2["total_tokens"] == 51815 and t2["total_cost_usd"] == 0.0260835
+
+    # no `total` -> sum input+output+reasoning+cache
+    t3 = co._extract_telemetry(
+        '{"tokens":{"input":100,"output":50,"reasoning":0,"cache":{"read":10,"write":0}}}')
+    assert t3["total_tokens"] == 160
+
+    # a zero/streaming event is not a measurement
+    assert co._extract_telemetry('{"type":"step_start","tokens":{"total":0,"input":0}}') is None
+
+    # claude `usage` shape is unaffected (no regression)
+    claude = co._extract_telemetry('{"usage":{"input_tokens":7,"output_tokens":3},"total_cost_usd":0.01}')
+    assert claude["total_tokens"] == 10
+
+
 def test_handoffs_are_token_accounted(repo):
     cfg = _setup(repo)
     tasks = _write_tasks(repo.root, _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}]))

@@ -1355,13 +1355,56 @@ class BudgetTracker:
 
 
 # ------------------------------------------------------------------ telemetry
+def _opencode_usage(obj: Any) -> dict[str, Any] | None:
+    """Find an opencode usage report nested anywhere in one JSON event.
+
+    opencode (`run --format json`) does NOT use claude's ``usage:{*_tokens}``
+    shape — its assistant message carries ``tokens:{total,input,output,
+    reasoning,cache:{read,write}}`` with a sibling ``cost``. The event envelope
+    around that message varies, so search recursively for the ``tokens`` object
+    and read ``cost`` from the same dict. Only a non-zero total counts (a
+    streamed-but-empty event is not a measurement)."""
+    if isinstance(obj, dict):
+        tok = obj.get("tokens")
+        if isinstance(tok, dict) and any(
+            isinstance(tok.get(k), (int, float)) for k in ("total", "input", "output")
+        ):
+            total = tok.get("total")
+            if not isinstance(total, (int, float)):
+                cache = tok.get("cache") if isinstance(tok.get("cache"), dict) else {}
+                total = sum(int(v) for v in (
+                    tok.get("input", 0), tok.get("output", 0), tok.get("reasoning", 0),
+                    cache.get("read", 0), cache.get("write", 0),
+                ) if isinstance(v, (int, float)))
+            if int(total) > 0:
+                out: dict[str, Any] = {"usage": tok, "total_tokens": int(total)}
+                if isinstance(obj.get("cost"), (int, float)):
+                    out["total_cost_usd"] = obj["cost"]
+                for key in ("modelID", "model"):
+                    if obj.get(key):
+                        out["model"] = obj[key]
+                        break
+                return out
+        for v in obj.values():
+            found = _opencode_usage(v)
+            if found:
+                return found
+    elif isinstance(obj, list):
+        for v in obj:
+            found = _opencode_usage(v)
+            if found:
+                return found
+    return None
+
+
 def _extract_telemetry(text: str) -> dict[str, Any] | None:
     """Mine an agent CLI's output for its final, *measured* usage report.
 
     Understands ``claude -p --output-format json`` (a single JSON document
-    with a ``usage`` object) and stream-json/NDJSON variants (scanned from
-    the last line backwards). Returns ``None`` when no usage report exists —
-    plain-text output is not an error.
+    with a ``usage`` object), opencode ``run --format json`` (NDJSON events
+    whose assistant message carries a ``tokens`` object + ``cost``), and
+    stream-json/NDJSON variants (scanned from the last line backwards). Returns
+    ``None`` when no usage report exists — plain-text output is not an error.
     """
     candidates: list[Any] = []
     stripped = text.strip()
@@ -1390,6 +1433,11 @@ def _extract_telemetry(text: str) -> dict[str, Any] | None:
                 if key in obj:
                     out[key] = obj[key]
             return out
+    # opencode shape (`tokens` object + sibling `cost`), scanned last-event-first
+    for obj in candidates:
+        oc = _opencode_usage(obj)
+        if oc:
+            return oc
     return None
 
 
