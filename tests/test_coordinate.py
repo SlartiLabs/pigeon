@@ -1105,6 +1105,35 @@ def test_worktree_materializes_full_diff_on_shared_tree(repo):
     assert "out_iso.txt" in body and "+made" in body  # a real unified diff
 
 
+def test_changed_worktree_never_silently_drops_diff(repo, monkeypatch):
+    # Regression for F1: the live run committed a changed worktree but the full
+    # `git diff` came back empty and was swallowed (check=False), so no diff was
+    # materialized AND nothing said why. The contract: a changed worktree must
+    # ALWAYS yield either `diff` (materialized) or `diff_error` (loud) — never
+    # neither. Here we force the content diff to fail and assert it is recorded.
+    cfg = _setup(repo, runners={
+        "writer": [sys.executable, "-c", "open('out_{task_id}.txt','w').write('made')"],
+    })
+    _real_git(repo.root)
+    real_git = co._git
+
+    def flaky_git(cwd, *args, check=True):
+        # fail ONLY the full content diff, exactly like the F1 symptom; --stat
+        # and every other git call still go through.
+        if args[:1] == ("diff",) and "--stat" not in args:
+            return sp.CompletedProcess(args, 1, stdout="", stderr="fatal: simulated F1")
+        return real_git(cwd, *args, check=check)
+
+    monkeypatch.setattr(co, "_git", flaky_git)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "iso", "runner": "writer", "doing": "x", "isolation": "worktree"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    iso = co.list_runs(cfg, sid="co1")[0]["tasks"]["iso"]["isolation"]
+    assert iso["changed"] is True
+    assert "diff" not in iso                          # nothing materialized
+    assert "simulated F1" in iso.get("diff_error", "")  # ...but the failure is LOUD
+
+
 def test_by_agent_report_adds_by_model_rollup():
     run = {"run_id": "r1", "tasks": {
         "a": {"runner": "oc", "model": "m1", "status": "completed",

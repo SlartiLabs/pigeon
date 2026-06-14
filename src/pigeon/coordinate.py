@@ -1254,15 +1254,30 @@ def _worktree_commit_and_remove(
         _git(wt_dir, "add", "-A")
         _git(wt_dir, "-c", "user.name=pigeon", "-c", "user.email=pigeon@local",
              "commit", "-q", "-m", f"pigeon: task {task_id} ({branch})")
-        info["commit"] = _git(wt_dir, "rev-parse", "--short", "HEAD").stdout.strip()
+        sha = _git(wt_dir, "rev-parse", "HEAD").stdout.strip()
+        info["commit"] = sha[:7]
+        # Diff the commit against its parent BY SHA (not HEAD~1), so a concurrent
+        # ref move or re-resolution can't make this come back empty. One call
+        # feeds both the materialized diff and the failure check.
+        dproc = _git(wt_dir, "diff", f"{sha}~1", sha, check=False)
         info["diffstat"] = _git(
-            wt_dir, "diff", "--stat", "HEAD~1", "HEAD", check=False
+            wt_dir, "diff", "--stat", f"{sha}~1", sha, check=False
         ).stdout.strip()
+        full = dproc.stdout
         # Materialize the FULL diff onto the shared tree (config.root), not the
         # worktree — it must outlive `worktree remove` so a downstream review
-        # task can receive it as a pointer (pointers-not-payloads).
-        full = _git(wt_dir, "diff", "HEAD~1", "HEAD", check=False).stdout
-        if full.strip():
+        # task can receive it as a pointer (pointers-not-payloads). NEVER swallow
+        # a failure here: a changed worktree that yields no diff is a contract
+        # breach on the pipeline's data path, so record it loudly instead of
+        # silently shipping nothing downstream.
+        if dproc.returncode != 0:
+            info["diff_error"] = (
+                f"git diff exited {dproc.returncode}: "
+                + ((dproc.stderr or full).strip()[:500] or "<no output>")
+            )
+        elif not full.strip():
+            info["diff_error"] = "changed worktree produced an empty diff"
+        else:
             diff_dir = config.coordinate_diffs_dir / (run_id or "run")
             diff_dir.mkdir(parents=True, exist_ok=True)
             diff_path = diff_dir / f"{task_id}.diff"
