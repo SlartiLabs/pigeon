@@ -22,18 +22,22 @@ It is a small glue layer designed to live inside any repository.
    filesystem, not anyone's context window. Handoffs are validated on receipt
    and appended to `.pigeon/handoffs/`.
 3. **Retrieval** (`pigeon retrieve`). Hybrid lexical (ripgrep) + BM25 over the
-   repo and the generated manifest. Vector and graph are deferred.
+   repo and the generated manifest. Vector retrieval is deferred; the
+   lightweight derived wiki-link graph (`graph.py`) ships today.
 
 The guiding rule: **start simple, measure token cost, and only graduate to
 heavier machinery where measurement proves it is the bottleneck.**
 
 ## Decision record (why these choices)
 
-- **Graph (Graphiti / GraphRAG) is deferred.** These repos are fast-churn
-  (idea → pilot in weeks, state changing every few minutes). A knowledge graph
-  pays off only when the read-to-write ratio is high; its LLM-based ingestion
-  cost is wasted on state that is constantly rewritten. Revisit only for a
-  stable core, gated on metrics.
+- **Heavy graph (Graphiti / GraphRAG) is deferred.** These repos are
+  fast-churn (idea → pilot in weeks, state changing every few minutes). A
+  knowledge graph pays off only when the read-to-write ratio is high; its
+  LLM-based ingestion cost is wasted on state that is constantly rewritten.
+  Revisit only for a stable core, gated on metrics. The lightweight derived
+  wiki-link graph in `graph.py` (sessions, decisions, artifacts connected by
+  `[[wiki-links]]` + handoff provenance → `graph.json`) ships today; no LLM,
+  no external service.
 - **JSON, not YAML, for the contract.** Every model's tool-calling is trained
   heavily on JSON; YAML's significant whitespace is a cross-model failure mode.
   (Config is YAML because it is human-edited; that is the one exception.)

@@ -17,7 +17,7 @@ field, MCP tool, and troubleshooting table — is [`docs/MANUAL.md`](docs/MANUAL
 > doubles as its override file. Single-sourcing the context is the point —
 > tools come and go; the contract stays.
 
-**Status:** experimental (0.1). Built for the author's own multi-agent work and
+**Status:** experimental (0.4). Built for the author's own multi-agent work and
 published as-is — MIT, PRs welcome, no support SLA implied.
 
 ## Design in one paragraph
@@ -27,13 +27,20 @@ already reads, single-sourced so there is no drift. (2) **Handoff contract** —
 JSON-Schema-validated message carrying sparse state deltas plus *pointers*
 (never payloads), because separate CLIs share no memory: the contract is the
 filesystem, not anyone's context window. (3) **Retrieval** — hybrid lexical
-(ripgrep) + BM25 over the repo and a generated manifest. Vector and graph are
-deferred. The guiding rule: **start simple, measure token cost, and only
-graduate to heavier machinery where measurement proves it is the bottleneck.**
+(ripgrep) + BM25 over the repo and a generated manifest. Vector retrieval is
+deferred; the lightweight derived wiki-link graph (`graph.py`) — `[[wiki-links]]`
++ handoff provenance → `graph.json` — ships today. The guiding rule: **start
+simple, measure token cost, and only graduate to heavier machinery where
+measurement proves it is the bottleneck.**
 
 ## Install
 
+The package is published on PyPI as **`carrier-pigeon`** — the bare `pigeon`
+name is already taken there:
+
 ```bash
+pip install carrier-pigeon            # from PyPI
+# or editable from source:
 python -m pip install -e .            # runtime
 python -m pip install -e ".[dev]"     # + pytest
 # optional extras:
@@ -330,9 +337,12 @@ ln -sf ../../scripts/refresh-context.sh .git/hooks/pre-commit
 
 ## Why these choices
 
-- **Graph (Graphiti / GraphRAG) is deferred.** Fast-churn repos rewrite state
-  every few minutes; a knowledge graph's LLM-based ingestion cost is wasted on
-  state that doesn't sit still. Its payoff needs a high read-to-write ratio.
+- **Heavy graph (Graphiti / GraphRAG) is deferred.** Fast-churn repos rewrite
+  state every few minutes; a knowledge graph's LLM-based ingestion cost is
+  wasted on state that doesn't sit still. Its payoff needs a high
+  read-to-write ratio. The lightweight derived wiki-link graph in `graph.py` —
+  `[[wiki-links]]` + handoff provenance → `graph.json` — ships today; it
+  needs no LLM and no external service.
 - **JSON, not YAML, for the contract.** Every model's tool-calling is trained
   heavily on JSON; YAML's significant whitespace is a cross-model failure mode.
   (Config is YAML only because it is human-edited.)
@@ -365,11 +375,13 @@ real usage rather than the demo's synthetic chain.
 
 These are documented intentionally and **not implemented** in this MVP:
 
-- **Graph layer (Graphiti + MCP server).** An optional bolt-on *on top of* the
-  same store, exposing one shared knowledge-graph memory to all three CLIs via
-  MCP. **Revisit only when** metrics show relational / multi-hop queries
-  dominate *and* hybrid retrieval is returning too much — and apply it only to
-  the stable core of a project, never to fast-churn state.
+- **Heavy graph layer (Graphiti + MCP server).** An optional bolt-on *on top
+  of* the same store, exposing one shared knowledge-graph memory to all three
+  CLIs via MCP. **Revisit only when** metrics show relational / multi-hop
+  queries dominate *and* hybrid retrieval is returning too much — and apply it
+  only to the stable core of a project, never to fast-churn state. (The
+  lightweight derived wiki-link graph in `graph.py` is already implemented and
+  ships today.)
 - **Shared service store.** If file-based context outgrows the repo, promote the
   store to a small service all agents hit.
 
