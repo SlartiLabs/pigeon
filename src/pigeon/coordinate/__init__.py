@@ -53,6 +53,13 @@ sees the same policy it must honor:
 
 Each rule can be relaxed in ``.pigeon/config.yaml`` under
 ``coordinate.safety`` — policy lives in config, not code.
+
+This module is a package: the scheduler, tasks-file loading, safety preflight,
+planning, and the run loop live here; the read-side rendering lives in
+:mod:`~pigeon.coordinate.reporting`, git worktree isolation in
+:mod:`~pigeon.coordinate.worktree`, and the per-vendor telemetry usage parsers
+in :mod:`~pigeon.coordinate.telemetry`. Every public name those submodules own
+is re-exported below, so ``coordinate.<name>`` is unchanged for callers.
 """
 
 from __future__ import annotations
@@ -75,10 +82,10 @@ from typing import Any
 
 import yaml
 
-from .config import Config
-from . import SCHEMA_VERSION
-from . import handoff as ho
-from . import tokens
+from ..config import Config
+from .. import SCHEMA_VERSION
+from .. import handoff as ho
+from .. import tokens
 
 COORDINATOR = "Coordinator"
 DEPTH_ENV = "PIGEON_DEPTH"
@@ -824,344 +831,6 @@ class RunRecorder:
         self._emit(f"run.{status}", summary=fields.get("summary"))
 
 
-_STATUS_GLYPHS = {
-    "completed": "✔", "exited": "✔", "running": "▶", "queued": "·",
-    "failed": "✗", "spawn-failed": "✗", "skipped": "⊘", "dry-run": "·",
-}
-
-
-def _elapsed(start_iso: str | None, end_iso: str | None = None) -> str:
-    if not start_iso:
-        return "—"
-    try:
-        start = datetime.fromisoformat(start_iso)
-        end = datetime.fromisoformat(end_iso) if end_iso else datetime.now(timezone.utc)
-    except ValueError:
-        return "—"
-    secs = max(0, int((end - start).total_seconds()))
-    return f"{secs // 60}m{secs % 60:02d}s" if secs >= 60 else f"{secs}s"
-
-
-def render_status(run: dict[str, Any], config: Config | None = None) -> str:
-    """One glanceable screen for a run manifest — live or finished.
-
-    Every glyph is backed by a recorded field; elapsed time and measured
-    tokens are shown, percentages never (an LLM task has no honest %).
-    With a config, failed tasks also show the last lines of their log —
-    the answer is usually right there, no digging required.
-    """
-    tasks: dict[str, Any] = run.get("tasks") or {}
-    by_status: dict[str, int] = {}
-    for t in tasks.values():
-        by_status[t.get("status", "?")] = by_status.get(t.get("status", "?"), 0) + 1
-    ok = by_status.get("completed", 0) + by_status.get("exited", 0)
-    failed = by_status.get("failed", 0) + by_status.get("spawn-failed", 0)
-    header = (
-        f"{run.get('run_id', '?')}  {str(run.get('status', '?')).upper()}  "
-        f"{_elapsed(run.get('started_at'), run.get('finished_at'))}   "
-        f"depth {run.get('depth', 0)}   env: {run.get('isolated_env') or 'none'}   "
-        f"skip-perms: {'yes' if run.get('skip_permissions') else 'no'}"
-    )
-    counts = (f"tasks: {ok} ok · {by_status.get('running', 0)} running · "
-              f"{by_status.get('queued', 0)} queued · {failed} failed · "
-              f"{by_status.get('skipped', 0)} skipped")
-    budget = run.get("budget") or {}
-    if budget:
-        parts = [f"{budget.get('spent_tokens', 0)}"
-                 + (f"/{budget['max_tokens']}" if budget.get("max_tokens") else "")
-                 + " tok",
-                 f"${budget.get('spent_usd', 0)}"
-                 + (f"/${budget['max_usd']}" if budget.get("max_usd") else "")]
-        counts += "        budget: " + " · ".join(parts)
-    lines = [header, counts, ""]
-    width = max((len(t) for t in tasks), default=4)
-    for tid, t in tasks.items():
-        status = t.get("status", "?")
-        glyph = _STATUS_GLYPHS.get(status, "?")
-        dur = (f"{t['duration_s']}s" if "duration_s" in t
-               else _elapsed(t.get("started_at")) if status == "running" else "—")
-        line = f"  {glyph} {tid:<{width}}  {status:<12} {dur:>8}  {t.get('runner', '?')}"
-        extras = []
-        if t.get("return_handoff"):
-            extras.append(f"↩ {t['return_handoff']}")
-        if (t.get("isolation") or {}).get("branch") or t.get("branch"):
-            extras.append(f"⎇ {(t.get('isolation') or {}).get('branch') or t['branch']}")
-        if status == "running" and t.get("log"):
-            extras.append(f"log: {t['log']}")
-        if t.get("needs") and status == "queued":
-            extras.append("└─ needs: " + ",".join(t["needs"]))
-        if t.get("skipped_because"):
-            extras.append("because: " + "; ".join(t["skipped_because"]))
-        if extras:
-            line += "   " + "   ".join(extras)
-        lines.append(line)
-        if (config is not None and t.get("log")
-                and status in ("failed", "spawn-failed")):
-            log_path = config.root / t["log"]
-            if log_path.is_file():
-                try:
-                    tail = log_path.read_text(
-                        encoding="utf-8", errors="replace").splitlines()
-                except OSError:
-                    tail = []
-                for ln in [x for x in tail if not x.startswith("#")][-3:]:
-                    lines.append(f"        ⌙ {ln}")
-    if run.get("telemetry") is not None:
-        pass  # run-level flags already in header; telemetry shown per task via budget
-    return "\n".join(lines)
-
-
-def run_events(config: Config, run_id: str) -> list[dict[str, Any]]:
-    """The chronological event stream of a run (empty for pre-events runs)."""
-    path = config.coordinate_events_dir / f"{run_id}.jsonl"
-    if not path.is_file():
-        return []
-    out = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        try:
-            out.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return out
-
-
-def timeline_report(config: Config, run: dict[str, Any]) -> str:
-    """Chronological event view — the 'why is it stuck / where did time go'."""
-    events = run_events(config, run["run_id"])
-    if not events:
-        return "no event stream recorded for this run (pre-0.5 run?)"
-    lines = [f"timeline: {run['run_id']}"]
-    for ev in events:
-        clock = (ev.get("ts") or "")[11:19] or "??:??:??"
-        what = ev.get("event", "?")
-        subject = ev.get("task") or ""
-        extras = []
-        for key in ("runner", "exit_code", "duration_s", "tokens", "cost_usd",
-                    "handoff", "skipped_because"):
-            if key in ev and ev[key] is not None:
-                extras.append(f"{key}={ev[key]}")
-        if ev.get("summary"):
-            extras.append(str(ev["summary"]))
-        lines.append(f"  {clock}  {what:<20} {subject:<14} "
-                     + ("(" + ", ".join(str(e) for e in extras) + ")" if extras else ""))
-    return "\n".join(lines)
-
-
-def _aggregate_tasks(run: dict[str, Any], key: str) -> dict[str, dict[str, Any]]:
-    """Roll up tasks by a manifest field (``runner`` or ``model``). Tasks with
-    no value for ``key`` are skipped (so model rollup covers only model tasks)."""
-    agg: dict[str, dict[str, Any]] = {}
-    for _tid, t in (run.get("tasks") or {}).items():
-        bucket = t.get(key)
-        if bucket is None:
-            continue
-        a = agg.setdefault(bucket, {
-            "tasks": 0, "ok": 0, "failed": 0, "skipped": 0,
-            "duration_s": 0.0, "tokens": 0, "cost_usd": 0.0,
-        })
-        a["tasks"] += 1
-        status = t.get("status")
-        if status in ("completed", "exited"):
-            a["ok"] += 1
-        elif status in ("failed", "spawn-failed"):
-            a["failed"] += 1
-        elif status == "skipped":
-            a["skipped"] += 1
-        a["duration_s"] += float(t.get("duration_s") or 0)
-        telemetry = t.get("telemetry") or {}
-        a["tokens"] += int(telemetry.get("total_tokens") or 0)
-        a["cost_usd"] += float(telemetry.get("total_cost_usd") or 0)
-    return agg
-
-
-def _agg_lines(agg: dict[str, dict[str, Any]]) -> list[str]:
-    lines = []
-    for name in sorted(agg):
-        a = agg[name]
-        line = (f"  {name:<12} tasks={a['tasks']}  ok={a['ok']} "
-                f"failed={a['failed']} skipped={a['skipped']}  "
-                f"busy={round(a['duration_s'], 1)}s")
-        if a["tokens"]:
-            line += f"  tokens={a['tokens']} (measured)  cost=${round(a['cost_usd'], 4)}"
-        lines.append(line)
-    return lines
-
-
-def by_agent_report(run: dict[str, Any]) -> str:
-    """Per-runner aggregation: who is loaded, who fails, who burns budget.
-
-    When tasks resolved a model, a parallel ``by model:`` rollup is appended —
-    the empirical record of which model did which work (Pillar 4's read-only
-    feedback; the coordinator never re-sorts pools on it)."""
-    lines = [f"agents: {run['run_id']}"]
-    lines += _agg_lines(_aggregate_tasks(run, "runner"))
-    model_agg = _aggregate_tasks(run, "model")
-    if model_agg:
-        lines.append("by model:")
-        lines += _agg_lines(model_agg)
-    return "\n".join(lines)
-
-
-def model_stats(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """Aggregate every model-tagged task across runs: the empirical track record
-    behind ``pigeon metrics --by-model``. Returns a JSON-able dict per model."""
-    agg: dict[str, dict[str, Any]] = {}
-    for run in runs:
-        rid = run.get("run_id")
-        for _tid, t in (run.get("tasks") or {}).items():
-            m = t.get("model")
-            if not m:
-                continue
-            a = agg.setdefault(m, {
-                "tasks": 0, "ok": 0, "failed": 0, "duration_s": 0.0,
-                "tokens": 0, "cost_usd": 0.0, "_runs": set(),
-            })
-            a["_runs"].add(rid)
-            a["tasks"] += 1
-            status = t.get("status")
-            if status in ("completed", "exited"):
-                a["ok"] += 1
-            elif status in ("failed", "spawn-failed"):
-                a["failed"] += 1
-            a["duration_s"] += float(t.get("duration_s") or 0)
-            tel = t.get("telemetry") or {}
-            a["tokens"] += int(tel.get("total_tokens") or 0)
-            a["cost_usd"] += float(tel.get("total_cost_usd") or 0)
-    out: dict[str, dict[str, Any]] = {}
-    for m, a in agg.items():
-        decided = a["ok"] + a["failed"]
-        out[m] = {
-            "tasks": a["tasks"], "ok": a["ok"], "failed": a["failed"],
-            "runs": len(a["_runs"]),
-            "win_rate": round(a["ok"] / decided, 3) if decided else None,
-            "avg_duration_s": (round(a["duration_s"] / a["tasks"], 1)
-                               if a["tasks"] else 0.0),
-            "tokens": a["tokens"], "cost_usd": round(a["cost_usd"], 4),
-        }
-    return out
-
-
-def model_report(runs: list[dict[str, Any]], *, min_runs: int = 3) -> str:
-    """Offline, read-only per-model track record — win-rate, speed, spend, ranked.
-
-    Purely diagnostic: a human or agent reads it to edit a ``model_pool`` by hand.
-    The coordinator NEVER consumes it to re-sort round-robin (PLAN.md ruling #8 —
-    auto-demotion would starve a model on one transient failure). ``min_runs`` is
-    the sample-size floor below which a model shows as 'insufficient data'."""
-    stats = model_stats(runs)
-    if not stats:
-        return "by model: no model-tagged tasks recorded yet"
-    enough = {m: s for m, s in stats.items() if s["tasks"] >= min_runs}
-    thin = {m: s for m, s in stats.items() if s["tasks"] < min_runs}
-    lines = [f"model track record (ranked by win-rate; min_runs={min_runs}):"]
-    for m in sorted(enough, key=lambda m: (enough[m]["win_rate"] or 0,
-                                           enough[m]["tasks"]), reverse=True):
-        s = enough[m]
-        wr = f"{round(100 * s['win_rate'])}%" if s["win_rate"] is not None else "n/a"
-        line = (f"  {m:<32} win={wr:<4} n={s['tasks']} "
-                f"({s['ok']} ok/{s['failed']} fail)  avg={s['avg_duration_s']}s  "
-                f"runs={s['runs']}")
-        if s["tokens"]:
-            line += f"  tokens={s['tokens']}"
-        if s["cost_usd"]:
-            line += f"  cost=${s['cost_usd']}"
-        lines.append(line)
-    for m in sorted(thin):
-        lines.append(f"  {m:<32} insufficient data "
-                     f"(n={thin[m]['tasks']} < {min_runs})")
-    lines.append("  (diagnostic only — edit your model_pool by hand; the "
-                 "coordinator never auto-sorts on this)")
-    return "\n".join(lines)
-
-
-def critical_path_report(run: dict[str, Any]) -> str:
-    """Duration-weighted longest chain — where wall-clock optimization pays."""
-    tasks = run.get("tasks") or {}
-    pseudo = [{"id": tid, "needs": t.get("needs") or []} for tid, t in tasks.items()]
-    dur = {tid: float(t.get("duration_s") or 0) for tid, t in tasks.items()}
-    best: dict[str, tuple[float, list[str]]] = {}
-    for wave in compute_waves(pseudo):
-        for tid in wave:
-            prev: tuple[float, list[str]] = (0.0, [])
-            for need in tasks[tid].get("needs") or []:
-                if need in best and best[need][0] > prev[0]:
-                    prev = best[need]
-            best[tid] = (prev[0] + dur[tid], prev[1] + [tid])
-    if not best:
-        return "no tasks"
-    total, path = max(best.values(), key=lambda v: v[0])
-    wall = _elapsed(run.get("started_at"), run.get("finished_at"))
-    lines = [f"critical path: {run['run_id']}  (wall-clock {wall})"]
-    lines += [f"  {tid}  {round(dur[tid], 1)}s" for tid in path]
-    lines.append(f"  total: {round(total, 1)}s — speeding up anything off this "
-                 "chain does not move the wall-clock")
-    return "\n".join(lines)
-
-
-def cleanup(config: Config, keep_runs: int | None = None) -> dict[str, Any]:
-    """Reconcile after crashes and bound history growth.
-
-    * ``git worktree prune`` clears git's own stale bookkeeping;
-    * worktree directories belonging to runs that are not ``running``
-      (crashed coordinators, SIGKILL) are force-removed — their *branches*
-      are kept: committed work is never garbage;
-    * with ``keep_runs``, only the N most recent run manifests (and their
-      event streams) survive; logs are left for manual inspection.
-    """
-    removed_worktrees: list[str] = []
-    pruned_runs: list[str] = []
-    wt_root = config.coordinate_worktrees_dir
-    if (config.root / ".git").exists() and shutil.which("git"):
-        with _GIT_LOCK:
-            _git(config.root, "worktree", "prune", check=False)
-            if wt_root.is_dir():
-                for run_dir in sorted(wt_root.iterdir()):
-                    if not run_dir.is_dir():
-                        continue
-                    manifest_path = config.coordinate_runs_dir / f"{run_dir.name}.json"
-                    status = None
-                    if manifest_path.is_file():
-                        try:
-                            status = json.loads(
-                                manifest_path.read_text(encoding="utf-8")).get("status")
-                        except (OSError, json.JSONDecodeError):
-                            status = None
-                    if status == "running":
-                        continue  # a live coordinator owns these
-                    for wt in sorted(run_dir.iterdir()):
-                        _git(config.root, "worktree", "remove", "--force",
-                             str(wt), check=False)
-                        shutil.rmtree(wt, ignore_errors=True)
-                        removed_worktrees.append(f"{run_dir.name}/{wt.name}")
-                    shutil.rmtree(run_dir, ignore_errors=True)
-    if keep_runs is not None and keep_runs >= 0:
-        runs = list_runs(config)
-        for run in runs[: max(0, len(runs) - keep_runs)]:
-            run_id = run.get("run_id")
-            if not run_id:
-                continue
-            (config.coordinate_runs_dir / f"{run_id}.json").unlink(missing_ok=True)
-            (config.coordinate_events_dir / f"{run_id}.jsonl").unlink(missing_ok=True)
-            pruned_runs.append(run_id)
-    return {"removed_worktrees": removed_worktrees, "pruned_runs": pruned_runs}
-
-
-def list_runs(config: Config, sid: str | None = None) -> list[dict[str, Any]]:
-    """All recorded run manifests (optionally for one session), oldest first."""
-    runs_dir = config.coordinate_runs_dir
-    if not runs_dir.is_dir():
-        return []
-    out = []
-    for path in runs_dir.glob("*.json"):
-        try:
-            obj = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if sid is None or obj.get("sid") == sid:
-            out.append(obj)
-    return sorted(out, key=lambda o: (o.get("started_at") or "", o.get("run_id") or ""))
-
-
 # ------------------------------------------------------------------ execution
 def _fill(template: str, subs: dict[str, str]) -> str:
     """Substitute ``{key}`` placeholders without choking on stray braces."""
@@ -1221,112 +890,10 @@ def _git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProce
 
 # git mutates shared lock files (index.lock, refs); concurrent worktree
 # add/remove from worker threads must be serialized within this process.
+# Worktree teardown and `cleanup` live in `worktree.py`; they reach this lock
+# and `_git` back through the package so the `coordinate._git` patch point keeps
+# governing every git call.
 _GIT_LOCK = threading.Lock()
-
-
-def _worktree_setup(config: Config, run_id: str, task_id: str) -> tuple[Path, str, str]:
-    """Create a throwaway worktree + task branch off HEAD for one task.
-
-    Isolated agents work on their own checkout — parallel tasks cannot
-    trample each other's files, and a misbehaving agent wrecks a disposable
-    copy, never the main checkout (the Copilot ``/delegate`` insight).
-
-    Returns the worktree dir, its task branch, and the *base* commit the branch
-    forked from. Teardown judges "did this task do work?" by whether the branch
-    advanced beyond ``base`` — so work the agent COMMITTED itself is harvested,
-    not orphaned by a clean-tree check (F8).
-    """
-    wt_dir = config.coordinate_worktrees_dir / run_id / task_id
-    branch = f"pigeon/{run_id}/{task_id}"
-    wt_dir.parent.mkdir(parents=True, exist_ok=True)
-    with _GIT_LOCK:
-        _git(config.root, "worktree", "add", "-q", "-b", branch, str(wt_dir), "HEAD")
-        base = _git(config.root, "rev-parse", "HEAD").stdout.strip()
-    return wt_dir, branch, base
-
-
-def _worktree_finish(
-    config: Config, task_id: str, wt_dir: Path, branch: str, run_id: str = "",
-    base: str = "",
-) -> tuple[dict[str, Any], list[str]]:
-    """Harvest handoffs, commit the task's work to its branch, remove the tree.
-
-    Handoffs the agent appended inside its worktree are copied back to the
-    main checkout *before* removal (they are gitignored, so the commit would
-    not preserve them). An unchanged worktree leaves no branch behind.
-    """
-    harvested: list[str] = []
-    handoffs_rel = config.handoffs_dir.relative_to(config.root)
-    wt_handoffs = wt_dir / handoffs_rel
-    if wt_handoffs.is_dir():
-        config.handoffs_dir.mkdir(parents=True, exist_ok=True)
-        for src in sorted(wt_handoffs.glob("*.json")):
-            dest = config.handoffs_dir / src.name
-            n = 1
-            while True:
-                try:
-                    os.close(os.open(dest, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
-                    break
-                except FileExistsError:
-                    dest = config.handoffs_dir / f"{src.stem}-wt{n}{src.suffix}"
-                    n += 1
-            tmp = dest.with_name(dest.name + ".harvest-tmp")
-            shutil.copy2(src, tmp)
-            os.replace(tmp, dest)  # readers never see a half-copied handoff
-            harvested.append(str(dest.relative_to(config.root)))
-
-    with _GIT_LOCK:
-        return _worktree_commit_and_remove(
-            config, task_id, wt_dir, branch, harvested, run_id, base)
-
-
-def _worktree_commit_and_remove(
-    config: Config, task_id: str, wt_dir: Path, branch: str, harvested: list[str],
-    run_id: str = "", base: str = "",
-) -> tuple[dict[str, Any], list[str]]:
-    # Commit any UNcommitted work, then judge "changed" by whether the branch
-    # ADVANCED beyond its base — true whether the agent committed its own work
-    # (F8) or left it dirty for us. A dirty-tree-only check orphaned self-
-    # committed work: a clean tree read as "no work" → no diff, branch deleted.
-    base = base or _git(config.root, "rev-parse", "HEAD").stdout.strip()
-    if _git(wt_dir, "status", "--porcelain").stdout.strip():
-        _git(wt_dir, "add", "-A")
-        _git(wt_dir, "-c", "user.name=pigeon", "-c", "user.email=pigeon@local",
-             "commit", "-q", "-m", f"pigeon: task {task_id} ({branch})")
-    head = _git(wt_dir, "rev-parse", "HEAD").stdout.strip()
-    changed = bool(base) and head != base
-    info: dict[str, Any] = {"branch": branch, "changed": changed}
-    if changed:
-        info["commit"] = head[:7]
-        # Diff base..head BY SHA — the net change the task made, whether it
-        # arrived as the agent's own commits or ours. It must outlive
-        # `worktree remove` (materialized on the shared tree) so a downstream
-        # review task can receive it as a pointer. NEVER swallow a failure: a
-        # changed branch that yields no diff is a contract breach on the data
-        # path, recorded loudly instead of shipping nothing downstream.
-        dproc = _git(wt_dir, "diff", base, head, check=False)
-        info["diffstat"] = _git(
-            wt_dir, "diff", "--stat", base, head, check=False
-        ).stdout.strip()
-        full = dproc.stdout
-        if dproc.returncode != 0:
-            info["diff_error"] = (
-                f"git diff exited {dproc.returncode}: "
-                + ((dproc.stderr or full).strip()[:500] or "<no output>")
-            )
-        elif not full.strip():
-            info["diff_error"] = "changed branch produced an empty diff"
-        else:
-            diff_dir = config.coordinate_diffs_dir / (run_id or "run")
-            diff_dir.mkdir(parents=True, exist_ok=True)
-            diff_path = diff_dir / f"{task_id}.diff"
-            diff_path.write_text(full, encoding="utf-8")
-            info["diff"] = str(diff_path.relative_to(config.root))
-    _git(config.root, "worktree", "remove", "--force", str(wt_dir))
-    if not changed:
-        _git(config.root, "branch", "-D", branch, check=False)
-        info["branch"] = None
-    return info, harvested
 
 
 # --------------------------------------------------------------------- budget
@@ -1367,93 +934,6 @@ class BudgetTracker:
             if self.max_usd is not None:
                 out["max_usd"] = self.max_usd
             return out
-
-
-# ------------------------------------------------------------------ telemetry
-def _opencode_usage(obj: Any) -> dict[str, Any] | None:
-    """Find an opencode usage report nested anywhere in one JSON event.
-
-    opencode (`run --format json`) does NOT use claude's ``usage:{*_tokens}``
-    shape — its assistant message carries ``tokens:{total,input,output,
-    reasoning,cache:{read,write}}`` with a sibling ``cost``. The event envelope
-    around that message varies, so search recursively for the ``tokens`` object
-    and read ``cost`` from the same dict. Only a non-zero total counts (a
-    streamed-but-empty event is not a measurement)."""
-    if isinstance(obj, dict):
-        tok = obj.get("tokens")
-        if isinstance(tok, dict) and any(
-            isinstance(tok.get(k), (int, float)) for k in ("total", "input", "output")
-        ):
-            total = tok.get("total")
-            if not isinstance(total, (int, float)):
-                cache = tok.get("cache") if isinstance(tok.get("cache"), dict) else {}
-                total = sum(int(v) for v in (
-                    tok.get("input", 0), tok.get("output", 0), tok.get("reasoning", 0),
-                    cache.get("read", 0), cache.get("write", 0),
-                ) if isinstance(v, (int, float)))
-            if int(total) > 0:
-                out: dict[str, Any] = {"usage": tok, "total_tokens": int(total)}
-                if isinstance(obj.get("cost"), (int, float)):
-                    out["total_cost_usd"] = obj["cost"]
-                for key in ("modelID", "model"):
-                    if obj.get(key):
-                        out["model"] = obj[key]
-                        break
-                return out
-        for v in obj.values():
-            found = _opencode_usage(v)
-            if found:
-                return found
-    elif isinstance(obj, list):
-        for v in obj:
-            found = _opencode_usage(v)
-            if found:
-                return found
-    return None
-
-
-def _extract_telemetry(text: str) -> dict[str, Any] | None:
-    """Mine an agent CLI's output for its final, *measured* usage report.
-
-    Understands ``claude -p --output-format json`` (a single JSON document
-    with a ``usage`` object), opencode ``run --format json`` (NDJSON events
-    whose assistant message carries a ``tokens`` object + ``cost``), and
-    stream-json/NDJSON variants (scanned from the last line backwards). Returns
-    ``None`` when no usage report exists — plain-text output is not an error.
-    """
-    candidates: list[Any] = []
-    stripped = text.strip()
-    if stripped.startswith("{"):
-        try:
-            candidates.append(json.loads(stripped))
-        except json.JSONDecodeError:
-            pass
-    for line in reversed(stripped.splitlines()):
-        line = line.strip()
-        if not line.startswith("{"):
-            continue
-        try:
-            candidates.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    for obj in candidates:
-        usage = obj.get("usage") if isinstance(obj, dict) else None
-        if isinstance(usage, dict) and usage:
-            total = sum(
-                int(v) for k, v in usage.items()
-                if k.endswith("tokens") and isinstance(v, (int, float))
-            )
-            out: dict[str, Any] = {"usage": usage, "total_tokens": total}
-            for key in ("total_cost_usd", "duration_ms", "num_turns", "model"):
-                if key in obj:
-                    out[key] = obj[key]
-            return out
-    # opencode shape (`tokens` object + sibling `cost`), scanned last-event-first
-    for obj in candidates:
-        oc = _opencode_usage(obj)
-        if oc:
-            return oc
-    return None
 
 
 # Always forwarded even under an allowlist: the child cannot function
@@ -1643,7 +1123,7 @@ def run_coordinate(
                       do_pack: bool) -> Any:
         artifacts = list(task.get("artifacts") or [])
         if do_pack and task.get("pack"):
-            from . import pack as pack_mod  # lazy: avoids a module cycle
+            from .. import pack as pack_mod  # lazy: avoids a module cycle
             bundle = pack_mod.pack(config, task["doing"],
                                    max_tokens=int(task.get("pack_max_tokens", 4000)))
             artifacts.append(f"repo://{bundle['path']}")
@@ -1986,7 +1466,7 @@ def run_coordinate(
     print(f"coordinate: {ok}/{len(tasks)} tasks ok")
     print(f"run manifest: {recorder.path.relative_to(config.root)}")
     if ccfg.get("auto_distill"):
-        from . import distill as distill_mod  # lazy: avoids a module cycle
+        from .. import distill as distill_mod  # lazy: avoids a module cycle
         try:
             res = distill_mod.distill_session(config, sid)
             print(f"distilled: {res['session']}")
@@ -1994,3 +1474,32 @@ def run_coordinate(
             pass  # nothing to consolidate (should not happen post-run)
     print("=" * 60)
     return 0 if run_status == "completed" else 1
+
+
+# ----------------------------------------------------- public surface re-export
+# The split lifted three concerns into submodules; re-export their names here so
+# `coordinate.<name>` stays byte-identical for every caller (other modules, the
+# CLI, the MCP server, and the tests) and the run loop above keeps calling them
+# by their bare names. Imports sit at the foot of the module because the submodules
+# reach back into this package (e.g. `worktree` uses `coordinate._git`).
+from .telemetry import _opencode_usage, _extract_telemetry
+from .reporting import (
+    _STATUS_GLYPHS,
+    _elapsed,
+    render_status,
+    run_events,
+    timeline_report,
+    _aggregate_tasks,
+    _agg_lines,
+    by_agent_report,
+    model_stats,
+    model_report,
+    critical_path_report,
+    list_runs,
+)
+from .worktree import (
+    cleanup,
+    _worktree_setup,
+    _worktree_finish,
+    _worktree_commit_and_remove,
+)
