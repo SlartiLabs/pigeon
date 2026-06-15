@@ -1,8 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentctx.dev/schemas/handoff-1.1.json",
+  "$id": "https://github.com/ecoCMF/pigeon/schemas/handoff-1.1.json",
   "title": "AgentHandoff",
   "description": "Cross-model agent handoff: sparse state deltas plus pointers, never payloads.",
+  "$comment": "Compatibility policy: schema_version is MAJOR.MINOR. A handoff is compatible with a running pigeon iff it has the SAME major and a minor <= the reader's minor (minor bumps are additive, so the current schema is a superset of older minors). A newer minor or a different major is rejected on receipt; carry an older handoff forward with `pigeon migrate`. The gate is enforced in pigeon.handoff.validate_handoff; the authoritative prose lives in that module.",
   "type": "object",
   "required": [
     "schema_version",

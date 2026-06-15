@@ -3,6 +3,7 @@
 Commands:
   refresh     rebuild manifest.json and regenerate CLAUDE.md / GEMINI.md
   handoff     build / validate / emit a handoff (pointers, not payloads)
+  migrate     carry an older handoff forward to the current schema version
   retrieve    hybrid ripgrep + BM25 query over the repo + manifest
   metrics     token-accounting report (--by-model for per-model track record)
   agents      discover agent CLIs installed here (usable as coordinate runners)
@@ -157,6 +158,46 @@ def cmd_handoff(args: argparse.Namespace) -> int:
         f"tokens: actual={ev['actual_tokens']} baseline={ev['baseline_tokens']} "
         f"saved={ev['saved_tokens']}"
     )
+    return 0
+
+
+# --------------------------------------------------------------------- migrate
+def cmd_migrate(args: argparse.Namespace) -> int:
+    cfg = _cfg(args)
+    if args.in_place and args.input == "-":
+        print("migrate: --in-place needs a file path, not stdin", file=sys.stderr)
+        return 2
+    raw = sys.stdin.read() if args.input == "-" else Path(args.input).read_text(encoding="utf-8")
+    try:
+        handoff = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        print(f"migrate: {args.input} is not valid JSON: {exc}", file=sys.stderr)
+        return 2
+    before = handoff.get("schema_version") if isinstance(handoff, dict) else None
+    try:
+        migrated = ho.upgrade_handoff(handoff, to=args.to)
+    except ho.HandoffMigrationError as exc:
+        print(f"migrate: {exc}", file=sys.stderr)
+        return 2
+    # The upgraded handoff must clear the gate + structural validation; if not,
+    # the source was already malformed — report it rather than emit junk.
+    try:
+        ho.validate_handoff(migrated, cfg)
+    except ho.HandoffValidationError as exc:
+        print(f"migrate: upgraded handoff is invalid:\n{exc}", file=sys.stderr)
+        return 2
+    after = migrated.get("schema_version")
+    text = ho.serialize_handoff(migrated)
+    note = (f"{before} -> {after}" if before != after else f"already at {after}; no change")
+    if args.in_place:
+        Path(args.input).write_text(text, encoding="utf-8")
+        print(f"migrated {args.input}: {note}", file=sys.stderr)
+    elif args.output:
+        Path(args.output).write_text(text, encoding="utf-8")
+        print(f"migrated {note} -> {args.output}", file=sys.stderr)
+    else:
+        sys.stdout.write(text)
+        print(f"migrated {note}", file=sys.stderr)
     return 0
 
 
@@ -537,6 +578,22 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--context-ref")
     p.add_argument("--no-write", action="store_true", help="Print to stdout instead of appending.")
     p.set_defaults(func=cmd_handoff)
+
+    from . import SCHEMA_VERSION
+    p = sub.add_parser(
+        "migrate",
+        help="Carry an older handoff forward to the current schema version "
+             "(the upgrade an incompatible handoff needs to pass the gate).",
+    )
+    p.add_argument("input", help="Handoff JSON file to upgrade ('-' for stdin).")
+    p.add_argument("--to", default=SCHEMA_VERSION, metavar="VERSION",
+                   help=f"Target schema version (default: {SCHEMA_VERSION}).")
+    dest = p.add_mutually_exclusive_group()
+    dest.add_argument("--in-place", action="store_true",
+                      help="Rewrite the input file with the upgraded handoff.")
+    dest.add_argument("--output", metavar="FILE",
+                      help="Write the upgraded handoff to FILE (default: stdout).")
+    p.set_defaults(func=cmd_migrate)
 
     p = sub.add_parser("retrieve", help="Hybrid ripgrep + BM25 query.")
     p.add_argument("query")
