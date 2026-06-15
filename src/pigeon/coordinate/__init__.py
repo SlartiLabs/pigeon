@@ -222,19 +222,22 @@ def _latest_handback(config: Config, sid: str, task_id: str) -> dict[str, Any] |
     d = config.handoffs_dir
     if not d.is_dir():
         return None
-    best_n, best = -1, None
-    for path in d.glob(f"{sid}-*.json"):
+
+    def _seq(path: Path) -> int:
         m = re.match(rf"{re.escape(sid)}-(\d+)", path.stem)
-        n = int(m.group(1)) if m else -1
-        if n <= best_n:
-            continue
+        return int(m.group(1)) if m else -1
+
+    # Newest claim-sequence first, returning the first hand-back from this task —
+    # an early exit that parses only the tail, not every handoff in the session
+    # (U4: this is called once per re-entry; the old scan was O(all handoffs)).
+    for path in sorted(d.glob(f"{sid}-*.json"), key=_seq, reverse=True):
         try:
             h = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
         if h.get("from") == task_id and h.get("to") == COORDINATOR:
-            best_n, best = n, h
-    return best
+            return h
+    return None
 
 
 def load_tasks(path: Path,
@@ -1099,6 +1102,17 @@ def run_coordinate(
         print("coordinate: refusing to spawn agents (see preflight errors)", file=sys.stderr)
         recorder.finish("refused", preflight_errors=errors)
         return 2
+
+    # U5 hygiene: clear git's stale worktree bookkeeping left by prior crashed
+    # runs (a SIGKILL'd coordinator never tears its worktrees down) before we
+    # register new ones. Idempotent and safe under concurrent runs — prune only
+    # drops entries whose working dir is already gone, never a live one.
+    if not dry_run and any(t.get("isolation") == "worktree" for t in tasks):
+        with _GIT_LOCK:
+            # --expire=now: prune even *recently* orphaned entries; plain prune
+            # honors gc.worktreePruneExpire (~3 months) and would skip a run
+            # that crashed minutes ago — exactly the case we want cleared.
+            _git(config.root, "worktree", "prune", "--expire=now", check=False)
 
     for warning in (model_warnings(config, spec) + receives_warnings(config, spec)
                     + telemetry_warnings(config, spec, run_telemetry=telemetry)):

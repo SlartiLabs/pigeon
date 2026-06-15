@@ -41,7 +41,9 @@ def cleanup(config: Config, keep_runs: int | None = None) -> dict[str, Any]:
     wt_root = config.coordinate_worktrees_dir
     if (config.root / ".git").exists() and shutil.which("git"):
         with _coord._GIT_LOCK:
-            _coord._git(config.root, "worktree", "prune", check=False)
+            # --expire=now so recently-orphaned entries are pruned too (plain
+            # prune honors gc.worktreePruneExpire, ~3 months).
+            _coord._git(config.root, "worktree", "prune", "--expire=now", check=False)
             if wt_root.is_dir():
                 for run_dir in sorted(wt_root.iterdir()):
                     if not run_dir.is_dir():

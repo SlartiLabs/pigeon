@@ -1234,6 +1234,48 @@ def test_self_committed_worktree_is_harvested_not_orphaned(repo):
     assert "made.txt" in body and "+agent work" in body
 
 
+def test_latest_handback_returns_newest_from_task(repo):
+    # U4: returns the highest-sequence hand-back from THIS task to the
+    # Coordinator — newer handoffs to other recipients / from other tasks are
+    # ignored, and the rewrite early-exits instead of parsing every file.
+    import json as _json
+    d = repo.handoffs_dir
+    d.mkdir(parents=True, exist_ok=True)
+
+    def wr(n, frm, to, verdict=None):
+        h = {"sid": "s", "from": frm, "to": to,
+             "state": {"decisions": {"verdict": verdict} if verdict else {}}}
+        (d / f"s-{n}.json").write_text(_json.dumps(h), encoding="utf-8")
+
+    wr(1, "fix", co.COORDINATOR, "rework")    # older fix->Coordinator
+    wr(2, "other", co.COORDINATOR)            # different task
+    wr(3, "fix", co.COORDINATOR, "approve")   # newest fix->Coordinator  <-- want this
+    wr(5, "fix", "someone-else")              # newer but not to Coordinator
+    hb = co._latest_handback(repo, "s", "fix")
+    assert hb is not None
+    assert hb["state"]["decisions"]["verdict"] == "approve"
+    assert co._latest_handback(repo, "s", "nobody") is None
+
+
+def test_run_prunes_stale_worktree_registrations(repo):
+    # U5: a SIGKILL'd run leaves stale git worktree bookkeeping; a new run with
+    # a worktree task prunes it as a preflight (we simulate a stale entry by
+    # registering a worktree and deleting its dir).
+    import shutil
+    cfg = _setup(repo, runners={"py": _PY_OK})
+    _real_git(repo.root)
+    stale = repo.root / ".pigeon" / "coordinate" / "worktrees" / "stale"
+    stale.parent.mkdir(parents=True, exist_ok=True)
+    co._git(repo.root, "worktree", "add", "-q", "--detach", str(stale))
+    shutil.rmtree(stale)                                  # dir gone -> stale entry
+    marker = "worktrees/stale"                            # specific (tmp dir name also has "stale")
+    assert marker in co._git(repo.root, "worktree", "list").stdout
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "a", "runner": "py", "doing": "x", "isolation": "worktree"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    assert marker not in co._git(repo.root, "worktree", "list").stdout
+
+
 def test_by_agent_report_adds_by_model_rollup():
     run = {"run_id": "r1", "tasks": {
         "a": {"runner": "oc", "model": "m1", "status": "completed",
