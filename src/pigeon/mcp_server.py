@@ -121,6 +121,12 @@ def handoff_validate_impl(config: Config, path: str | None = None,
     return {"valid": True}
 
 
+# Hard ceiling on concurrent agents when driven over MCP — a remote/automated
+# caller must not be able to fan out an unbounded subprocess swarm (U3). The CLI
+# operator, on their own machine, keeps the unclamped --parallel-limit.
+MCP_MAX_PARALLEL = 16
+
+
 def coordinate_run_impl(
     config: Config,
     tasks_file: str,
@@ -138,6 +144,8 @@ def coordinate_run_impl(
     Live output is redirected to stderr (stdio MCP owns stdout); the caller
     gets the structured manifest, and can tail the per-task logs it points to.
     """
+    if parallel_limit is not None:
+        parallel_limit = max(1, min(parallel_limit, MCP_MAX_PARALLEL))
     before = {r["run_id"] for r in coordinate.list_runs(config)}
     with contextlib.redirect_stdout(sys.stderr):
         exit_code = coordinate.run_coordinate(

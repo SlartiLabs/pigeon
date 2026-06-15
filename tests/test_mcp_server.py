@@ -95,6 +95,26 @@ def test_coordinate_run_and_status_impl(repo, capsys):
     assert len(history["runs"]) == 1
 
 
+def test_coordinate_run_impl_clamps_parallel_limit(repo):
+    # U3: a remote/MCP caller must not be able to request an unbounded fan-out;
+    # parallel_limit is clamped to MCP_MAX_PARALLEL at the MCP layer.
+    (repo.root / ".git").mkdir(exist_ok=True)
+    import sys
+    (repo.root / ".agentctx" / "config.yaml").write_text(
+        yaml.safe_dump({"coordinate": {"runners": {
+            "py": [sys.executable, "-c", "print('x')"]}}}),
+        encoding="utf-8",
+    )
+    from pigeon.config import load_config
+    cfg = load_config(repo.root)
+    (repo.root / "t.yaml").write_text(
+        yaml.safe_dump({"sid": "clamp", "tasks": [{"id": "a", "runner": "py", "doing": "x"}]}),
+        encoding="utf-8",
+    )
+    out = srv.coordinate_run_impl(cfg, "t.yaml", parallel_limit=999, dry_run=True)
+    assert out["run"]["parallel_limit"] == srv.MCP_MAX_PARALLEL
+
+
 # ----------------------------------------------------------- FastMCP wiring
 mcp_sdk = pytest.importorskip("mcp", reason="optional [mcp] extra not installed")
 
