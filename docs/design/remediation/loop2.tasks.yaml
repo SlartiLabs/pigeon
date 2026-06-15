@@ -1,0 +1,47 @@
+sid: remediation-loop2
+# ============================================================================
+# Loop 2 — orchestrator decomposition. RUN ONLY AFTER Loop 1 is merged and CI
+# is green (it builds on the landed changes, not on stale code).
+#
+# This is the one change that rewrites the coordinator's own substrate
+# (coordinate.py). It is safe to run because:
+#   * isolation: worktree — the rewrite lives on a throwaway branch; the
+#     running coordinator executes the STABLE shared-tree coordinate.py
+#     throughout, never the rewrite (the DD §9.4 substrate-mutation hazard is
+#     neutralized). It lands as ONE reviewable diff you merge by hand.
+#   * It is the ONLY task here — coordinate.py can't be split across disjoint
+#     owners, so it is a single coherent change, verified by CI post-merge.
+#
+# Run:  pigeon coordinate docs/design/remediation/loop2.tasks.yaml \
+#         --skip-permissions --telemetry --budget-usd 20
+# ============================================================================
+tasks:
+  - id: decompose
+    runner: opus
+    isolation: worktree
+    doing: >-
+      Split src/pigeon/coordinate.py (~2k LOC, DD C3 / Risk 5) into a package:
+      coordinate/ (the scheduler + run loop), reporting.py (the
+      by-agent/timeline/metrics rendering), and worktree.py (worktree
+      setup/commit/diff-materialize/teardown). While there, extract the
+      telemetry usage parser (_extract_telemetry / _opencode_usage) behind a
+      small plugin boundary so a vendor output-format change becomes a
+      fixture+config edit rather than a core edit (DD C4 / U8). HARD
+      CONSTRAINTS: public import paths and function signatures used by other
+      modules and the tests must stay byte-identical; this is a pure
+      refactor — move code, change no behavior. CI (pytest + pyrefly) is the
+      gate after the human merges; keep the change reviewable as one diff.
+
+  - id: review
+    runner: opus
+    needs: [decompose]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/*/decompose.diff"
+    crew:
+      skills: [code-reviewer]
+    doing: >-
+      ADVISORY review of the decomposition diff — verify public signatures and
+      import paths are unchanged, no behavior moved, and the split is clean.
+      Write findings to
+      .pigeon/coordinate/reviews/remediation-loop2-review.json. The human
+      merges; CI is the final gate.

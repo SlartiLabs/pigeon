@@ -1,0 +1,106 @@
+sid: remediation-loop1
+# ============================================================================
+# Loop 1 — contained remediation (Phase 0.3 + 0.4 + the non-substrate Phase 1).
+# Derived from the consolidated DD; see docs/design or memory relais-remediation-plan.
+#
+# DISCIPLINE (DD §9, all grounded this session):
+#   * Every edit task is isolation: worktree — edits land on a throwaway branch
+#     and materialize as a diff on the shared tree; the coordinator keeps
+#     running the STABLE shared-tree code, so the substrate-mutation hazard
+#     cannot bite. (Extra safety: NO Loop-1 task touches coordinate.py — the
+#     orchestrator's run loop. That restructuring is Loop 2.)
+#   * DISJOINT FILE OWNERSHIP per task (stated in each `doing`) so the manual
+#     merge queue never conflicts. pigeon has no `owns:` field — ownership is a
+#     convention the reviewer checks, not a coordinator-enforced gate.
+#   * VERIFICATION IS POST-MERGE CI. A worktree edit can't self-run the suite
+#     (the editable install imports the shared src, not the worktree copy), so
+#     tasks WRITE tests but do not claim to run them; CI (now live) gates each
+#     branch after you merge it. No in-pipeline verify task.
+#   * review is ADVISORY ONLY — you merge every branch by hand. No auto-merge.
+#
+# RUNNERS (grounded): sonnet/opus = claude, reliable + telemetry-measured. agy =
+# gemini, works but UNMEASURED and no model selection. opencode (oc-*) is
+# billing-blocked on the CLI (Zen 401) — left out; see the opt-in note at EOF.
+#
+#   docs ───────────┐
+#   config-harden ──┤
+#   schema-gate ────┼─▶ review (advisory, agy)
+#   property-tests ─┘
+#
+# Run:  pigeon coordinate docs/design/remediation/loop1.tasks.yaml \
+#         --skip-permissions --telemetry --budget-usd 15
+# ============================================================================
+tasks:
+  - id: docs
+    runner: sonnet
+    isolation: worktree
+    doing: >-
+      Edit ONLY README.md and AGENTS.md. (1) README version 0.1 → 0.4;
+      (2) clarify the graph wording — the heavy Graphiti/GraphRAG graph is
+      deferred, but the lightweight derived wiki-link graph in graph.py SHIPS
+      today (DD D4); (3) state the PyPI/install name is `carrier-pigeon` (the
+      bare `pigeon` is already taken on PyPI — DD U6). Touch no other file; do
+      NOT run `pigeon refresh` (the human regenerates CLAUDE.md/GEMINI.md after
+      merge).
+
+  - id: config-harden
+    runner: sonnet
+    isolation: worktree
+    doing: >-
+      Edit ONLY src/pigeon/config.py and tests/test_config.py. (1) Guard the
+      `vector` config key so enabling it fails at LOAD with a clear message
+      instead of detonating mid-run with NotImplementedError (DD D3); (2) flip
+      coordinate.env_allowlist to default-ON with an explicit opt-out so child
+      agents don't inherit every secret by default (DD S2 / Risk 7); (3)
+      schema-validate the merged config in load_config() so a typo like a
+      mistyped max_depth fails at load, not as a cryptic mid-run TypeError (DD
+      U7). Add a focused test for each. Keep public APIs/signatures stable.
+
+  - id: schema-gate
+    runner: opus
+    isolation: worktree
+    doing: >-
+      Edit ONLY src/pigeon/handoff.py, src/pigeon/cli.py, the handoff schema
+      file (.pigeon/handoff.schema.json), and ADD tests/test_migrate.py. Make
+      schema_version actually GATE compatibility (today it is recorded but not
+      enforced — DD D1 / Risk 6): reject an incompatible handoff with a clear
+      error, add a `pigeon migrate` command + an upgrade function + a written
+      compatibility policy, and fix the schema `$id` to a pigeon URL. Do NOT
+      touch coordinate.py. Public handoff API stays stable.
+
+  - id: property-tests
+    runner: sonnet
+    isolation: worktree
+    doing: >-
+      ADD ONLY new test file(s) (e.g. tests/test_invariants.py); edit no source
+      module. Property/contract tests for: the DAG scheduler invariants ("no
+      task starts before its needs exit 0", "cyclic graphs are rejected") and
+      the telemetry parsers (claude `usage:{*_tokens}` AND opencode
+      `tokens:{total,input,...}`+`cost`) against small captured fixtures
+      (DD Risk 1/4). These harden the contracts CI enforces.
+
+  - id: review
+    runner: agy
+    needs: [docs, config-harden, schema-gate, property-tests]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/*/docs.diff"
+      - "repo://.pigeon/coordinate/diffs/*/config-harden.diff"
+      - "repo://.pigeon/coordinate/diffs/*/schema-gate.diff"
+      - "repo://.pigeon/coordinate/diffs/*/property-tests.diff"
+    crew:
+      skills: [code-reviewer]
+    doing: >-
+      ADVISORY review only — you do NOT merge. Read each materialized diff,
+      confirm it stayed inside its owned files and the change is sound, and
+      write findings to
+      .pigeon/coordinate/reviews/remediation-loop1-review.json (review-artifact
+      convention), listing it in your handoff state.artifacts. The human reads
+      your review, merges each branch by hand, and lets CI gate it.
+
+# --- opencode opt-in (DISABLED — billing-blocked on the CLI this session) ----
+# To field the free-model army once `opencode run` completes (Zen payment
+# method added, or a funded provider), set a draft task's runner to one of the
+# config's oc-* runners (oc-deepseek = opencode/deepseek-v4-flash-free) or add
+# an `oc-bigpickle` runner (opencode run -m opencode/big-pickle) to
+# .pigeon/config.yaml, and close stdin in _run_task (opencode hangs on a TTY).
+# Until then these 401 and would fail the run — do not route must-land work here.
