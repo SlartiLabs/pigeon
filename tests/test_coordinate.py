@@ -953,7 +953,7 @@ def test_cleanup_removes_orphans_and_prunes_history(repo):
     cfg = _setup(repo)
     _real_git(repo.root)
     # simulate a crashed coordinator: worktree set up, never finished
-    wt_dir, branch = co._worktree_setup(cfg, "crash-1", "stuck")
+    wt_dir, branch, _base = co._worktree_setup(cfg, "crash-1", "stuck")
     assert wt_dir.is_dir()
     # plus two finished runs worth of history
     for _ in range(2):
@@ -1208,6 +1208,30 @@ def test_changed_worktree_never_silently_drops_diff(repo, monkeypatch):
     assert iso["changed"] is True
     assert "diff" not in iso                          # nothing materialized
     assert "simulated F1" in iso.get("diff_error", "")  # ...but the failure is LOUD
+
+
+def test_self_committed_worktree_is_harvested_not_orphaned(repo):
+    # Regression for F8: an agent that COMMITS its own work inside the worktree
+    # leaves a clean tree. A dirty-tree-only check read that as "no work" → no
+    # diff materialized AND the branch deleted (orphaning the commit). Now
+    # "changed" means the branch advanced beyond its base, so self-committed
+    # work is harvested: diff materialized, branch kept.
+    cfg = _setup(repo, runners={"committer": [
+        sys.executable, "-c",
+        "import subprocess as s;"
+        "open('made.txt','w').write('agent work');"
+        "s.run(['git','add','-A'],check=True);"
+        "s.run(['git','-c','user.name=a','-c','user.email=a@b','commit','-q',"
+        "'-m','agent self-commit'],check=True)"]})
+    _real_git(repo.root)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "iso", "runner": "committer", "doing": "x", "isolation": "worktree"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    iso = co.list_runs(cfg, sid="co1")[0]["tasks"]["iso"]["isolation"]
+    assert iso["changed"] is True
+    assert iso.get("branch")                          # branch kept, not deleted
+    body = (repo.root / iso["diff"]).read_text(encoding="utf-8")  # diff materialized
+    assert "made.txt" in body and "+agent work" in body
 
 
 def test_by_agent_report_adds_by_model_rollup():

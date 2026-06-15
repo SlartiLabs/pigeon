@@ -1224,23 +1224,30 @@ def _git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProce
 _GIT_LOCK = threading.Lock()
 
 
-def _worktree_setup(config: Config, run_id: str, task_id: str) -> tuple[Path, str]:
+def _worktree_setup(config: Config, run_id: str, task_id: str) -> tuple[Path, str, str]:
     """Create a throwaway worktree + task branch off HEAD for one task.
 
     Isolated agents work on their own checkout — parallel tasks cannot
     trample each other's files, and a misbehaving agent wrecks a disposable
     copy, never the main checkout (the Copilot ``/delegate`` insight).
+
+    Returns the worktree dir, its task branch, and the *base* commit the branch
+    forked from. Teardown judges "did this task do work?" by whether the branch
+    advanced beyond ``base`` — so work the agent COMMITTED itself is harvested,
+    not orphaned by a clean-tree check (F8).
     """
     wt_dir = config.coordinate_worktrees_dir / run_id / task_id
     branch = f"pigeon/{run_id}/{task_id}"
     wt_dir.parent.mkdir(parents=True, exist_ok=True)
     with _GIT_LOCK:
         _git(config.root, "worktree", "add", "-q", "-b", branch, str(wt_dir), "HEAD")
-    return wt_dir, branch
+        base = _git(config.root, "rev-parse", "HEAD").stdout.strip()
+    return wt_dir, branch, base
 
 
 def _worktree_finish(
     config: Config, task_id: str, wt_dir: Path, branch: str, run_id: str = "",
+    base: str = "",
 ) -> tuple[dict[str, Any], list[str]]:
     """Harvest handoffs, commit the task's work to its branch, remove the tree.
 
@@ -1270,42 +1277,45 @@ def _worktree_finish(
 
     with _GIT_LOCK:
         return _worktree_commit_and_remove(
-            config, task_id, wt_dir, branch, harvested, run_id)
+            config, task_id, wt_dir, branch, harvested, run_id, base)
 
 
 def _worktree_commit_and_remove(
     config: Config, task_id: str, wt_dir: Path, branch: str, harvested: list[str],
-    run_id: str = "",
+    run_id: str = "", base: str = "",
 ) -> tuple[dict[str, Any], list[str]]:
-    changed = bool(_git(wt_dir, "status", "--porcelain").stdout.strip())
-    info: dict[str, Any] = {"branch": branch, "changed": changed}
-    if changed:
+    # Commit any UNcommitted work, then judge "changed" by whether the branch
+    # ADVANCED beyond its base — true whether the agent committed its own work
+    # (F8) or left it dirty for us. A dirty-tree-only check orphaned self-
+    # committed work: a clean tree read as "no work" → no diff, branch deleted.
+    base = base or _git(config.root, "rev-parse", "HEAD").stdout.strip()
+    if _git(wt_dir, "status", "--porcelain").stdout.strip():
         _git(wt_dir, "add", "-A")
         _git(wt_dir, "-c", "user.name=pigeon", "-c", "user.email=pigeon@local",
              "commit", "-q", "-m", f"pigeon: task {task_id} ({branch})")
-        sha = _git(wt_dir, "rev-parse", "HEAD").stdout.strip()
-        info["commit"] = sha[:7]
-        # Diff the commit against its parent BY SHA (not HEAD~1), so a concurrent
-        # ref move or re-resolution can't make this come back empty. One call
-        # feeds both the materialized diff and the failure check.
-        dproc = _git(wt_dir, "diff", f"{sha}~1", sha, check=False)
+    head = _git(wt_dir, "rev-parse", "HEAD").stdout.strip()
+    changed = bool(base) and head != base
+    info: dict[str, Any] = {"branch": branch, "changed": changed}
+    if changed:
+        info["commit"] = head[:7]
+        # Diff base..head BY SHA — the net change the task made, whether it
+        # arrived as the agent's own commits or ours. It must outlive
+        # `worktree remove` (materialized on the shared tree) so a downstream
+        # review task can receive it as a pointer. NEVER swallow a failure: a
+        # changed branch that yields no diff is a contract breach on the data
+        # path, recorded loudly instead of shipping nothing downstream.
+        dproc = _git(wt_dir, "diff", base, head, check=False)
         info["diffstat"] = _git(
-            wt_dir, "diff", "--stat", f"{sha}~1", sha, check=False
+            wt_dir, "diff", "--stat", base, head, check=False
         ).stdout.strip()
         full = dproc.stdout
-        # Materialize the FULL diff onto the shared tree (config.root), not the
-        # worktree — it must outlive `worktree remove` so a downstream review
-        # task can receive it as a pointer (pointers-not-payloads). NEVER swallow
-        # a failure here: a changed worktree that yields no diff is a contract
-        # breach on the pipeline's data path, so record it loudly instead of
-        # silently shipping nothing downstream.
         if dproc.returncode != 0:
             info["diff_error"] = (
                 f"git diff exited {dproc.returncode}: "
                 + ((dproc.stderr or full).strip()[:500] or "<no output>")
             )
         elif not full.strip():
-            info["diff_error"] = "changed worktree produced an empty diff"
+            info["diff_error"] = "changed branch produced an empty diff"
         else:
             diff_dir = config.coordinate_diffs_dir / (run_id or "run")
             diff_dir.mkdir(parents=True, exist_ok=True)
@@ -1741,7 +1751,7 @@ def run_coordinate(
                              model=task.get("model") or "", budget=budget,
                              procs=running_procs)
         try:
-            wt_dir, branch = _worktree_setup(config, run_id, tid)
+            wt_dir, branch, base = _worktree_setup(config, run_id, tid)
         except RuntimeError as exc:
             with _print_lock:
                 print(f"[{tid}] worktree setup failed: {exc}")
@@ -1754,7 +1764,7 @@ def run_coordinate(
                        model=task.get("model") or "", cwd=wt_dir, budget=budget,
                        procs=running_procs)
         try:
-            info, harvested = _worktree_finish(config, tid, wt_dir, branch, run_id)
+            info, harvested = _worktree_finish(config, tid, wt_dir, branch, run_id, base)
         except RuntimeError as exc:
             with _print_lock:
                 print(f"[{tid}] worktree teardown failed: {exc}")
