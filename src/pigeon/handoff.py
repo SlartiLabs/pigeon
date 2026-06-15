@@ -141,6 +141,10 @@ def upgrade_handoff(handoff: dict[str, Any], *, to: str = SCHEMA_VERSION) -> dic
     handoff has no usable version, is newer than ``to`` (no downgrades), or no
     migration path reaches ``to``.
     """
+    if not isinstance(handoff, dict):
+        raise HandoffMigrationError(
+            f"handoff must be a JSON object, got {type(handoff).__name__!r}"
+        )
     version = handoff.get("schema_version")
     if not isinstance(version, str):
         raise HandoffMigrationError("handoff has no schema_version to migrate from")

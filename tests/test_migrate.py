@@ -215,3 +215,11 @@ def test_schema_id_is_a_pigeon_url():
     assert "pigeon" in schema["$id"]
     # the version suffix init.py greps for must survive the rename
     assert "handoff-1.1.json" in schema["$id"]
+
+
+def test_upgrade_handoff_rejects_non_dict_input():
+    # A non-dict input must raise a clean HandoffMigrationError, not an uncaught
+    # AttributeError on .get() (advisory nit).
+    for bad in (["not", "a", "dict"], "a string", 42, None):
+        with pytest.raises(ho.HandoffMigrationError, match="must be a JSON object"):
+            ho.upgrade_handoff(bad)

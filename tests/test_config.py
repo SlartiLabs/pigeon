@@ -75,6 +75,14 @@ def test_env_allowlist_list_merges_correctly(tmp_path: Path) -> None:
     assert cfg.coordinate_cfg["env_allowlist"] == ["ANTHROPIC_API_KEY"]
 
 
+def test_env_allowlist_rejects_non_string_elements(tmp_path: Path) -> None:
+    """A non-string allowlist element fails at load (advisory nit) — it would
+    otherwise be silently ignored during env matching."""
+    root = _mk_repo(tmp_path, "coordinate:\n  env_allowlist:\n    - PATH\n    - 123\n")
+    with pytest.raises(ValueError, match="only strings"):
+        load_config(root)
+
+
 # ---------------------------------------------------------------------------
 # U7: schema validation at load
 # ---------------------------------------------------------------------------

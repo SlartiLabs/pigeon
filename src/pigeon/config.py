@@ -235,11 +235,18 @@ def _validate_schema(cfg: dict[str, Any]) -> None:
     _int("coordinate.parallel_limit", co["parallel_limit"])
 
     al = co.get("env_allowlist")
-    if al is not None and not isinstance(al, list):
-        raise ValueError(
-            f"config key 'coordinate.env_allowlist' must be a list of strings or null, "
-            f"got {type(al).__name__!r}"
-        )
+    if al is not None:
+        if not isinstance(al, list):
+            raise ValueError(
+                f"config key 'coordinate.env_allowlist' must be a list of strings or null, "
+                f"got {type(al).__name__!r}"
+            )
+        nonstr = [x for x in al if not isinstance(x, str)]
+        if nonstr:
+            raise ValueError(
+                "config key 'coordinate.env_allowlist' must contain only strings; "
+                f"got non-string element(s): {nonstr!r}"
+            )
 
     safety = co["safety"]
     _int("coordinate.safety.max_depth", safety["max_depth"])
