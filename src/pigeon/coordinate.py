@@ -1826,9 +1826,9 @@ def run_coordinate(
                 if now < floor:               # backoff / retry cooldown
                     spawn_wait = _min_opt(spawn_wait, floor - now)
                     continue
-                pname = pool_of.get(tid)
+                pname: str | None = pool_of.get(tid)
                 thr = throttle_of.get(pname) if pname else None
-                if thr:
+                if thr and pname:           # pname is a real pool name here
                     cap = thr["max_concurrency"]
                     if cap is not None and inflight_pool.get(pname, 0) >= cap:
                         continue              # pool saturated; frees on a completion

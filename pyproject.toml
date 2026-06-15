@@ -32,7 +32,7 @@ vector = ["chromadb~=0.5"]
 mcp = ["mcp~=1.2"]
 # `pigeon status --tui`: full-screen terminal dashboard (reader-only).
 tui = ["textual~=8.0"]
-dev = ["pytest~=8.0", "mcp~=1.2", "textual~=8.0"]
+dev = ["pytest~=8.0", "mcp~=1.2", "textual~=8.0", "pyrefly~=1.0"]
 
 [project.urls]
 Homepage = "https://github.com/ecoCMF/pigeon"
