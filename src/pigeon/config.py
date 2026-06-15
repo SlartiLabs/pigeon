@@ -77,6 +77,11 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
         },
         "resolve": {
             "allow_s3": False,
+            # S1 fence: pointers resolve only INSIDE the repo root by default.
+            # repo:// is always confined; set true to let file:// and bare/
+            # absolute paths read outside the repo — a deliberate, auditable
+            # opt-in, off by default so a handoff cannot exfiltrate /etc/passwd.
+            "allow_outside_root": False,
         },
         "tokens": {
             "encoding": "cl100k_base",

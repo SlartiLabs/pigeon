@@ -104,6 +104,27 @@ def _resolve_s3(pointer: str, config: Config) -> Resolved:
     return Resolved(pointer=pointer, scheme="s3", data=body)
 
 
+def _contain(resolved: Path, config: Config, pointer: str, *, external_allowed: bool) -> Path:
+    """Confine a resolved path to the repo root — the S1 arbitrary-read fence.
+
+    The contract is the *repo* filesystem; a pointer that lands outside it (a
+    ``../`` escape, an absolute path, a ``file://`` URL) is the arbitrary-read
+    vector and is rejected by default. ``repo://`` is never let out (it means
+    "in the repo"); the absolute schemes (``external_allowed``) may be lifted
+    only when the operator sets ``resolve.allow_outside_root: true`` in
+    ``.pigeon/config.yaml`` — a deliberate, auditable opt-in."""
+    if resolved.is_relative_to(config.root.resolve()):
+        return resolved
+    if external_allowed and config.resolve_cfg.get("allow_outside_root", False):
+        return resolved
+    raise PointerError(
+        f"Pointer {pointer!r} resolves outside the repo root ({resolved}). "
+        "repo:// and bare paths are confined to the repo; to read an external "
+        "path deliberately, set resolve.allow_outside_root: true in "
+        ".pigeon/config.yaml."
+    )
+
+
 def resolve(pointer: str, config: Config) -> Resolved:
     """Resolve a pointer to a :class:`Resolved` handle. Does not read content."""
     if not isinstance(pointer, str) or not pointer:
@@ -111,11 +132,13 @@ def resolve(pointer: str, config: Config) -> Resolved:
 
     if pointer.startswith("repo://"):
         rel = pointer[len("repo://"):]
-        return Resolved(pointer=pointer, scheme="repo", path=(config.root / rel).resolve())
+        path = _contain((config.root / rel).resolve(), config, pointer, external_allowed=False)
+        return Resolved(pointer=pointer, scheme="repo", path=path)
 
     if pointer.startswith("file://"):
         parsed = urlparse(pointer)
-        return Resolved(pointer=pointer, scheme="file", path=Path(parsed.path).resolve())
+        path = _contain(Path(parsed.path).resolve(), config, pointer, external_allowed=True)
+        return Resolved(pointer=pointer, scheme="file", path=path)
 
     if pointer.startswith("s3://"):
         return _resolve_s3(pointer, config)
@@ -129,10 +152,11 @@ def resolve(pointer: str, config: Config) -> Resolved:
             f"Unsupported pointer scheme {scheme!r}. Supported: {', '.join(SUPPORTED)}"
         )
 
-    # Bare path: absolute as-is, relative against repo root.
+    # Bare path: absolute as-is, relative against repo root — confined either way.
     p = Path(pointer)
-    resolved = p if p.is_absolute() else (config.root / p)
-    return Resolved(pointer=pointer, scheme="path", path=resolved.resolve())
+    resolved = (p if p.is_absolute() else (config.root / p)).resolve()
+    path = _contain(resolved, config, pointer, external_allowed=True)
+    return Resolved(pointer=pointer, scheme="path", path=path)
 
 
 def resolve_text(pointer: str, config: Config, encoding: str = "utf-8") -> str:

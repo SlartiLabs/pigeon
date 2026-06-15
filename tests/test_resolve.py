@@ -57,3 +57,34 @@ def test_manifest_rev_charset_validated(repo):
         resolve.resolve("manifest@--upload-pack=evil", repo)
     with pytest.raises(resolve.PointerError, match="charset"):
         resolve.resolve("manifest@-rf", repo)
+
+
+# --- S1: pointer resolution is confined to the repo root --------------------
+def test_repo_pointer_cannot_escape_root(repo):
+    # A handoff carrying repo://../../etc/passwd must NOT read outside the repo.
+    with pytest.raises(rs.PointerError, match="outside the repo root"):
+        rs.resolve("repo://../../etc/passwd", repo)
+
+
+def test_bare_absolute_path_confined(repo):
+    # A bare absolute path landing outside the repo is rejected by default.
+    with pytest.raises(rs.PointerError, match="outside the repo root"):
+        rs.resolve("/etc/passwd", repo)
+
+
+def test_file_url_outside_root_rejected_by_default(repo, tmp_path):
+    outside = tmp_path.parent / "outside_file.txt"
+    outside.write_text("secret", encoding="utf-8")
+    with pytest.raises(rs.PointerError, match="outside the repo root"):
+        rs.resolve(f"file://{outside.resolve()}", repo)
+
+
+def test_allow_outside_root_lifts_absolute_schemes_but_never_repo(repo, tmp_path):
+    outside = tmp_path.parent / "outside_ok.txt"
+    outside.write_text("hello", encoding="utf-8")
+    repo.data["resolve"]["allow_outside_root"] = True
+    # the opt-in lifts the fence for file:// (an absolute scheme)...
+    assert rs.resolve(f"file://{outside.resolve()}", repo).read_text() == "hello"
+    # ...but repo:// is never lifted — it means "in the repo".
+    with pytest.raises(rs.PointerError, match="outside the repo root"):
+        rs.resolve("repo://../../etc/passwd", repo)
