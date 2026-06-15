@@ -151,9 +151,12 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
             # template carries a `{model}` placeholder consumes the resolved
             # model; default templates have none, so they are unaffected.
             "model_pools": {},
-            # Strict mode: when set, only these env vars (plus a functional
-            # baseline: PATH/HOME/...) reach spawned agents. None = inherit all.
-            "env_allowlist": None,
+            # S2 / Risk 7: allowlist is ON by default (empty list = only the
+            # functional _ENV_BASELINE vars reach child agents — secrets in the
+            # operator shell stay out of reach).  Explicit opt-out: set
+            # ``coordinate.env_allowlist: null`` in config.yaml to inherit
+            # the full parent environment.
+            "env_allowlist": [],
             "safety": {
                 # Agents may modify the folder only in a .git checkout with
                 # pigeon initialized (revertible + contract-validated).
@@ -196,6 +199,61 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any],
         else:
             out[key] = copy.deepcopy(val)
     return out
+
+
+def _validate_schema(cfg: dict[str, Any]) -> None:
+    """Type-check key config values at load time (DD U7).
+
+    A mistyped value such as ``max_depth: "one"`` raises here with a clear
+    message instead of detonating mid-run as a cryptic TypeError.
+    """
+
+    def _int(path: str, val: Any) -> None:
+        if not isinstance(val, int) or isinstance(val, bool):
+            raise ValueError(
+                f"config key {path!r} must be an integer, got {type(val).__name__!r}"
+            )
+
+    def _bool(path: str, val: Any) -> None:
+        if not isinstance(val, bool):
+            raise ValueError(
+                f"config key {path!r} must be a boolean, got {type(val).__name__!r}"
+            )
+
+    r = cfg["retrieval"]
+    _int("retrieval.max_file_bytes", r["max_file_bytes"])
+    _int("retrieval.chunk_lines", r["chunk_lines"])
+    _int("retrieval.chunk_overlap", r["chunk_overlap"])
+    _int("retrieval.default_top_k", r["default_top_k"])
+    _bool("retrieval.vector.enabled", r["vector"]["enabled"])
+
+    res = cfg["resolve"]
+    _bool("resolve.allow_s3", res["allow_s3"])
+    _bool("resolve.allow_outside_root", res["allow_outside_root"])
+
+    co = cfg["coordinate"]
+    _int("coordinate.parallel_limit", co["parallel_limit"])
+
+    al = co.get("env_allowlist")
+    if al is not None and not isinstance(al, list):
+        raise ValueError(
+            f"config key 'coordinate.env_allowlist' must be a list of strings or null, "
+            f"got {type(al).__name__!r}"
+        )
+
+    safety = co["safety"]
+    _int("coordinate.safety.max_depth", safety["max_depth"])
+    if safety["max_depth"] < 1:
+        raise ValueError(
+            f"config key 'coordinate.safety.max_depth' must be >= 1, "
+            f"got {safety['max_depth']!r}"
+        )
+    _bool("coordinate.safety.require_repo_setup", safety["require_repo_setup"])
+    _bool("coordinate.safety.require_linux", safety["require_linux"])
+    _bool(
+        "coordinate.safety.require_isolated_env_for_packages",
+        safety["require_isolated_env_for_packages"],
+    )
 
 
 def find_repo_root(start: Path | str | None = None) -> Path:
@@ -329,4 +387,13 @@ def load_config(root: Path | str | None = None) -> Config:
             raise ValueError(f"{cfg_path} must contain a YAML mapping at the top level")
         on_disk = loaded
     merged = _deep_merge(default_config(dirname), on_disk)
+    _validate_schema(merged)
+    # D3: vector retrieval is not yet implemented; catch the misconfiguration
+    # here so the operator sees a clear message instead of a mid-run
+    # NotImplementedError buried in retrieval code.
+    if merged["retrieval"]["vector"]["enabled"]:
+        raise ValueError(
+            "retrieval.vector.enabled is True but vector retrieval is not yet "
+            "implemented; set retrieval.vector.enabled to false (or omit the key)"
+        )
     return Config(root=repo_root, data=merged)
