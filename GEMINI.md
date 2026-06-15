@@ -1,5 +1,5 @@
 <!-- agentctx:generated — DO NOT EDIT -->
-<!-- agentctx:source AGENTS.md sha256:3f54b2e9314a -->
+<!-- agentctx:source AGENTS.md sha256:3ca176f2d19c -->
 
 # GEMINI — generated pointer
 
