@@ -921,10 +921,29 @@ def test_env_allowlist_blocks_secrets(repo, monkeypatch):
     assert "path=True" in log        # functional baseline survives
 
 
-def test_env_inherits_everything_by_default(repo, monkeypatch):
+def test_env_default_excludes_secrets(repo, monkeypatch):
+    # New default (DD S2): env_allowlist defaults ON ([]), so a child inherits
+    # only the functional baseline — the operator's secrets do NOT leak.
     monkeypatch.setenv("FAKE_CLOUD_SECRET", "hunter2")
     cfg = _setup(repo, runners={"py": [
         sys.executable, "-c", "import os; print('secret=' + str('FAKE_CLOUD_SECRET' in os.environ))"]})
+    tasks = _write_tasks(repo.root, _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    assert "secret=False" in (cfg.coordinate_log_dir / "co1-a.log").read_text(encoding="utf-8")
+
+
+def test_env_allowlist_null_inherits_everything(repo, monkeypatch):
+    # Explicit opt-out: env_allowlist: null restores full parent-env inheritance.
+    monkeypatch.setenv("FAKE_CLOUD_SECRET", "hunter2")
+    import yaml as _yaml
+    (repo.root / ".git").mkdir(exist_ok=True)
+    (repo.root / ".agentctx" / "config.yaml").write_text(_yaml.safe_dump({
+        "coordinate": {
+            "env_allowlist": None,
+            "runners": {"py": [sys.executable, "-c",
+                "import os; print('secret=' + str('FAKE_CLOUD_SECRET' in os.environ))"]},
+        }}), encoding="utf-8")
+    cfg = load_config(repo.root)
     tasks = _write_tasks(repo.root, _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}]))
     assert co.run_coordinate(tasks, cfg) == 0
     assert "secret=True" in (cfg.coordinate_log_dir / "co1-a.log").read_text(encoding="utf-8")
