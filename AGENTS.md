@@ -83,7 +83,7 @@ Source layout:
 - `src/pigeon/retrieval.py` — hybrid ripgrep + BM25 retrieval.
 - `src/pigeon/tokens.py` — token counting + `.pigeon/metrics.jsonl` accounting.
 - `src/pigeon/cli.py` — the `pigeon` command (`agentctx` kept as an alias).
-- `src/pigeon/coordinate.py` — parallel fan-out: DAG scheduler, worktrees, budgets, run manifests.
+- `src/pigeon/coordinate/` — parallel fan-out package: scheduler + run loop (`__init__`), `reporting` (status/timeline/by-model), `worktree` (isolation lifecycle), `telemetry` (pluggable usage parsers).
 - `src/pigeon/distill.py` — episodic log -> committed session memory + decision ledger.
 - `src/pigeon/graph.py` — derived entity graph (`[[wiki-links]]` + handoff provenance).
 - `src/pigeon/pack.py` — bounded pre-task context bundles.
