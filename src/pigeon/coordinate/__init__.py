@@ -1002,6 +1002,27 @@ def _seed_opencode_creds(cmd: list[str]) -> None:
         pass
 
 
+def _opencode_permission_env(cmd: list[str], config: Config) -> dict[str, str]:
+    """Grant an opencode runner read access to the main repo tree.
+
+    opencode (non-interactive ``run``) auto-rejects reads outside its cwd. A
+    worktree-isolated task's cwd is the throwaway worktree, but its handoff and
+    any ``receives:`` artifacts live on the MAIN tree (``.pigeon/`` is gitignored,
+    so a fresh worktree does not contain them) — so an opencode runner can't read
+    them and dies before starting. ``OPENCODE_PERMISSION`` (deep-merged last by
+    opencode) flips the ``external_directory`` permission to ``allow`` for the
+    repo root, scoped to reads only. Empty for non-opencode runners — claude/agy
+    reach external paths via ``--dangerously-skip-permissions`` instead.
+    """
+    if "opencode" not in cmd:
+        return {}
+    return {
+        "OPENCODE_PERMISSION": json.dumps(
+            {"external_directory": {f"{config.root}/**": "allow"}}
+        )
+    }
+
+
 def _run_task(
     task_id: str,
     cmd: list[str],
@@ -1034,11 +1055,13 @@ def _run_task(
         log.write("$ " + " ".join(shlex.quote(c) for c in cmd) + "\n")
         try:
             _seed_opencode_creds(cmd)
+            env = _child_env(config)
+            env.update(_opencode_permission_env(cmd, config))
             proc = subprocess.Popen(
                 cmd, cwd=cwd or config.root,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, bufsize=1,
-                env=_child_env(config),
+                env=env,
             )
         except OSError as exc:
             line = f"failed to spawn: {exc}"

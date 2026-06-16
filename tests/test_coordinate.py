@@ -1541,3 +1541,18 @@ def test_seed_opencode_creds_noop_for_non_opencode_and_never_raises(tmp_path, mo
     co._seed_opencode_creds(["opencode", "run", "hi"])
     co._seed_opencode_creds(["opencode", "XDG_DATA_HOME="])
     co._seed_opencode_creds([])
+
+
+# -------------------------------------------------- opencode worktree perms
+def test_opencode_permission_env_grants_repo_root_reads(repo):
+    cfg = _setup(repo)
+    oc_cmd = ["timeout", "-k", "30", "600", "env",
+              "XDG_DATA_HOME=/tmp/pigeon-oc/x", "opencode", "run",
+              "-m", "opencode/nemotron-3-ultra-free", "hi"]
+    env = co._opencode_permission_env(oc_cmd, cfg)
+    perm = json.loads(env["OPENCODE_PERMISSION"])
+    # external reads of the main repo tree are allowed (so a worktree-isolated
+    # opencode runner can read its main-tree handoff + receives artifacts)
+    assert perm["external_directory"][f"{cfg.root}/**"] == "allow"
+    # non-opencode runners get nothing (claude/agy use --dangerously-skip-permissions)
+    assert co._opencode_permission_env(["claude", "-p", "hi", "--model", "sonnet"], cfg) == {}
