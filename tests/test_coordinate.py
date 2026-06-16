@@ -1502,3 +1502,42 @@ def test_reentry_is_bounded_by_max_reentry(repo):
         {"id": "fix", "runner": "fix", "doing": "rule", "reentry": True, "max_reentry": 2}]})
     assert co.run_coordinate(tasks, cfg) == 0
     assert (repo.root / "n").read_text() == "3"   # initial + exactly 2 re-entries
+
+
+# -------------------------------------------------- badge: shared vs worktree
+def test_task_badges_distinguishes_shared_from_worktree():
+    b = co._task_badges
+    # explicit `isolation: shared` must NOT render a worktree badge (the bug)
+    assert "worktree" not in b({"runner": "r", "isolation": "shared", "readonly": True})
+    # explicit worktree does
+    assert "worktree" in b({"runner": "r", "isolation": "worktree"})
+    # readonly with no explicit isolation defaults to a worktree -> badge it
+    assert "worktree" in b({"runner": "r", "readonly": True})
+    # a plain (non-readonly, no-isolation) task is shared -> no worktree badge
+    assert "worktree" not in b({"runner": "r"})
+
+
+# -------------------------------------------------- opencode auth seeding
+def test_seed_opencode_creds_seeds_per_runner_xdg(tmp_path, monkeypatch):
+    src = tmp_path / "real" / "opencode"
+    src.mkdir(parents=True)
+    (src / "auth.json").write_text("{}")
+    (src / "account.json").write_text("{}")
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "real"))
+    target = tmp_path / "runner"
+    cmd = ["timeout", "-k", "30", "600", "env", f"XDG_DATA_HOME={target}",
+           "opencode", "run", "-m", "opencode/mimo-v2.5-free", "hi"]
+    co._seed_opencode_creds(cmd)
+    assert (target / "opencode" / "auth.json").is_file()
+    assert (target / "opencode" / "account.json").is_file()
+
+
+def test_seed_opencode_creds_noop_for_non_opencode_and_never_raises(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    # non-opencode runner: helper must not act
+    co._seed_opencode_creds(["claude", "-p", "hi", "--model", "sonnet"])
+    assert not (tmp_path / "opencode").exists()
+    # opencode cmd with no XDG token, empty path, or odd shapes: no-op, never raises
+    co._seed_opencode_creds(["opencode", "run", "hi"])
+    co._seed_opencode_creds(["opencode", "XDG_DATA_HOME="])
+    co._seed_opencode_creds([])

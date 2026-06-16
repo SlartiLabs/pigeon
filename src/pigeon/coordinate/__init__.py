@@ -665,9 +665,15 @@ def _task_badges(task: dict[str, Any]) -> str:
         badges.append(f"crew×{n_crew}")
     if task.get("readonly"):
         badges.append("readonly")
-    for flag in ("isolation", "pack", "telemetry", "mutates_packages"):
+    # Effective isolation: a readonly task with no explicit isolation defaults
+    # to a throwaway worktree (see _norm_task); badge "worktree" only when the
+    # task will actually run in one — an explicit `isolation: shared` must not.
+    eff_isolation = task.get("isolation") or ("worktree" if task.get("readonly") else "shared")
+    if eff_isolation == "worktree":
+        badges.append("worktree")
+    for flag in ("pack", "telemetry", "mutates_packages"):
         if task.get(flag):
-            badges.append("worktree" if flag == "isolation" else flag)
+            badges.append(flag)
     if task.get("needs"):
         badges.append("← " + ",".join(task["needs"]))
     return " · ".join(badges)
@@ -964,6 +970,38 @@ def _child_env(config: Config) -> dict[str, str]:
     return env
 
 
+def _seed_opencode_creds(cmd: list[str]) -> None:
+    """Best-effort: seed opencode credentials into a runner's per-runner
+    ``XDG_DATA_HOME`` so a fresh isolated data dir is authenticated.
+
+    The opencode-routed runners embed ``env XDG_DATA_HOME=/tmp/pigeon-oc/<runner>``
+    in their argv so each gets its own opencode SQLite DB (avoiding the shared-DB
+    lock that stalled the army). But opencode reads credentials from
+    ``$XDG_DATA_HOME/opencode/auth.json``; a fresh per-runner dir would be
+    unauthenticated. Copy ``auth.json`` + ``account.json`` from the user's real
+    opencode data dir into it. NEVER raises — seeding must not fail a run, so the
+    whole body is guarded (a malformed XDG path or odd ``cmd`` shape is ignored).
+    """
+    try:
+        if "opencode" not in cmd:
+            return
+        target_root = next(
+            (a.split("=", 1)[1] for a in cmd if a.startswith("XDG_DATA_HOME=")),
+            None,
+        )
+        if not target_root:
+            return
+        src = Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "opencode"
+        dst = Path(target_root) / "opencode"
+        dst.mkdir(parents=True, exist_ok=True)
+        for name in ("auth.json", "account.json"):
+            s = src / name
+            if s.is_file():
+                shutil.copy2(s, dst / name)
+    except Exception:
+        pass
+
+
 def _run_task(
     task_id: str,
     cmd: list[str],
@@ -995,6 +1033,7 @@ def _run_task(
     with log_path.open("w", encoding="utf-8") as log:
         log.write("$ " + " ".join(shlex.quote(c) for c in cmd) + "\n")
         try:
+            _seed_opencode_creds(cmd)
             proc = subprocess.Popen(
                 cmd, cwd=cwd or config.root,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -1496,7 +1535,7 @@ def run_coordinate(
 # CLI, the MCP server, and the tests) and the run loop above keeps calling them
 # by their bare names. Imports sit at the foot of the module because the submodules
 # reach back into this package (e.g. `worktree` uses `coordinate._git`).
-from .telemetry import _opencode_usage, _extract_telemetry
+from .telemetry import _opencode_usage, _extract_telemetry, USAGE_PARSERS, UsageParser
 from .reporting import (
     _STATUS_GLYPHS,
     _elapsed,

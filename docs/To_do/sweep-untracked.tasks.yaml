@@ -1,0 +1,107 @@
+sid: sweep-untracked
+# ============================================================================
+# Discovery sweep for UNTRACKED issues (Run 1 of 2: discover + triage, readonly).
+# Four free models each scan a different slice of the repo and write a findings
+# artifact; sonnet triages — dedupes, drops hallucinations / already-known /
+# already-fixed, classifies each survivor. Run 2 (resolution) is authored by the
+# human AFTER reading triage.json. No source is modified in this run.
+#
+# Run:
+#   pigeon coordinate docs/To_do/sweep-untracked.tasks.yaml --telemetry --budget-usd 8
+# ============================================================================
+
+tasks:
+
+  # ===== WAVE 0: MULTI-MODAL DISCOVERY (free models, readonly, parallel) =====
+
+  - id: d-core
+    runner: nv-mistral-large
+    isolation: shared
+    readonly: true
+    doing: >-
+      Read-only audit of the pigeon CORE modules: src/pigeon/config.py,
+      resolve.py, retrieve.py, handoff.py, context.py, pack.py, distill.py,
+      cli.py, mcp_server.py. Hunt for REAL defects an experienced reviewer would
+      flag: logic bugs, unhandled edge cases, path/containment gaps, silent
+      failure modes, contract violations vs AGENTS.md, dead code, and stale or
+      wrong comments. The repo is CI-green at 347 tests, so prefer precision over
+      volume — only report what you can point at with file:line and a concrete
+      reason. Do NOT modify any file. Write your findings as a JSON array to
+      .pigeon/coordinate/reviews/sweep/d-core.json — each element
+      {file, line, severity (blocker|major|minor|nit), title, detail, why_real}.
+      If you find nothing solid, write an empty array [].
+
+  - id: d-coord
+    runner: nv-mixtral
+    isolation: shared
+    readonly: true
+    doing: >-
+      Read-only audit of the src/pigeon/coordinate/ PACKAGE (__init__.py,
+      reporting.py, worktree.py, telemetry.py) — recently split from a monolith.
+      Look for: behavior drift from the split, the per-runner opencode auth
+      seeding (the config comment claims each runner's XDG_DATA_HOME is seeded
+      with auth.json/account.json, but verify whether any code actually does that
+      — a missing-seed gap), worktree setup/teardown/diff-harvest correctness,
+      telemetry parser edge cases, import-cycle or monkeypatch-point hazards, and
+      mixed import style. Do NOT modify any file. Write findings as a JSON array
+      to .pigeon/coordinate/reviews/sweep/d-coord.json — each element
+      {file, line, severity, title, detail, why_real}. Empty array [] if nothing
+      solid.
+
+  - id: d-contract
+    runner: oc-north
+    isolation: shared
+    readonly: true
+    doing: >-
+      Read-only audit of the CONTRACT + CONFIG surface: .pigeon/config.yaml,
+      .pigeon/handoff.schema.json, src/pigeon/templates/handoff.schema.json,
+      config.py DEFAULT_CONFIG + _validate_schema + schema_version gating, and
+      pyproject.toml. Look for: drift between the two handoff.schema.json copies,
+      stale/incorrect config values, schema_version inconsistencies, config keys
+      that advertise unimplemented behavior, and any package-metadata mismatch
+      (e.g. distribution name vs docs). Do NOT modify any file. Write findings as
+      a JSON array to .pigeon/coordinate/reviews/sweep/d-contract.json — each
+      element {file, line, severity, title, detail, why_real}. Empty array [] if
+      nothing solid.
+
+  - id: d-tests-docs
+    runner: oc-nemotron
+    isolation: shared
+    readonly: true
+    doing: >-
+      Read-only audit of TESTS + DOCS for drift against the code: tests/ (gaps in
+      coverage of recently-changed coordinate/ and config behavior; tests that
+      assert stale behavior), AGENTS.md (repo-map / pointers that name files or
+      modules that no longer exist after the coordinate split), README, and
+      docs/. Look for doc-vs-code contradictions and broken internal pointers. Do
+      NOT modify any file. Write findings as a JSON array to
+      .pigeon/coordinate/reviews/sweep/d-tests-docs.json — each element
+      {file, line, severity, title, detail, why_real}. Empty array [] if nothing
+      solid.
+
+  # ===== WAVE 1: TRIAGE (sonnet — dedupe, filter, classify) =====
+
+  - id: t-triage
+    runner: sonnet
+    isolation: shared
+    readonly: true
+    needs: [d-core, d-coord, d-contract, d-tests-docs]
+    receives:
+      - "repo://.pigeon/coordinate/reviews/sweep/d-core.json"
+      - "repo://.pigeon/coordinate/reviews/sweep/d-coord.json"
+      - "repo://.pigeon/coordinate/reviews/sweep/d-contract.json"
+      - "repo://.pigeon/coordinate/reviews/sweep/d-tests-docs.json"
+    doing: >-
+      Consolidate the four discovery artifacts into a single triaged list. For
+      EACH raw finding: (a) open the cited file:line and VERIFY it is real —
+      discard hallucinations, vague style gripes, and anything the test suite
+      would already catch; (b) drop anything ALREADY TRACKED or ALREADY FIXED —
+      the known set is: Loop-2 nit #2 (USAGE_PARSERS/UsageParser not re-exported
+      on the coordinate package surface) and the opencode auth-seeding gap
+      (coordinate does not seed auth.json into per-runner XDG_DATA_HOME) — keep
+      these two but mark them known=true; (c) dedupe across the four sources.
+      Classify each survivor: kind {codeable | user_decision | human_credentialed},
+      severity, effort {trivial|small|medium}, and a one-line fix sketch for
+      codeable ones. Output a JSON object {confirmed:[...], discarded_count:N,
+      notes:""} to .pigeon/coordinate/reviews/sweep/triage.json and also print a
+      short human-readable summary as your final message.

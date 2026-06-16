@@ -1,0 +1,75 @@
+sid: resolve-untracked
+# ============================================================================
+# Resolution (Run 2 of 2): a free model applies the two triage-confirmed codeable
+# fixes in a worktree (reversible diff), then sonnet advisory-reviews. NO
+# auto-merge; the human verifies the diff + runs CI (pytest + pyrefly) before
+# merging. Deferred by design: T1 (unused CONFIG_RELPATH — gated on the public-API
+# framing decision) and import-nit #3 (reviewer said leave as-is).
+#
+# Run:
+#   pigeon coordinate docs/To_do/resolve-untracked.tasks.yaml --skip-permissions --telemetry --budget-usd 6
+# ============================================================================
+
+tasks:
+
+  - id: f-fixes
+    runner: nv-mistral-large
+    isolation: worktree
+    doing: >-
+      Make TWO small, surgical edits to src/pigeon/coordinate/__init__.py and
+      NOTHING else. This is a minimal targeted fix, not a refactor — do not
+      reformat, reorder, or touch unrelated code.
+
+      FIX 1 — re-export the telemetry registry on the package surface. Near the
+      end of the file there is a public-surface re-export footer; it currently
+      has the line `from .telemetry import _opencode_usage, _extract_telemetry`
+      (around line 1499). The telemetry submodule also defines `USAGE_PARSERS`
+      (the documented parser-registry extension point) and the `UsageParser`
+      type alias, but they are NOT re-exported, so callers must reach into the
+      private submodule. Change that line to also import them, i.e.:
+      `from .telemetry import _opencode_usage, _extract_telemetry, USAGE_PARSERS, UsageParser`.
+
+      FIX 2 — seed opencode credentials into each runner's per-runner
+      XDG_DATA_HOME. In `_run_task`, the child is spawned by
+      `subprocess.Popen(cmd, ...)`. The opencode runners embed
+      `env XDG_DATA_HOME=/tmp/pigeon-oc/<runner> opencode run ...` in `cmd` so
+      each runner has its own opencode data dir (avoids a shared-SQLite lock).
+      But opencode reads credentials from `$XDG_DATA_HOME/opencode/auth.json`,
+      and nothing copies the real auth there, so a fresh per-runner dir is
+      UNAUTHENTICATED. Add a small private best-effort helper (pathlib + shutil)
+      and CALL IT in `_run_task` immediately before the `subprocess.Popen(cmd,...)`
+      call. The helper must: scan `cmd` for an argument of the exact form
+      `XDG_DATA_HOME=<path>`; only act when `cmd` also invokes `opencode`; ensure
+      `<path>/opencode/` exists; and copy `auth.json` and `account.json` into it
+      from the user's real opencode data dir, computed as
+      `Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "opencode"`.
+      Copy only when a source file exists; never raise (wrap in try/except and
+      ignore errors) so seeding can never fail a run; make it idempotent
+      (overwriting is fine). Do NOT change `_child_env`, the env-allowlist logic,
+      or the Popen arguments themselves.
+
+      After editing, confirm the module still imports cleanly
+      (`python -c "import pigeon.coordinate"`). Leave the change on the worktree
+      branch as a diff; do not merge.
+
+  - id: r-fixes
+    runner: sonnet
+    isolation: shared
+    readonly: true
+    needs: [f-fixes]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/resolve-untracked-1/f-fixes.diff"
+    doing: >-
+      ADVISORY review of the f-fixes diff. Verify, concretely: (1) FIX 1 adds
+      exactly USAGE_PARSERS and UsageParser to the telemetry re-export and the
+      footer is still valid Python; (2) FIX 2's helper correctly parses the
+      `XDG_DATA_HOME=<path>` token out of `cmd`, gates on `opencode` being in
+      `cmd`, computes the source dir as the real ~/.local/share/opencode (honoring
+      a pre-existing XDG_DATA_HOME in the parent env), is best-effort
+      (never raises), idempotent, and is actually invoked before Popen in
+      `_run_task`; (3) nothing else in __init__.py changed, _child_env / Popen
+      args are untouched, and there is no behavior change beyond the two fixes.
+      Flag any over-reach, missed call site, or way the helper could raise and
+      abort a run. Write findings to
+      .pigeon/coordinate/reviews/resolve-untracked-review.json and print a short
+      verdict (approve / changes-needed + reasons) as your final message.
