@@ -28,7 +28,7 @@ manifest:
     graph_deferred: "Fast-churn repos waste a knowledge graph's LLM ingestion cost; revisit only for a stable core, gated on metrics."
     pointers_not_payloads: "Separate CLIs share no memory; the contract is the filesystem. Handoffs carry pointers, resolved on demand."
   owners:
-    agentctx: Camilo
+    agentctx: SlartiLabs
 
 retrieval:
   include:

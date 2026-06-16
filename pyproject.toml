@@ -9,7 +9,7 @@ description = "Carrier for cross-model agent context: canonical context, validat
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "Camilo" }]
+authors = [{ name = "Slartibartfast Lanning", email = "slartilabs@protonmail.com" }]
 keywords = ["agents", "llm", "context-engineering", "handoff", "retrieval"]
 
 # Pinned (compatible-release) runtime deps. Kept to the minimum the
@@ -35,9 +35,9 @@ tui = ["textual~=8.0"]
 dev = ["pytest~=8.0", "mcp~=1.2", "textual~=8.0", "pyrefly~=1.0"]
 
 [project.urls]
-Homepage = "https://github.com/ecoCMF/pigeon"
-Repository = "https://github.com/ecoCMF/pigeon"
-Issues = "https://github.com/ecoCMF/pigeon/issues"
+Homepage = "https://github.com/SlartiLabs/pigeon"
+Repository = "https://github.com/SlartiLabs/pigeon"
+Issues = "https://github.com/SlartiLabs/pigeon/issues"
 
 [project.scripts]
 pigeon = "pigeon.cli:main"
