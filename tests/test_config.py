@@ -131,6 +131,22 @@ def test_bool_as_int_fails_for_bool_field(tmp_path: Path) -> None:
         load_config(root)
 
 
+def test_scalar_section_override_fails_with_clear_message(tmp_path: Path) -> None:
+    """A scalar replacing a whole section (e.g. `retrieval: 5`) raises a clear
+    ValueError, not the cryptic TypeError the U7 validator exists to prevent."""
+    for i, yaml_text in enumerate((
+        "retrieval: 5\n",
+        "resolve: 'x'\n",
+        "coordinate: 7\n",
+        "retrieval:\n  vector: 5\n",
+        "coordinate:\n  safety: 'x'\n",
+    )):
+        root = tmp_path / f"c{i}"
+        root.mkdir()
+        with pytest.raises(ValueError, match="must be a mapping"):
+            load_config(_mk_repo(root, yaml_text))
+
+
 def test_valid_config_loads_cleanly(tmp_path: Path) -> None:
     """A well-formed config loads without error (schema regression guard)."""
     root = _mk_repo(tmp_path, (

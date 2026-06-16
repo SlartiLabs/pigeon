@@ -220,18 +220,30 @@ def _validate_schema(cfg: dict[str, Any]) -> None:
                 f"config key {path!r} must be a boolean, got {type(val).__name__!r}"
             )
 
-    r = cfg["retrieval"]
+    def _section(path: str, parent: dict[str, Any], key: str) -> dict[str, Any]:
+        # A scalar override replacing a whole section (e.g. `retrieval: 5`) survives
+        # _deep_merge; without this guard the indexing below would raise the cryptic
+        # TypeError this validator exists (DD U7) to prevent.
+        val = parent[key]
+        if not isinstance(val, dict):
+            raise ValueError(
+                f"config section {path!r} must be a mapping, "
+                f"got {type(val).__name__!r}"
+            )
+        return val
+
+    r = _section("retrieval", cfg, "retrieval")
     _int("retrieval.max_file_bytes", r["max_file_bytes"])
     _int("retrieval.chunk_lines", r["chunk_lines"])
     _int("retrieval.chunk_overlap", r["chunk_overlap"])
     _int("retrieval.default_top_k", r["default_top_k"])
-    _bool("retrieval.vector.enabled", r["vector"]["enabled"])
+    _bool("retrieval.vector.enabled", _section("retrieval.vector", r, "vector")["enabled"])
 
-    res = cfg["resolve"]
+    res = _section("resolve", cfg, "resolve")
     _bool("resolve.allow_s3", res["allow_s3"])
     _bool("resolve.allow_outside_root", res["allow_outside_root"])
 
-    co = cfg["coordinate"]
+    co = _section("coordinate", cfg, "coordinate")
     _int("coordinate.parallel_limit", co["parallel_limit"])
 
     al = co.get("env_allowlist")
@@ -248,7 +260,7 @@ def _validate_schema(cfg: dict[str, Any]) -> None:
                 f"got non-string element(s): {nonstr!r}"
             )
 
-    safety = co["safety"]
+    safety = _section("coordinate.safety", co, "safety")
     _int("coordinate.safety.max_depth", safety["max_depth"])
     if safety["max_depth"] < 1:
         raise ValueError(
