@@ -11,9 +11,9 @@ See AGENTS.md for the canonical project context.
 
 try:  # single source of truth: installed package metadata (pyproject)
     from importlib.metadata import version as _pkg_version
-    __version__ = _pkg_version("pigeon")
+    __version__ = _pkg_version("carrier-pigeon")  # distribution name (CLI stays `pigeon`)
 except Exception:  # not installed (e.g. vendored checkout)
-    __version__ = "0.4.0"
+    __version__ = "0.5.0"
 SCHEMA_VERSION = "1.1"
 
 __all__ = ["__version__", "SCHEMA_VERSION"]
