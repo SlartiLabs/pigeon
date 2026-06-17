@@ -363,10 +363,13 @@ for the agentctx path versus a naive baseline. Two honest disclosures:
    slices (retrieval). That is what agents actually do when nothing stops
    them, but it is the tool's own model of the alternative — judge it in
    `tokens.py`, which is short and deliberately legible.
-2. **Savings scale with repo size.** On a freshly scaffolded near-empty repo
-   the demo saves ~18%; on this repository's own codebase it saves ~87%
-   (2,937 vs 22,028 tokens over 3 hops). The reduction is largest exactly
-   where context exhaustion actually hurts — repos with substantial files.
+2. **Savings are repo-content-dependent.** On this repository's own codebase
+   (6,302 source LOC) the demo's 3-hop chain uses ~3,087 tokens versus ~43,117
+   for the constructed counterfactual above — a ~92.8% reduction. The figure
+   tracks how much real file content the handoffs and retrievals touch, so it
+   will differ on your repo; the reduction is largest exactly where context
+   exhaustion actually hurts — repos with substantial files. (We do not quote a
+   near-empty-repo number: that two-point comparison was never measured.)
 
 Run it on your own repo; `pigeon metrics` reports cumulative numbers from
 real usage rather than the demo's synthetic chain.
