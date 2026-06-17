@@ -266,3 +266,15 @@ aggregation:
 
 _Synthesized by `verdict` from two lenses, two gates, and the army design. Grounded in the
 working tree. Hand off to the Coordinator for sequencing into sessions._
+
+---
+
+## Addendum — Planned (2026-06-17)
+
+- **`pigeon adopt` — discover & adopt existing subagents / skills / MCP servers.**
+  The inverse of today's skill *projection*: discover the user's existing Claude
+  subagents (`.claude/agents`), skills (`.claude/skills`), and configured MCP
+  servers, and make them referenceable in `coordinate` crews — non-destructively
+  (leaning on the `GEN_MARKER` to separate user-authored from pigeon-generated),
+  behind an allow-list trust gate, with MCP inventory-only in the MVP.
+  **Status: PROPOSED.** Full design: [`docs/design/adopt.md`](adopt.md).
