@@ -1,3 +1,5 @@
+<img width="1448" height="1086" alt="image" src="https://github.com/user-attachments/assets/59124242-8c98-4213-81dd-7537a49ba80e" />
+
 # pigeon
 
 Carrier for cross-model agent context (formerly **agentctx**; the `agentctx`
