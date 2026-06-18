@@ -251,12 +251,16 @@ def cmd_metrics(args: argparse.Namespace) -> int:
 
 # -------------------------------------------------------------------- agents
 def cmd_agents(args: argparse.Namespace) -> int:
+    from . import adopt as adopt_mod
     cfg = _cfg(args)
     records = agents.detect_agents(cfg)
     if args.json:
         print(json.dumps(records, indent=2))
     else:
-        print(agents.format_agents(records))
+        summary: dict[str, int] = {}
+        for entry in adopt_mod.load_catalog(cfg):   # cross-ref the adopt catalog
+            summary[entry.get("kind", "?")] = summary.get(entry.get("kind", "?"), 0) + 1
+        print(agents.format_agents(records, adopt_summary=summary or None))
     return 0
 
 

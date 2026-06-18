@@ -1744,3 +1744,29 @@ def test_salvaged_without_consumer_fails_the_run(repo):
     rc = co.run_coordinate(tasks, cfg)
     assert co.list_runs(cfg, sid="co1")[0]["tasks"]["lonely"]["status"] == "salvaged"
     assert rc == 1                                             # nothing validates it
+
+
+# ----------------------------------------------- MCP pass-through (thin, adopt P2)
+
+def test_mcp_field_must_be_string_list(repo):
+    with pytest.raises(ValueError, match="'mcp' must be a list"):
+        co.load_tasks(_write_tasks(repo.root, _spec(tasks=[
+            {"id": "a", "runner": "py", "doing": "x", "mcp": "not-a-list"}])))
+
+
+def test_mcp_warning_for_unconfigured_server(repo):
+    cfg = _setup(repo)
+    (repo.root / ".mcp.json").write_text(
+        json.dumps({"mcpServers": {"db": {"command": "mcp-db"}}}), encoding="utf-8")
+    spec = {"tasks": [
+        {"id": "ok", "runner": "py", "doing": "x", "mcp": ["db"]},        # configured
+        {"id": "bad", "runner": "py", "doing": "x", "mcp": ["ghost"]},    # not configured
+    ]}
+    warns = co.mcp_warnings(cfg, spec)
+    assert any("ghost" in w and "bad" in w for w in warns)
+    assert not any("db" in w for w in warns)
+
+
+def test_mcp_no_declarations_no_warnings(repo):
+    cfg = _setup(repo)
+    assert co.mcp_warnings(cfg, {"tasks": [{"id": "a", "runner": "py", "doing": "x"}]}) == []

@@ -144,12 +144,26 @@ def parse_skill(path: Path) -> dict[str, Any] | None:
         return None
     if not isinstance(meta, dict) or not meta.get("name"):
         return None
-    return {
+    # Deep parse: capture the body + tools, and list any sibling resource files
+    # (scripts/templates a skill bundles), so the catalog reflects skill structure.
+    try:
+        resources = sorted(
+            str(p.relative_to(path)) for p in path.rglob("*")
+            if p.is_file() and p.name != "SKILL.md"
+        )
+    except OSError:
+        resources = []
+    record: dict[str, Any] = {
         "name": str(meta["name"]),
         "description": str(meta.get("description", "")),
         "provenance": "pigeon-generated" if GEN_MARKER in text else "user-authored",
         "kind": "skill",
+        "body": match.group(2).strip(),
+        "resources": resources,
     }
+    if meta.get("tools"):
+        record["tools"] = meta["tools"]
+    return record
 
 
 def parse_mcp_config(path: Path) -> list[dict[str, Any]]:
@@ -193,6 +207,21 @@ def _resolve_source(path_str: str, root: Path) -> Path:
     if p.is_absolute():
         return p
     return (root / p).resolve()
+
+
+def discovered_mcp_names(config: Config) -> set[str]:
+    """The set of MCP server names configured in the adopt ``mcp`` sources.
+
+    Inventory only — parses the configs (`~/.claude.json`, `.mcp.json`, …); never
+    connects. Used by coordinate's thin MCP pass-through validation.
+    """
+    sources = config.data.get("adopt", {}).get("sources", {}).get("mcp", [])
+    names: set[str] = set()
+    for path_str in sources:
+        src = _resolve_source(path_str, config.root)
+        if src.exists():
+            names.update(r["name"] for r in parse_mcp_config(src))
+    return names
 
 
 def discover(config: Config) -> list[dict[str, Any]]:
@@ -334,7 +363,8 @@ def format_catalog(catalog: list[dict[str, Any]]) -> str:
     kind_parts = ", ".join(f"{n} {k}s" for k, n in sorted(kind_counts.items()))
     scope_parts = ", ".join(f"{n} {s}" for s, n in sorted(scope_counts.items()))
     header = f"Catalog ({kind_parts}; {scope_parts})\n"
-    footer = "\nUse `pigeon adopt --allow <name>` to enable individual assets"
+    footer = ("\nUse `pigeon adopt --allow <name>` to enable individual assets"
+              "\nSee `pigeon agents` for the CLIs that can run them.")
 
     return header + "\n".join(lines) + footer
 

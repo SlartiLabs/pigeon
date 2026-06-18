@@ -100,7 +100,8 @@ def detect_agents(config: Config | None = None) -> list[dict[str, Any]]:
     return records
 
 
-def format_agents(records: list[dict[str, Any]]) -> str:
+def format_agents(records: list[dict[str, Any]],
+                  adopt_summary: dict[str, int] | None = None) -> str:
     found = [r for r in records if r["found"]]
     missing = [r for r in records if not r["found"]]
     lines = [f"agent CLIs on this machine: {len(found)}/{len(records)} installed"]
@@ -125,4 +126,10 @@ def format_agents(records: list[dict[str, Any]]) -> str:
         lines.append("")
         lines.append("army tip: opencode is here — point heavy generation at free "
                      "models via a model_pool, then gate with claude/opus.")
+    if adopt_summary:
+        total = sum(adopt_summary.values())
+        by = ", ".join(f"{n} {k}" for k, n in sorted(adopt_summary.items()) if n)
+        lines.append("")
+        lines.append(f"adopted assets: {total} catalogued ({by}) — "
+                     "see `pigeon adopt` to reference them in crews.")
     return "\n".join(lines)

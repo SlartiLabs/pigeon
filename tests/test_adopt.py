@@ -793,3 +793,42 @@ class TestCrewSkillWarnings:
         warnings = crew_skill_warnings(cfg, spec)
         unknown_warnings = [w for w in warnings if "totally-unknown" in w]
         assert len(unknown_warnings) == 1
+
+
+# ===========================================================================
+# Deep .claude/skills parsing + agents<->adopt cross-reference
+# ===========================================================================
+
+def test_parse_skill_deep_captures_body_tools_resources(tmp_path: Path) -> None:
+    from pigeon.adopt import parse_skill
+
+    d = tmp_path / ".claude" / "skills" / "data-tools"
+    (d / "scripts").mkdir(parents=True)
+    (d / "SKILL.md").write_text(
+        "---\nname: data-tools\ndescription: Wrangle data.\ntools: [Read, Bash]\n---\n\n"
+        "You wrangle data.\n", encoding="utf-8")
+    (d / "scripts" / "run.py").write_text("print('hi')\n", encoding="utf-8")
+    (d / "reference.md").write_text("# notes\n", encoding="utf-8")
+
+    rec = parse_skill(d)
+    assert rec["name"] == "data-tools"
+    assert rec["body"] == "You wrangle data."
+    assert rec["tools"] == ["Read", "Bash"]
+    assert set(rec["resources"]) == {"scripts/run.py", "reference.md"}
+
+
+def test_format_catalog_cross_references_agents(tmp_path: Path) -> None:
+    from pigeon.adopt import format_catalog
+    out = format_catalog([{"name": "x", "kind": "skill", "scope": "user",
+                           "allowed": False, "description": "d"}])
+    assert "pigeon agents" in out
+
+
+def test_format_agents_cross_references_adopt() -> None:
+    from pigeon import agents
+    recs = [{"name": "claude", "found": True, "version": "1", "cost": "paid",
+             "runner_template": None, "configured": False, "note": "n"}]
+    out = agents.format_agents(recs, adopt_summary={"subagent": 3, "skill": 2})
+    assert "adopted assets" in out and "pigeon adopt" in out
+    # no summary -> no cross-ref line (back-compat)
+    assert "adopted assets" not in agents.format_agents(recs)
