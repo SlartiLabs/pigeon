@@ -159,3 +159,65 @@ def test_absent_record_type_defaults_to_skill(tmp_path: Path) -> None:
     result = project_skills(cfg)
     written_names = {Path(p).stem for p in result["written"]}
     assert "legacy-skill" in written_names
+
+
+# ----------------------------------------------------- cross-runtime (P1.5)
+
+_OPENCODE_TARGET = ("skills:\n  targets:\n"
+                    "    claude: .claude/agents\n    opencode: .opencode/agent\n")
+
+
+def _write_page(cfg, name="security-audit", body="You are a security reviewer.",
+                meta="description: Adversarial review.\n"):
+    d = cfg.memory_dir / "playbooks"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{name}.md").write_text(
+        f"---\nname: {name}\n{meta}---\n\n{body}\n", encoding="utf-8")
+
+
+def test_render_opencode_format():
+    """opencode render: description + mode:subagent frontmatter, marker, body;
+    name (filename-derived) and tools (vocab mismatch) are NOT in frontmatter."""
+    page = {"name": "scout",
+            "meta": {"description": "Recon specialist.", "tools": "Read, Grep"},
+            "body": "You are a scout.",
+            "source": ".pigeon/memory/playbooks/scout.md"}
+    out = skills._render_opencode(page)
+    assert out.startswith("---\ndescription: Recon specialist.\n")
+    assert "mode: subagent" in out
+    assert skills.GEN_MARKER in out
+    assert "You are a scout." in out
+    front = out.split("---", 2)[1]
+    assert "name:" not in front     # opencode takes the name from the filename
+    assert "tools:" not in out      # Claude tools vocab not projected to opencode
+
+
+def test_projects_opencode_agent_file(tmp_path):
+    cfg = _mk_repo(tmp_path, _OPENCODE_TARGET)
+    _write_page(cfg)
+    out = skills.project_skills(cfg)
+    oc = cfg.root / ".opencode" / "agent" / "security-audit.md"
+    assert str(oc.relative_to(cfg.root)) in out["written"]
+    text = oc.read_text(encoding="utf-8")
+    assert "mode: subagent" in text and "description: Adversarial review." in text
+    assert skills.GEN_MARKER in text and "You are a security reviewer." in text
+    # the one page projects to BOTH runtimes
+    assert (cfg.root / ".claude" / "agents" / "security-audit.md").exists()
+
+
+def test_opencode_handwritten_never_clobbered(tmp_path):
+    cfg = _mk_repo(tmp_path, _OPENCODE_TARGET)
+    _write_page(cfg)
+    oc = cfg.root / ".opencode" / "agent"
+    oc.mkdir(parents=True, exist_ok=True)
+    (oc / "security-audit.md").write_text("hand-written, no marker\n", encoding="utf-8")
+    out = skills.project_skills(cfg)
+    assert (oc / "security-audit.md").read_text("utf-8") == "hand-written, no marker\n"
+    assert any("left alone" in s for s in out["skipped"])
+
+
+def test_unknown_runtime_target_skipped(tmp_path):
+    cfg = _mk_repo(tmp_path, "skills:\n  targets:\n    nonesuch: .nonesuch/agent\n")
+    _write_page(cfg)
+    out = skills.project_skills(cfg)
+    assert any("nonesuch" in s and "no renderer" in s for s in out["skipped"])

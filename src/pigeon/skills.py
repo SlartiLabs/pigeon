@@ -86,19 +86,39 @@ def playbooks(config: Config) -> list[dict[str, Any]]:
     return found
 
 
-def _render_claude(page: dict[str, Any]) -> str:
-    """Claude Code custom-subagent format: frontmatter + system prompt body."""
-    meta = page["meta"]
-    front: dict[str, Any] = {"name": page["name"],
-                             "description": meta.get("description", page["name"])}
-    if meta.get("tools"):
-        front["tools"] = meta["tools"]
+def _render_marked(front: dict[str, Any], page: dict[str, Any]) -> str:
+    """Frontmatter + GEN_MARKER provenance + the page body — the shared shape of
+    every markdown-frontmatter runtime (Claude, opencode)."""
     head = yaml.safe_dump(front, sort_keys=False, allow_unicode=True).strip()
     return (f"---\n{head}\n---\n\n{GEN_MARKER}\n"
             f"<!-- source: {page['source']} -->\n\n{page['body']}\n")
 
 
-_RENDERERS = {"claude": _render_claude}
+def _render_claude(page: dict[str, Any]) -> str:
+    """Claude Code custom-subagent format: name/description (+tools) frontmatter."""
+    meta = page["meta"]
+    front: dict[str, Any] = {"name": page["name"],
+                             "description": meta.get("description", page["name"])}
+    if meta.get("tools"):
+        front["tools"] = meta["tools"]
+    return _render_marked(front, page)
+
+
+def _render_opencode(page: dict[str, Any]) -> str:
+    """opencode subagent format (verified against opencode 1.16 agent files): a
+    ``description`` + ``mode: subagent`` frontmatter, then the prompt body. The
+    agent name is taken from the filename, so it is not repeated in frontmatter.
+    Claude ``tools`` names don't match opencode's permission vocabulary, so they
+    are intentionally not projected (opencode defaults to all permissions)."""
+    meta = page["meta"]
+    front: dict[str, Any] = {
+        "description": meta.get("description", page["name"]),
+        "mode": "subagent",
+    }
+    return _render_marked(front, page)
+
+
+_RENDERERS = {"claude": _render_claude, "opencode": _render_opencode}
 
 
 def resolve_skill(config: Config, name: str) -> dict[str, Any] | None:
