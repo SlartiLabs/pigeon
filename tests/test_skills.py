@@ -2,7 +2,20 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from pigeon import skills
+from pigeon.config import load_config
+from pigeon.skills import parse_playbook, playbooks, project_skills
+
+
+def _mk_repo(tmp_path: Path, config_yaml: str = ""):
+    """Minimal pigeon-native repo (.pigeon/) with optional config snippet."""
+    pigeon = tmp_path / ".pigeon"
+    pigeon.mkdir(exist_ok=True)
+    if config_yaml:
+        (pigeon / "config.yaml").write_text(config_yaml, encoding="utf-8")
+    return load_config(tmp_path)
 
 
 def _playbook(repo, name="security-audit", body="You are a security reviewer.",
@@ -72,3 +85,77 @@ def test_frontmatter_tolerates_trailing_whitespace_and_yaml_end(repo):
     pages = skills.playbooks(repo)
     assert [p["name"] for p in pages] == ["spaced"]
     assert pages[0]["body"] == "Body here."
+
+
+# ===========================================================================
+# F1 — Memory-page typing: record_type + loud resolution
+# ===========================================================================
+
+def test_parse_playbook_reads_record_type(tmp_path: Path) -> None:
+    """Each valid record_type value is parsed from frontmatter."""
+    for rt in ("skill", "playbook", "decision", "reference"):
+        page = tmp_path / f"{rt}.md"
+        page.write_text(
+            f"---\nname: test-{rt}\nrecord_type: {rt}\n---\nBody.\n", encoding="utf-8"
+        )
+        result = parse_playbook(page)
+        assert result is not None
+        assert result["meta"]["record_type"] == rt
+
+
+def test_decision_page_not_projected(tmp_path: Path) -> None:
+    """A page with record_type: decision is parsed but not projected."""
+    cfg = _mk_repo(tmp_path)
+    playbooks_dir = cfg.memory_dir / "playbooks"
+    playbooks_dir.mkdir(parents=True)
+    (playbooks_dir / "decisions.md").write_text(
+        "---\nname: my-decision\nrecord_type: decision\n---\nWe chose X.\n",
+        encoding="utf-8",
+    )
+    (playbooks_dir / "my-skill.md").write_text(
+        "---\nname: my-skill\nrecord_type: skill\n---\nDo stuff.\n",
+        encoding="utf-8",
+    )
+
+    # playbooks() lists both pages
+    all_pages = playbooks(cfg)
+    names = {p["name"] for p in all_pages}
+    assert "my-decision" in names
+    assert "my-skill" in names
+
+    # project_skills only writes the skill
+    result = project_skills(cfg)
+    written_names = {Path(p).stem for p in result["written"]}
+    assert "my-skill" in written_names
+    assert "my-decision" not in written_names
+
+
+def test_unknown_record_type_raises(tmp_path: Path) -> None:
+    """An unknown record_type value raises ValueError at project time."""
+    import pytest
+    cfg = _mk_repo(tmp_path)
+    playbooks_dir = cfg.memory_dir / "playbooks"
+    playbooks_dir.mkdir(parents=True)
+    page = playbooks_dir / "weird.md"
+    page.write_text(
+        "---\nname: weird-page\nrecord_type: banana\n---\nBody.\n",
+        encoding="utf-8",
+    )
+
+    # parse_playbook raises directly
+    with pytest.raises(ValueError, match="record_type"):
+        parse_playbook(page)
+
+
+def test_absent_record_type_defaults_to_skill(tmp_path: Path) -> None:
+    """A page without record_type is projected as a skill (back-compat)."""
+    cfg = _mk_repo(tmp_path)
+    playbooks_dir = cfg.memory_dir / "playbooks"
+    playbooks_dir.mkdir(parents=True)
+    (playbooks_dir / "legacy.md").write_text(
+        "---\nname: legacy-skill\n---\nOld-style page.\n", encoding="utf-8"
+    )
+
+    result = project_skills(cfg)
+    written_names = {Path(p).stem for p in result["written"]}
+    assert "legacy-skill" in written_names

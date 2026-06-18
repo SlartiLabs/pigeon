@@ -552,6 +552,18 @@ def cmd_adopt(args: argparse.Namespace) -> int:
         # Reload config so the new allow list takes effect for this run.
         cfg = _cfg(args)
 
+    if getattr(args, "import_names", None):
+        imported: list[str] = []
+        for n in args.import_names:
+            try:
+                adopt_mod.import_asset(n, cfg)
+            except (KeyError, ValueError, FileExistsError, FileNotFoundError) as exc:
+                print(f"adopt: {exc}", file=sys.stderr)
+                return 2
+            imported.append(n)
+        print(f"imported: {', '.join(imported)}")
+        cfg = _cfg(args)   # reload so projection sees the new pages
+
     entries = adopt_mod.discover(cfg)
     adopt_mod.write_catalog(entries, cfg)
 
@@ -757,6 +769,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow", metavar="NAME", nargs="+",
         help="Add name(s) to adopt.allow in config.yaml so they can be "
              "referenced in coordinate crews.",
+    )
+    p.add_argument(
+        "--import", dest="import_names", metavar="NAME", nargs="+",
+        help="Copy adopted asset(s) into .pigeon/memory/playbooks as canonical "
+             "pages (no GEN_MARKER, so refresh won't clobber them).",
     )
     p.add_argument("--json", action="store_true", help="Emit catalog as JSON.")
     p.set_defaults(func=cmd_adopt)

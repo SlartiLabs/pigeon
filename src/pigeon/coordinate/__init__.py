@@ -599,12 +599,18 @@ def crew_skill_warnings(config: Config, spec: dict[str, Any]) -> list[str]:
     """Non-blocking advisories for crew skill names that are neither a
     canonical playbook nor an allow-listed adopted asset.  The run proceeds;
     the runner may still find the skill via its own search path, but pigeon
-    cannot verify it.  Use `pigeon adopt --allow <name>` to clear the warning."""
+    cannot verify it.  Use `pigeon adopt --allow <name>` to clear the warning.
+
+    Deduplicates per unique skill name (one advisory regardless of how many
+    tasks reference it).  Names in ``coordinate.assume_known_skills`` are
+    treated as runner-native and suppressed without adoption.
+    """
     from .. import skills as skills_mod
     from .. import adopt as adopt_mod
 
-    known_playbooks = {p["name"] for p in skills_mod.playbooks(config)}
+    assume_known = set(config.coordinate_cfg.get("assume_known_skills") or [])
     warnings: list[str] = []
+    seen_unknown: set[str] = set()
 
     for task in spec.get("tasks", []):
         crew = task.get("crew") or {}
@@ -613,12 +619,17 @@ def crew_skill_warnings(config: Config, spec: dict[str, Any]) -> list[str]:
             if member.get("skill"):
                 skill_names.append(member["skill"])
         for sname in skill_names:
-            if sname in known_playbooks:
+            if sname in assume_known:
+                continue
+            if skills_mod.resolve_skill(config, sname) is not None:
                 continue
             if adopt_mod.check_allow(sname, config):
                 continue
+            if sname in seen_unknown:
+                continue
+            seen_unknown.add(sname)
             warnings.append(
-                f"task {task['id']!r}: crew skill {sname!r} is neither a playbook "
+                f"crew skill {sname!r} is neither a playbook "
                 "nor an allow-listed adopted asset — run `pigeon adopt --allow` "
                 "to reference it in a crew"
             )
