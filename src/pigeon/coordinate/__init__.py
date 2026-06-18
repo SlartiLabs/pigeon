@@ -345,6 +345,13 @@ def load_tasks(path: Path,
             raise ValueError(
                 f"task {tid!r}: 'receives' must be a list of pointer/glob strings"
             )
+        mcp = task.get("mcp")
+        if mcp is not None and (
+                not isinstance(mcp, list)
+                or not all(isinstance(x, str) and x for x in mcp)):
+            raise ValueError(
+                f"task {tid!r}: 'mcp' must be a list of MCP server-name strings"
+            )
         if "reentry" in task and not isinstance(task["reentry"], bool):
             raise ValueError(f"task {tid!r}: 'reentry' must be true or false")
         max_reentry = task.get("max_reentry")
@@ -637,6 +644,32 @@ def crew_skill_warnings(config: Config, spec: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def mcp_warnings(config: Config, spec: dict[str, Any]) -> list[str]:
+    """Thin MCP pass-through validation: a task may declare ``mcp: [names]`` it
+    expects; warn (non-blocking, deduped) when a declared server is not in the
+    discovered MCP inventory. Validation ONLY — pigeon never connects to, proxies,
+    or orchestrates MCP; it just confirms the server is configured somewhere it
+    can see (the adopt ``mcp`` sources)."""
+    from .. import adopt as adopt_mod
+
+    available: set[str] | None = None
+    warnings: list[str] = []
+    seen: set[str] = set()
+    for task in spec.get("tasks", []):
+        for name in (task.get("mcp") or []):
+            if available is None:                     # parse configs once, lazily
+                available = adopt_mod.discovered_mcp_names(config)
+            if name in available or name in seen:
+                continue
+            seen.add(name)
+            warnings.append(
+                f"task {task['id']!r}: MCP server {name!r} is declared but not "
+                "configured (not in the adopt mcp sources) — coordinate cannot "
+                "pass it through"
+            )
+    return warnings
+
+
 def telemetry_warnings(config: Config, spec: dict[str, Any],
                        run_telemetry: bool = False) -> list[str]:
     """Telemetry was requested (run-level ``--telemetry`` or a task's
@@ -784,6 +817,7 @@ def plan(config: Config, spec: dict[str, Any]) -> dict[str, Any]:
         "budget": ccfg.get("budget", {}),
         "preflight_errors": preflight(config, spec),
         "crew_skill_warnings": crew_skill_warnings(config, spec),
+        "mcp_warnings": mcp_warnings(config, spec),
     }
 
 
@@ -809,6 +843,8 @@ def format_plan(p: dict[str, Any], tasks: list[dict[str, Any]]) -> str:
     else:
         lines.append("  preflight: ok")
     for w in p.get("crew_skill_warnings", []):
+        lines.append(f"  warning: {w}")
+    for w in p.get("mcp_warnings", []):
         lines.append(f"  warning: {w}")
     return "\n".join(lines)
 
@@ -1381,7 +1417,8 @@ def run_coordinate(
 
     for warning in (model_warnings(config, spec) + receives_warnings(config, spec)
                     + telemetry_warnings(config, spec, run_telemetry=telemetry)
-                    + crew_skill_warnings(config, spec)):
+                    + crew_skill_warnings(config, spec)
+                    + mcp_warnings(config, spec)):
         print(f"coordinate: warning: {warning}", file=sys.stderr)
 
     print(

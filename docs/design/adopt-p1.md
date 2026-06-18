@@ -79,4 +79,15 @@ Also added **`agy`** (antigravity) — verified it consumes the **Claude format 
 `agy: .gemini/agents`. The **bare `gemini` CLI is deferred** — different tool, not installed,
 no subagent concept (don't confuse with agy/antigravity).
 
-Still open: `pigeon agents`↔`adopt` cross-ref, deep `.claude/skills` parse, MCP pass-through (P2).
+## Final adopt items (DONE, 2026-06-18) — feature work then halts
+- **MCP pass-through (thin, validation-only):** a task may declare `mcp: [names]`;
+  `coordinate.mcp_warnings` warns (non-blocking) when a declared server isn't in the
+  discovered MCP inventory (`adopt.discovered_mcp_names`). No connect/proxy/orchestration.
+- **Deep `.claude/skills` parsing:** `parse_skill` now captures `body`, `tools`, and the
+  list of sibling `resources` (scripts/templates a skill bundles).
+- **agents ↔ adopt cross-reference:** `pigeon agents` shows adopted-asset counts ("see
+  `pigeon adopt`"); `pigeon adopt` footer points to `pigeon agents`.
+
+**Feature work on adopt now stops.** Next: benchmarks, reliability tests, onboarding,
+real-world demos. Deferred indefinitely: cross-runtime `_RENDERERS` for the bare `gemini`
+CLI (no subagent concept); MCP proxying/orchestration (out of scope by design).
