@@ -42,3 +42,22 @@ def test_tasks_file_error_is_friendly(repo, tmp_path, capsys):
     bad.write_text("sid: s\ntasks: []\n", encoding="utf-8")
     assert main(["--root", str(repo.root), "coordinate", str(bad)]) == 2
     assert "tasks file error" in capsys.readouterr().err
+
+
+# Smoke: exercise the cmd_* dispatch + argparse for the safe, no-spawn commands
+# on an initialized repo (real coverage of cli.py, not vacuous — catches argparse
+# wiring and exit-code regressions). Commands that spawn agents (coordinate, probe)
+# are covered in their own suites.
+@pytest.mark.parametrize("argv", [
+    ["refresh"],
+    ["agents"],
+    ["adopt"],
+    ["metrics"],
+    ["distill"],
+    ["status"],
+    ["graph"],
+    ["retrieve", "handoff"],
+    ["pack", "review the diff"],
+])
+def test_cli_smoke_safe_commands(repo, argv):
+    assert main(["--root", str(repo.root), *argv]) == 0

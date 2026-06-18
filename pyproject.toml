@@ -88,6 +88,13 @@ ignore = ["E501", "E402", "E741"]
 # not dead imports.
 "src/pigeon/coordinate/__init__.py" = ["F401"]
 
+[tool.coverage.run]
+source = ["src/pigeon"]
+# The MCP serve layer and the TUI dashboard are integration surfaces (stdio
+# server, full-screen terminal), exercised end-to-end rather than unit-tested;
+# excluding them keeps the core coverage gate honest instead of vacuous.
+omit = ["*/mcp_server.py", "*/tui.py"]
+
 [tool.pyrefly]
 project-includes = ["src", "tests"]
 project-excludes = ["**/.venv", "**/__pycache__", "**/.pigeon", "**/.agentctx"]

@@ -88,3 +88,72 @@ def test_allow_outside_root_lifts_absolute_schemes_but_never_repo(repo, tmp_path
     # ...but repo:// is never lifted — it means "in the repo".
     with pytest.raises(rs.PointerError, match="outside the repo root"):
         rs.resolve("repo://../../etc/passwd", repo)
+
+
+# --------------------------------------------------- coverage: fence/error branches
+
+def test_empty_pointer_rejected(repo):
+    with pytest.raises(rs.PointerError, match="non-empty string"):
+        rs.resolve("", repo)
+
+
+def test_resolved_data_branch_and_no_content():
+    r = rs.Resolved(pointer="x", scheme="s3", data=b"hi")
+    assert r.exists() is True
+    assert r.read_bytes() == b"hi"
+    assert r.read_text() == "hi"
+    empty = rs.Resolved(pointer="x", scheme="s3")  # neither path nor data
+    assert empty.exists() is False
+    with pytest.raises(rs.PointerError, match="no resolvable content"):
+        empty.read_bytes()
+
+
+def test_resolve_text_convenience(repo):
+    assert rs.resolve_text("repo://AGENTS.md", repo).startswith("# AGENTS.md")
+
+
+def _git(root, *args):
+    import subprocess
+    subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+
+def _git_repo_with_manifest(repo):
+    manifest.write_manifest(repo)
+    for cmd in (("init", "-q"), ("config", "user.email", "t@t"),
+                ("config", "user.name", "t"), ("add", "-A"),
+                ("commit", "-q", "-m", "snapshot")):
+        _git(repo.root, *cmd)
+
+
+def test_manifest_rev_reads_from_git(repo):
+    _git_repo_with_manifest(repo)
+    import subprocess
+    rev = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo.root,
+                         capture_output=True, text=True, check=True).stdout.strip()
+    r = rs.resolve(f"manifest@{rev}", repo)        # != "HEAD" -> git-show branch
+    assert r.scheme == "manifest" and r.data is not None
+    assert b'"' in r.read_bytes()                  # the committed manifest JSON
+
+
+def test_manifest_bad_rev_raises(repo):
+    _git_repo_with_manifest(repo)
+    with pytest.raises(rs.PointerError):
+        rs.resolve("manifest@deadbeefcafe", repo)  # nonexistent rev -> git fails
+
+
+def test_s3_reads_via_mocked_client(repo, monkeypatch):
+    repo.data["resolve"]["allow_s3"] = True
+
+    class _Body:
+        def read(self):
+            return b"s3-bytes"
+
+    class _Client:
+        def get_object(self, Bucket, Key):
+            assert Bucket == "my-bucket" and Key == "a/b.txt"
+            return {"Body": _Body()}
+
+    import boto3
+    monkeypatch.setattr(boto3, "client", lambda svc: _Client())
+    r = rs.resolve("s3://my-bucket/a/b.txt", repo)
+    assert r.scheme == "s3" and r.read_bytes() == b"s3-bytes"
