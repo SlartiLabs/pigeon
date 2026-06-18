@@ -1,0 +1,37 @@
+sid: hardening-gate
+# Adversarial review (advisory) of the Tier-B/C launch-hardening diff before it
+# merges to master. The verdict is ADVISORY — the coordinator merges — but the
+# security-sensitive items get adversarial eyes first.
+#   pigeon coordinate docs/To_do/hardening-gate.tasks.yaml --skip-permissions --telemetry --budget-usd 8
+
+tasks:
+  - id: gate
+    runner: opus
+    readonly: true
+    isolation: shared
+    receives:
+      - "repo://.pigeon/coordinate/reviews/hardening/final.diff"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-verifier
+          skill: security-audit
+          doing: Hunt specifically for a leaked publish credential in release.yml (any token/password/secret — OIDC only is required), a CI verdict that could read a crashed check as pass (fail-closed must hold), a coverage gate that would fail its own PR (gate must be <= the coverage the same diff adds), and any ruff autofix that changed behavior rather than imports/formatting.
+          verdict: default to changes-needed if the release workflow contains any credential, or if ci_report can emit pass on a crashed/missing check
+    doing: >-
+      ADVISORY adversarial review of the launch-hardening diff
+      (.pigeon/coordinate/reviews/hardening/final.diff). The big ruff import-sort
+      churn is low-signal — focus on the SUBSTANTIVE items and cite file:line:
+      (1) release.yml uses PyPI trusted publishing via OIDC with NO API
+      token/password/secret anywhere, and publish needs a passing test job;
+      (2) ci_report.py is FAIL-CLOSED — a missing/unparseable/crashed check yields
+      status 'error' (never 'pass'), error dominates the aggregate, and
+      can_auto_merge() refuses a human_gate_required failure even when green;
+      (3) the coverage gate (--cov-fail-under=86) is <= the coverage this diff
+      actually achieves (so it cannot fail the PR that introduces it), and the
+      version-drift test really fails on a pinned README version;
+      (4) the resolve.py additions are real fence tests (the S1 boundary), not
+      line-padding; (5) nothing in the ruff autofixes changed behavior (imports/
+      formatting/pyupgrade only). Write a verdict {verdict, blockers:[...],
+      nits:[...]} to .pigeon/coordinate/reviews/hardening/gate.json and print a
+      ranked summary. Do NOT edit source; do NOT merge.
