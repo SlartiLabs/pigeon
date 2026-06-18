@@ -1,0 +1,57 @@
+sid: timeout-gate
+# ============================================================================
+# GATE the finished timeout+salvage build (branch pigeon/timeout-build-3/integrate,
+# commits 02191d4 build + fd2a2d1 finish). The crew integrate timed out before
+# tests, so the coordinator finished it (binary read fix, schema mirror, the
+# Phase-3 block_on_salvage cascade fix, and the full test plan — 396 green).
+# This runs the gate the timeout skipped, on the COMPLETE diff.
+#
+#   pigeon coordinate docs/To_do/timeout-salvage-gate.tasks.yaml --skip-permissions --telemetry --budget-usd 12
+# ============================================================================
+
+tasks:
+
+  - id: gate
+    runner: opus
+    readonly: true
+    isolation: shared
+    receives:
+      - "repo://.pigeon/coordinate/reviews/timeout-build/final.diff"
+      - "repo://docs/design/timeout-salvage.md"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-verifier
+          skill: code-architect-python
+          doing: Stress-test the diff against the design's invariants and the real code — prove the all-null default path is byte-identical, that NO branch keys off rc==124, that empty-diff worktree exits are NOT salvaged, that select reads the raw fd, and that the block_on_salvage cascade can't orphan a task.
+          verdict: default to changes-needed if any invariant or phase requirement is unproven at file:line
+    doing: >-
+      GATEKEEPER review of the COMPLETE timeout+salvage diff
+      (.pigeon/coordinate/reviews/timeout-build/final.diff) against
+      docs/design/timeout-salvage.md and the live code on branch
+      pigeon/timeout-build-3/integrate. Do NOT edit source. Verify, citing file:line:
+      (Part A) the select+idle+hard-cap poll loop reads the RAW binary fd, _kill does
+      SIGTERM->grace->SIGKILL via os.killpg on a new session, _classify_status never
+      keys on 124, and the all-null default is byte-identical to the old blocking
+      drain (back-compat); (Part B) salvage uses info["diff"] (not changed/harvested),
+      the `salvaged` set drives cascade exemption + readiness, advisory diff injection
+      + salvaged_upstream reach the downstream handoff, block_on_salvage restores the
+      conservative skip WITHOUT orphaning, and the run exit-code policy is right
+      (salvaged-then-gated=0, salvaged-no-consumer=1); the reporting + final-summary
+      fixes are present; both handoff.schema.json copies match; --dry-run / budget /
+      append-only / reentry preserved. Confirm the new tests actually exercise these
+      paths (not vacuous). Write {verdict, blockers:[...], nits:[...]} to
+      .pigeon/coordinate/reviews/timeout-build/gate.json and print a ranked summary.
+
+  - id: review-agy
+    runner: agy
+    readonly: true
+    isolation: shared
+    receives:
+      - "repo://.pigeon/coordinate/reviews/timeout-build/final.diff"
+    doing: >-
+      Independent ADVISORY second opinion on the timeout+salvage diff, decorrelated
+      from the gatekeeper. Focus on process-supervision correctness (select on the raw
+      fd, SIGTERM->grace->SIGKILL, orphaned grandchildren via os.killpg / new session),
+      the binary-read change, and any back-compat risk on the all-null default path.
+      Do NOT edit source. Print a short verdict (approve / concerns + reasons).

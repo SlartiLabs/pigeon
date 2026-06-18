@@ -1,0 +1,45 @@
+sid: timeout-regate
+# ============================================================================
+# FOCUSED RE-GATE of the B1 fix (commit e70c9b8) the prior gate requested.
+# The first gate (gate.json) ruled changes-needed with ONE blocker (B1:
+# partial-line-then-hang bypassed the timers via blocking readline) and proved
+# everything else merge-ready. This re-gate verifies the read-loop rewrite +
+# _kill change closed B1 without regressing the 12 proven invariants.
+#
+#   pigeon coordinate docs/To_do/timeout-salvage-regate.tasks.yaml --skip-permissions --telemetry --budget-usd 8
+# ============================================================================
+
+tasks:
+
+  - id: regate
+    runner: opus
+    readonly: true
+    isolation: shared
+    receives:
+      - "repo://.pigeon/coordinate/reviews/timeout-build/final.diff"
+      - "repo://.pigeon/coordinate/reviews/timeout-build/gate.json"
+      - "repo://docs/design/timeout-salvage.md"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-verifier
+          skill: code-architect-python
+          doing: Try to construct ANY child-output pattern (partial line then hang, slow drip, huge no-newline blob, binary, EOF-mid-line) that still blocks the read loop past idle_s/hard_s. If you cannot, B1 is closed.
+          verdict: B1 is resolved only if no output pattern can bypass the caps; default to changes-needed otherwise
+    doing: >-
+      FOCUSED re-gate of the B1 fix in
+      .pigeon/coordinate/reviews/timeout-build/final.diff (branch
+      pigeon/timeout-build-3/integrate@e70c9b8), against docs/design/timeout-salvage.md
+      and gate.json (the prior ruling — its "proven" list must NOT regress). Do NOT
+      edit source. Confirm at file:line: (1) B1 CLOSED — the read loop no longer calls
+      a blocking readline(); it select-arms then os.read()s bounded chunks into a line
+      buffer, so a partial-line-then-hang is killed by idle_s/hard_s (and the new
+      regression test test_hard_cap_kills_partial_line_then_hang actually reproduces
+      it: it would block ~30s on the old code, asserts elapsed<15 + status timed_out);
+      (2) _kill caches pgid=proc.pid and SIGKILLs the group unconditionally after grace
+      (orphaned grandchildren reaped); (3) the no-timer DEFAULT path is still correct +
+      efficient (chunked blocking read, lines emitted identically, dry-run unchanged);
+      (4) NONE of the prior gate's proven invariants regressed (salvage detection,
+      scheduler set-algebra, exit-code policy, schema mirror, reporting). Write
+      {verdict: approve|changes-needed, b1_closed: bool, regressions:[...], nits:[...]}
+      to .pigeon/coordinate/reviews/timeout-build/regate.json and print a short verdict.
