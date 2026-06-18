@@ -104,16 +104,45 @@ SAFETY_CONSTRAINTS: dict[str, str] = {
     ),
 }
 
-# Overrides fs_scope for readonly tasks. Soft (prompt-level) — the hard
-# guarantee is the worktree isolation a readonly task gets by default.
-READONLY_CONSTRAINTS: dict[str, str] = {
+# Overrides fs_scope for readonly tasks. Soft (prompt-level); the constraint is
+# matched to the task's effective isolation by `_readonly_fs` below.
+#
+# SHARED tree: the task does not touch repo source but MAY persist its hand-back
+# and any artifact its `doing` names under the .pigeon/ contract dir — this is the
+# reviewer/auditor pattern (findings written to a JSON/markdown artifact).
+READONLY_CONSTRAINTS_SHARED: dict[str, str] = {
+    "fs_scope": (
+        "READ-ONLY TASK: do not create, modify, move, or delete any file in the "
+        "repository working tree (source, configs, docs), and instruct every "
+        "subagent you dispatch to do the same. You MAY write your hand-back and "
+        "any artifact your 'doing' step names, but ONLY under the .pigeon/ "
+        "contract directory. If a step would require editing a repository file, "
+        f"stop and hand back to '{COORDINATOR}'."
+    ),
+}
+# Throwaway WORKTREE: any file the task writes is discarded on teardown, so it
+# must produce findings in the hand-back only — writing an artifact would be lost.
+READONLY_CONSTRAINTS_WORKTREE: dict[str, str] = {
     "fs_scope": (
         "READ-ONLY TASK: do not create, modify, move, or delete any file, and "
         "instruct every subagent you dispatch to do the same — produce findings "
-        "and a hand-back only. If a step seems to require a write, stop and hand "
+        "and a hand-back only (you run in a throwaway worktree; any file you "
+        "write is discarded). If a step seems to require a write, stop and hand "
         f"back to '{COORDINATOR}'."
     ),
 }
+
+
+def _readonly_fs(task: dict[str, Any]) -> dict[str, str]:
+    """Pick the readonly fs constraint matching the task's effective isolation.
+
+    A shared-tree readonly task may persist artifacts under ``.pigeon/``; a
+    worktree-isolated one cannot (its writes vanish on teardown) so it is told to
+    hand findings back only. Isolation has already been resolved (a bare readonly
+    task defaults to ``worktree``) by the time handoffs are built.
+    """
+    return (READONLY_CONSTRAINTS_SHARED if task.get("isolation") == "shared"
+            else READONLY_CONSTRAINTS_WORKTREE)
 
 DEFAULT_PROMPT = (
     "You are sub-agent '{task_id}' in pigeon session '{sid}'. "
@@ -1251,7 +1280,7 @@ def run_coordinate(
             decisions=task.get("decisions") or None,
             rag=task.get("rag") or None,
             constraints={**SAFETY_CONSTRAINTS,
-                         **(READONLY_CONSTRAINTS if task.get("readonly") else {}),
+                         **(_readonly_fs(task) if task.get("readonly") else {}),
                          **(task.get("constraints") or {})},
             crew=task.get("crew") or None,
             context_ref=task.get("context_ref", "manifest@HEAD"),

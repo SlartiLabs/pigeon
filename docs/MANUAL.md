@@ -114,8 +114,9 @@ tasks:
     pack: true                # attach a packed context bundle to the handoff
     pack_max_tokens: 4000
     telemetry: true           # append runner's JSON flags; record measured tokens
-    readonly: true            # no writes: hard read-only constraint + worktree
-                              #   containment by default (override with isolation:)
+    readonly: true            # no source edits; worktree containment by default.
+                              #   With isolation: shared, may still write artifacts
+                              #   under .pigeon/ (the reviewer-with-findings pattern)
     mutates_packages: false   # true => requires conda env / venv / container
     prompt: "..."             # override the default prompt template
     crew:                     # deterministic staffing (handoff schema 1.1)
@@ -340,9 +341,19 @@ How an agent staffs its work internally is its own judgment; contract a
 plausible reason). The only *hard* guarantee is `isolation: worktree`, where
 every write lands on a disposable branch and never the working tree. Declare
 `readonly: true` and pigeon does both: injects the read-only constraint
-*and* defaults the task to a worktree (override with explicit
-`isolation: shared` only if you accept the risk). Review, audit, and
-analysis tasks should always be `readonly: true`.
+*and* defaults the task to a worktree. Review, audit, and analysis tasks
+should always be `readonly: true`.
+
+The read-only constraint is **isolation-aware**, so it never contradicts itself:
+
+- `readonly: true` with **`isolation: shared`** (the reviewer/auditor pattern):
+  the task may not touch repo source, but it *may* write its hand-back and any
+  artifact its `doing` names **under the `.pigeon/` contract dir** — so a review
+  task can persist its findings JSON. Use this whenever a read-only task must
+  produce a file.
+- `readonly: true` with the **default worktree**: any file written is discarded
+  on teardown, so the task is told to return findings in its hand-back only. Use
+  this for pure auditors that emit no artifact (max containment).
 
 ## 11. Recipes
 
