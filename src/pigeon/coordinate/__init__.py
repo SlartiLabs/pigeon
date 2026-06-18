@@ -1255,6 +1255,23 @@ def _run_task(
                 _emit(rawline.decode("utf-8", errors="replace").rstrip("\r"))
         if buf:                         # flush a trailing partial line at EOF
             _emit(buf.decode("utf-8", errors="replace").rstrip("\r"))
+        # The caps must bound TOTAL subprocess lifetime, not just time spent in
+        # the read loop: a child that closes stdout+stderr then keeps running
+        # breaks the loop on EOF with no kill, leaving a bare proc.wait() to
+        # block forever. Re-apply the same idle/hard budget to the final wait.
+        while timed and kill_reason is None and proc.poll() is None:
+            now = time.monotonic()
+            if idle_s and (now - last_output) >= idle_s:
+                kill_reason = "idle"
+                _kill(proc, pgid, grace_s)
+            elif hard_s and (now - started) >= hard_s:
+                kill_reason = "hard"
+                _kill(proc, pgid, grace_s)
+            else:
+                try:
+                    proc.wait(timeout=0.1)
+                except subprocess.TimeoutExpired:
+                    pass
         rc = proc.wait()
         if procs is not None:
             procs.pop(task_id, None)

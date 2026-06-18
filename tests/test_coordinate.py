@@ -1668,6 +1668,29 @@ def test_hard_cap_kills_partial_line_then_hang(repo):
     assert elapsed < 15          # the cap fired; readline() did NOT block 30s
 
 
+# Gate B2 regression: a child that closes BOTH std fds (EOF) then hangs must
+# still be killed by the cap. The kill logic used to live only inside the read
+# loop, so EOF broke the loop and the bare proc.wait() blocked for the child's
+# whole lifetime. The post-loop guard re-applies the budget.
+_EOF_THEN_HANG = [sys.executable, "-u", "-c",
+                  "import os, time; os.write(1, b'hi\\n'); "
+                  "os.close(1); os.close(2); time.sleep(30)"]
+
+
+def test_hard_cap_kills_eof_then_hang(repo):
+    cfg = _cfg_with(repo, {"ghost": _EOF_THEN_HANG}, hard_cap_s=1, grace_kill_s=2)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "ghost", "runner": "ghost", "doing": "x"}]))
+    import time as _time
+    start = _time.monotonic()
+    co.run_coordinate(tasks, cfg)
+    elapsed = _time.monotonic() - start
+    t = co.list_runs(cfg, sid="co1")[0]["tasks"]["ghost"]
+    assert t["status"] == "timed_out"
+    assert t["kill_reason"] == "hard"
+    assert elapsed < 15          # post-loop guard fired; proc.wait did NOT block 30s
+
+
 # --- integration: salvage detection + scheduling ---
 
 # writes a file (→ a real diff) then exits non-zero
