@@ -20,8 +20,9 @@ field, MCP tool, and troubleshooting table — is [`docs/MANUAL.md`](docs/MANUAL
 > doubles as its override file. Single-sourcing the context is the point —
 > tools come and go; the contract stays.
 
-**Status:** experimental (0.4). Built for the author's own multi-agent work and
-published as-is — MIT, PRs welcome, no support SLA implied.
+**Status:** beta. Built for the author's own multi-agent work and published
+as-is — MIT, PRs welcome, no support SLA implied. The installed package is the
+single source of version truth (`pigeon --version`).
 
 ## Design in one paragraph
 

@@ -31,14 +31,60 @@ jobs:
       - name: Install package + dev extras
         run: python -m pip install -e ".[dev]"
 
-      - name: Tests
-        run: pytest -q
+      - name: Scratch dir for CI artifacts
+        run: mkdir -p .pigeon/ci
+
+      - name: Lint (ruff — check only; we do not auto-reformat)
+        run: ruff check src tests
 
       - name: Type check
-        run: pyrefly check
+        id: pyrefly
+        run: pyrefly check 2>&1 | tee .pigeon/ci/pyrefly.log; exit ${PIPESTATUS[0]}
+
+      - name: Tests (coverage-gated at 86; version drift caught by test_version_consistency)
+        run: >-
+          pytest -q
+          --cov=src/pigeon --cov-report=term --cov-report=xml
+          --cov-fail-under=86
+          --junitxml=.pigeon/ci/pytest.xml
 
       - name: Handoff schema is valid JSON
         run: python -c "import json; json.load(open('.pigeon/handoff.schema.json'))"
 
       - name: Smoke — pigeon demo (handoff chain + retrieval; no agents spawned)
         run: pigeon demo
+
+      - name: Structured CI verdict (fail-closed; emitted even on red)
+        if: always()
+        run: >-
+          python -m pigeon.ci_report --commit "${{ github.sha }}"
+          --junit .pigeon/ci/pytest.xml
+          --pyrefly-exit "${{ steps.pyrefly.outcome == 'success' && '0' || '1' }}"
+          --pyrefly-log .pigeon/ci/pyrefly.log --out .pigeon || true
+
+      - name: Upload CI verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-verdict-py${{ matrix.python-version }}
+          path: .pigeon/ci/verdict.json
+          if-no-files-found: warn
+
+  locked-install:
+    # Prove the committed lockfile resolves to a working install (reproducibility).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Install strictly from the lock
+        run: |
+          python -m pip install -r requirements-dev.lock
+          python -m pip install -e . --no-deps
+      - name: Smoke from the locked env
+        run: |
+          python -c "import pigeon; print('locked', pigeon.__version__)"
+          pytest -q tests/test_version_consistency.py

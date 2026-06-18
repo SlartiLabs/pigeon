@@ -18,12 +18,11 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 from typing import Any
 
-from .config import Config
 from . import retrieval, tokens
+from .config import Config
 
 # Budget shares per layer; greedy fill in this order. Memory first (small,
 # dense, decisions live there), the map next, code is the meat, history last.
@@ -118,7 +117,7 @@ def pack(
 
     titles = {"memory": "Memory (distilled)", "manifest": "Repo map",
               "code": "Code", "history": "Recent history"}
-    ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    ts = datetime.now(UTC).isoformat(timespec="seconds")
     lines = [f"# Context bundle — {task}", "",
              f"_Packed {ts} by `pigeon pack`; budget {max_tokens} tokens. "
              "Read this first; resolve pointers only if it is not enough._", ""]

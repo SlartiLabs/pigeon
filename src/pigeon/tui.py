@@ -24,8 +24,8 @@ except ImportError as exc:  # pragma: no cover - exercised only without extra
         "pip install 'pigeon[tui]' (plain `pigeon status --watch` works without it)"
     ) from exc
 
-from .config import Config
 from . import coordinate
+from .config import Config
 
 _LOG_TAIL_LINES = 300
 

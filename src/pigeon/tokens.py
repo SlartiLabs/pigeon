@@ -20,11 +20,11 @@ import json
 import math
 import os
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from .config import Config
 from . import resolve as _resolve
+from .config import Config
 
 _PIECE_RE = re.compile(r"\s+|\w+|[^\w\s]+")  # punctuation grouped in runs
 _enc_cache: dict[str, Any] = {}
@@ -84,7 +84,7 @@ def count_tokens(text: str, encoding: str = "cl100k_base") -> int:
 
 def record(config: Config, event: dict[str, Any]) -> dict[str, Any]:
     """Append a token-accounting event (with timestamp) to metrics.jsonl."""
-    stored = {"ts": datetime.now(timezone.utc).isoformat(), **event}
+    stored = {"ts": datetime.now(UTC).isoformat(), **event}
     path = config.metrics
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as fh:

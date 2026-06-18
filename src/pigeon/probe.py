@@ -17,8 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import Config
-from .coordinate import (_child_env, _fill, _opencode_permission_env,
-                         _seed_opencode_creds)
+from .coordinate import _child_env, _fill, _opencode_permission_env, _seed_opencode_creds
 
 PROBE_PROMPT = "Reply with exactly this line and nothing else: PIGEON_OK"
 PROBE_TOKEN = "PIGEON_OK"

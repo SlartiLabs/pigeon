@@ -8,8 +8,8 @@ import json
 import pytest
 import yaml
 
-from pigeon import mcp_server as srv
 from pigeon import handoff as ho
+from pigeon import mcp_server as srv
 
 
 # ------------------------------------------------------------ implementations

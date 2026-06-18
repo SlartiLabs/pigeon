@@ -17,6 +17,7 @@ venv/
 .pigeon/context/
 .pigeon/adopt/
 .pigeon/probe.json
+.pigeon/ci/
 # (.pigeon/memory/ is deliberately tracked: distilled session knowledge
 #  is the part of the episodic log meant to survive a clone)
 

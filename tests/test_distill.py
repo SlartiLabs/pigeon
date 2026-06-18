@@ -105,7 +105,7 @@ def test_known_sids_unions_handoffs_and_runs(repo):
 
 def test_init_scaffolds_playbooks(tmp_path):
     from pigeon import init as init_mod
-    actions = init_mod.init_repo(tmp_path)
+    init_mod.init_repo(tmp_path)
     readme = tmp_path / ".pigeon" / "memory" / "playbooks" / "README.md"
     assert readme.is_file()
     assert "procedural memory" in readme.read_text(encoding="utf-8")
@@ -116,6 +116,7 @@ def test_init_scaffolds_playbooks(tmp_path):
 
 def test_auto_distill_runs_after_coordinate(repo):
     import sys
+
     import yaml
     (repo.root / ".git").mkdir(exist_ok=True)
     (repo.root / ".agentctx" / "config.yaml").write_text(yaml.safe_dump({

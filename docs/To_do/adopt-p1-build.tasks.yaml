@@ -1,0 +1,135 @@
+sid: adopt-p1
+# ============================================================================
+# BUILD adopt P1 (docs/design/adopt-p1.md — AUTHORITATIVE contract). Three
+# additive features: F1 memory-page typing (record_type + loud resolve), F2
+# `pigeon adopt --import`, F3 preflight de-noise. Cross-runtime renderers are
+# OUT of scope.
+#
+# Crew: free drafts -> sonnet integrate (worktree) -> opus gate + agy advisory.
+# The merged salvage feature protects this run: if integrate hits its timeout
+# wrapper after committing, it's 'salvaged' and the gate still runs on the diff.
+#
+#   pigeon coordinate docs/To_do/adopt-p1-build.tasks.yaml --skip-permissions --telemetry --budget-usd 16
+# ============================================================================
+
+tasks:
+
+  - id: draft-typing
+    runner: oc-nemotron
+    readonly: true
+    isolation: shared
+    receives: ["repo://docs/design/adopt-p1.md"]
+    crew:
+      skills: [code-architect-python]
+      subagents: [{role: drafter, doing: Draft pure parse/project changes; copy the spec's names exactly.}]
+    doing: >-
+      FIRST DRAFT ONLY of F1 (docs/design/adopt-p1.md): in skills.py, have
+      parse_playbook read an optional `record_type` frontmatter key (default
+      "skill" when absent); project_skills projects only record_type in
+      {skill,playbook} and raises ValueError on an unknown record_type; add
+      resolve_skill(config, name)->page|None. Match the spec. Do NOT edit repo
+      source. Write the draft (fenced python + edge notes) to
+      .pigeon/coordinate/reviews/adopt-p1/drafts/typing.md and hand back listing it.
+
+  - id: draft-import
+    runner: oc-north
+    readonly: true
+    isolation: shared
+    receives: ["repo://docs/design/adopt-p1.md"]
+    crew:
+      skills: [code-architect-python]
+      subagents: [{role: drafter, doing: Draft the import copy + CLI wiring; refuse-paths per the spec.}]
+    doing: >-
+      FIRST DRAFT ONLY of F2 (docs/design/adopt-p1.md): an adopt.import_asset(name,
+      config) that copies a discovered, allow-listed asset into
+      .pigeon/memory/playbooks/<name>.md (frontmatter name/description/record_type:
+      skill + body, NO GEN_MARKER), refusing on unknown/not-allow-listed/existing-
+      playbook/MCP; plus the `pigeon adopt --import <name>...` CLI wiring in cli.py.
+      Match the spec. Do NOT edit repo source. Write the draft to
+      .pigeon/coordinate/reviews/adopt-p1/drafts/import.md and hand back listing it.
+
+  - id: draft-tests
+    runner: oc-mimo
+    readonly: true
+    isolation: shared
+    receives: ["repo://docs/design/adopt-p1.md"]
+    crew:
+      skills: [agent-tester]
+      subagents: [{role: drafter, doing: One focused test per spec bullet across F1/F2/F3; tmp_path fixtures.}]
+    doing: >-
+      FIRST DRAFT ONLY of tests for F1/F2/F3 per docs/design/adopt-p1.md's test
+      bullets: record_type parse/projection/unknown-raises/absent-regression;
+      --import writes-unmarked/refuses/refresh-preserves; preflight dedupe +
+      assume_known_skills + imported-skill-silent + unknown-still-warns. Use
+      tmp_path. Do NOT edit repo source. Write the draft to
+      .pigeon/coordinate/reviews/adopt-p1/drafts/tests.md and hand back listing it.
+
+  - id: integrate
+    runner: sonnet
+    isolation: worktree
+    reentry: true
+    max_reentry: 2
+    needs: [draft-typing, draft-import, draft-tests]
+    receives:
+      - "repo://docs/design/adopt-p1.md"
+      - "repo://.pigeon/coordinate/reviews/adopt-p1/drafts/typing.md"
+      - "repo://.pigeon/coordinate/reviews/adopt-p1/drafts/import.md"
+      - "repo://.pigeon/coordinate/reviews/adopt-p1/drafts/tests.md"
+    crew:
+      skills: [code-architect-python, agent-tester]
+      subagents:
+        - role: test-writer
+          skill: agent-tester
+          doing: Finalize tests from the drafts + spec; run only the affected tests until green.
+          verdict: targeted tests green and the default (no record_type / empty assume_known_skills) path stays byte-equivalent
+    doing: >-
+      IMPLEMENT docs/design/adopt-p1.md (AUTHORITATIVE) F1+F2+F3 on this worktree
+      branch; the drafts are raw material, the spec is the tie-breaker. One coherent
+      diff: (F1) skills.py record_type in parse_playbook (default "skill") +
+      project_skills gating + ValueError on unknown + resolve_skill; (F2)
+      adopt.import_asset + cli `pigeon adopt --import`; (F3) crew_skill_warnings
+      dedupe per (task,skill) + the coordinate.assume_known_skills config key
+      (default []) + silence resolved/known names. Keep additive + default-byte-
+      equivalent (preserve refresh/projection/back-compat; no schema bump). To stay
+      in the timeout, run only TARGETED checks: `python -c "import pigeon"` and
+      `pytest tests/test_adopt.py tests/test_skills.py -q` (full suite + pyrefly are
+      the gate's job). If your tests are red, hand back decisions.verdict="rework"
+      with notes in state.artifacts; else verdict="approve" + list each file changed
+      (file:line + one line). Do NOT merge.
+
+  - id: gate
+    runner: opus
+    readonly: true
+    isolation: shared
+    needs: [integrate]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/adopt-p1-*/integrate.diff"
+      - "repo://docs/design/adopt-p1.md"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-verifier
+          skill: security-audit
+          doing: Try to break the invariants — a decision-typed page projected as a subagent, an unknown record_type silently skipped, --import overwriting/clobbering a marked page or importing an un-allow-listed/MCP name, refresh touching an imported page, or the default path not byte-equivalent.
+          verdict: default to changes-needed if any spec requirement or invariant is unproven at file:line
+    doing: >-
+      GATEKEEPER review of the adopt-P1 integration diff against
+      docs/design/adopt-p1.md and the live code, citing file:line. Verify F1 (record_type
+      default/gating/unknown-raises/resolve_skill), F2 (import writes unmarked page,
+      all refusals, refresh leaves it alone), F3 (dedupe + assume_known_skills + silence),
+      and the invariants (refresh marker-only, no user-source writes, default byte-
+      equivalent, no schema bump). Confirm the new tests are non-vacuous. Write
+      {verdict, blockers:[...], nits:[...]} to
+      .pigeon/coordinate/reviews/adopt-p1/gate.json and print a ranked summary.
+
+  - id: review-agy
+    runner: agy
+    readonly: true
+    isolation: shared
+    needs: [integrate]
+    receives: ["repo://.pigeon/coordinate/diffs/adopt-p1-*/integrate.diff"]
+    doing: >-
+      Independent ADVISORY second opinion on the adopt-P1 diff, decorrelated from the
+      gatekeeper. Focus on the record_type back-compat default, the --import refusal
+      paths, and any way refresh could clobber an imported page. Do NOT edit source.
+      Print a short verdict (approve / concerns + reasons).

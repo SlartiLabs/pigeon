@@ -8,9 +8,8 @@ pre-commit check can detect staleness and ``refresh`` can prove it re-synced.
 
 from __future__ import annotations
 
-import shutil
-
 import hashlib
+import shutil
 from pathlib import Path
 
 from .config import Config

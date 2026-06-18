@@ -68,6 +68,7 @@ def test_pack_rejects_empty_task(repo):
 
 def test_coordinate_pack_true_attaches_bundle(repo):
     import sys
+
     import yaml
     _seed(repo)
     (repo.root / ".git").mkdir(exist_ok=True)

@@ -1,0 +1,16 @@
+{
+  "task": "t1-version-drift",
+  "arm": "with-pigeon | without-pigeon",
+  "base_sha": "<clean-checkout SHA the task starts from>",
+  "agents": ["claude", "..."],
+  "metrics": {
+    "tokens": 0,
+    "wall_clock_s": 0,
+    "est_cost_usd": 0.0,
+    "success": false,
+    "handoffs": 0,
+    "merge_conflicts": 0,
+    "human_interventions": 0
+  },
+  "notes": "what happened; any failure modes (feed FAILURES.md)"
+}

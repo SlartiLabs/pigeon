@@ -18,7 +18,7 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from rank_bm25 import BM25Okapi
@@ -80,7 +80,7 @@ def _parse_since(since: str) -> float:
             "(e.g. 2026-06-01 or 2026-06-01T12:00:00+00:00)"
         ) from exc
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.timestamp()
 
 
