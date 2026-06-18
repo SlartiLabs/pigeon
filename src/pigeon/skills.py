@@ -118,7 +118,16 @@ def _render_opencode(page: dict[str, Any]) -> str:
     return _render_marked(front, page)
 
 
-_RENDERERS = {"claude": _render_claude, "opencode": _render_opencode}
+# agy / antigravity consumes Claude-format subagents verbatim (verified: its
+# ~/.gemini/agents/*.md use name/description/tools frontmatter, and it symlinks
+# its skills dir to ~/.claude/skills), so it reuses the Claude renderer — the
+# target dir just differs (e.g. .gemini/agents). (The bare `gemini` CLI is a
+# different tool with no subagent concept; not a target.)
+_RENDERERS = {
+    "claude": _render_claude,
+    "opencode": _render_opencode,
+    "agy": _render_claude,
+}
 
 
 def resolve_skill(config: Config, name: str) -> dict[str, Any] | None:
