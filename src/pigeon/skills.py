@@ -59,7 +59,7 @@ def parse_playbook(path: Path) -> dict[str, Any] | None:
     if not isinstance(meta, dict) or not meta.get("name"):
         return None
     record_type = meta.get("record_type", "skill")
-    if record_type not in VALID_RECORD_TYPES:
+    if not isinstance(record_type, str) or record_type not in VALID_RECORD_TYPES:
         raise ValueError(
             f"{path}: unknown record_type {record_type!r} — "
             f"must be one of {sorted(VALID_RECORD_TYPES)}"

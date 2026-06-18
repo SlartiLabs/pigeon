@@ -592,8 +592,12 @@ class TestImportAsset:
     """import_asset writes an unmarked playbook page from the catalog."""
 
     def _catalog_entry(self, name: str, kind: str = "subagent", *,
-                       allowed: bool = True, scope: str = "user") -> dict:
-        return {"name": name, "kind": kind, "allowed": allowed, "scope": scope}
+                       allowed: bool = True, scope: str = "user",
+                       source: str | None = None) -> dict:
+        e = {"name": name, "kind": kind, "allowed": allowed, "scope": scope}
+        if source is not None:
+            e["source"] = str(source)
+        return e
 
     def _write_catalog(self, cfg, entries: list) -> None:
         cfg.adopt_dir.mkdir(parents=True, exist_ok=True)
@@ -602,11 +606,14 @@ class TestImportAsset:
         )
 
     def test_import_writes_unmarked_page(self, tmp_path: Path) -> None:
-        """Importing an allow-listed asset writes a playbook page without GEN_MARKER."""
-        from pigeon.adopt import import_asset, _make_import_page
+        """Importing an allow-listed asset writes a playbook page without GEN_MARKER,
+        carrying the asset's real body (B1 regression)."""
+        from pigeon.adopt import import_asset
 
         cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
-        self._write_catalog(cfg, [self._catalog_entry("my-agent")])
+        src = tmp_path / ".claude" / "agents" / "my-agent.md"
+        _write_subagent(src, "my-agent", body="You are a careful reviewer.")
+        self._write_catalog(cfg, [self._catalog_entry("my-agent", source=src)])
 
         import_asset("my-agent", cfg)
 
@@ -615,10 +622,14 @@ class TestImportAsset:
 
         content = page.read_text(encoding="utf-8")
         assert GEN_MARKER not in content
-
-        # playbooks() lists it
+        assert "record_type: skill" in content
+        # B1: the asset's body is carried, not lost
+        assert "You are a careful reviewer." in content
+        # and the imported page is itself a valid, projectable playbook
         names = {p["name"] for p in playbooks(cfg)}
         assert "my-agent" in names
+        assert any(p["name"] == "my-agent" and p["body"].strip()
+                   for p in playbooks(cfg))
 
     def test_reimport_refuses(self, tmp_path: Path) -> None:
         """Re-importing a name that already has a playbook page raises FileExistsError."""
@@ -672,7 +683,9 @@ class TestImportAsset:
         from pigeon.adopt import import_asset
 
         cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
-        self._write_catalog(cfg, [self._catalog_entry("my-agent")])
+        src = tmp_path / ".claude" / "agents" / "my-agent.md"
+        _write_subagent(src, "my-agent", body="You are a careful reviewer.")
+        self._write_catalog(cfg, [self._catalog_entry("my-agent", source=src)])
 
         import_asset("my-agent", cfg)
         page = cfg.memory_dir / "playbooks" / "my-agent.md"
@@ -681,6 +694,22 @@ class TestImportAsset:
         project_skills(cfg)
 
         assert page.read_text(encoding="utf-8") == original_content
+
+
+    def test_cli_import_end_to_end(self, tmp_path: Path) -> None:
+        """`pigeon adopt --import` writes the page (B2) and refuses unknown with exit 2."""
+        from pigeon.cli import main
+
+        cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
+        src = tmp_path / ".claude" / "agents" / "my-agent.md"
+        _write_subagent(src, "my-agent", body="You are a careful reviewer.")
+        self._write_catalog(cfg, [self._catalog_entry("my-agent", source=src)])
+
+        assert main(["--root", str(tmp_path), "adopt", "--import", "my-agent"]) == 0
+        page = cfg.memory_dir / "playbooks" / "my-agent.md"
+        assert page.exists() and "You are a careful reviewer." in page.read_text("utf-8")
+        # an unknown name refuses with exit 2 (not an uncaught traceback)
+        assert main(["--root", str(tmp_path), "adopt", "--import", "ghost"]) == 2
 
 
 # ===========================================================================
@@ -730,10 +759,12 @@ class TestCrewSkillWarnings:
         from pigeon.adopt import import_asset
 
         cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
+        src = tmp_path / ".claude" / "agents" / "my-agent.md"
+        _write_subagent(src, "my-agent", body="You are a careful reviewer.")
         cfg.adopt_dir.mkdir(parents=True, exist_ok=True)
         (cfg.adopt_dir / "catalog.json").write_text(
-            json.dumps([{"name": "my-agent", "kind": "subagent",
-                         "allowed": True, "scope": "user"}]),
+            json.dumps([{"name": "my-agent", "kind": "subagent", "allowed": True,
+                         "scope": "user", "source": str(src)}]),
             encoding="utf-8",
         )
 

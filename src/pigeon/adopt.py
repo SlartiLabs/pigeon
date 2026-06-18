@@ -379,20 +379,56 @@ def preflight_check(names: list[str], config: Config) -> list[str]:
     return warnings
 
 
-def _make_import_page(entry: dict[str, Any]) -> str:
-    """Build playbook page content from a catalog entry (no GEN_MARKER).
+def _make_import_page(name: str, description: str, body: str,
+                      tools: Any = None) -> str:
+    """Build playbook page content (no GEN_MARKER).
 
-    Frontmatter: name, description, record_type: skill.
-    Body: entry['body'] if present, else empty string.
+    Frontmatter: name, description, record_type: skill (+ tools when present),
+    in declared order; followed by the asset's system-prompt body.
     """
-    body = entry.get("body") or ""
     fm: dict[str, Any] = {
-        "name": entry["name"],
-        "description": entry.get("description") or "",
+        "name": name,
+        "description": description or "",
         "record_type": "skill",
     }
-    yaml_block = yaml.dump(fm, default_flow_style=False, allow_unicode=True)
-    return f"---\n{yaml_block}---\n\n{body}"
+    if tools:
+        fm["tools"] = tools
+    yaml_block = yaml.dump(fm, default_flow_style=False, allow_unicode=True,
+                           sort_keys=False)
+    return f"---\n{yaml_block}---\n\n{body}\n"
+
+
+def _source_parts(entry: dict[str, Any]) -> tuple[str, Any]:
+    """Re-read the asset's original file to recover (body, tools).
+
+    The catalog strips ``body`` (so secrets/bulk never persist), so an import
+    reads the source on disk: a subagent's ``.md`` file, or a skill dir's
+    ``SKILL.md``. Raises FileNotFoundError if the source has gone (stale catalog).
+    """
+    source = entry.get("source")
+    if not source:
+        raise FileNotFoundError(
+            f"adopt: catalog entry {entry.get('name')!r} has no source path; "
+            "re-run `pigeon adopt` to refresh the catalog"
+        )
+    src = Path(source)
+    md = src / "SKILL.md" if src.is_dir() else src
+    try:
+        text = md.read_text(encoding="utf-8")
+    except OSError:
+        raise FileNotFoundError(
+            f"adopt: source for {entry['name']!r} is unreadable ({md}); "
+            "re-run `pigeon adopt` to refresh the catalog"
+        ) from None
+    m = re.match(r"^---[ \t]*\n(.*?)\n(?:---|\.\.\.)[ \t]*\n(.*)$", text, re.DOTALL)
+    if not m:
+        return text.strip(), None
+    try:
+        meta = yaml.safe_load(m.group(1)) or {}
+    except yaml.YAMLError:
+        meta = {}
+    tools = meta.get("tools") if isinstance(meta, dict) else None
+    return m.group(2).strip(), tools
 
 
 def import_asset(name: str, config: Config) -> None:
@@ -427,8 +463,11 @@ def import_asset(name: str, config: Config) -> None:
             f"adopt: {name!r} already exists: "
             f"{target.relative_to(config.root)}"
         )
+    body, tools = _source_parts(entry)   # re-read the real body (catalog strips it)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(_make_import_page(entry), encoding="utf-8")
+    target.write_text(
+        _make_import_page(name, entry.get("description") or "", body, tools),
+        encoding="utf-8")
 
 
 def update_allow(names: list[str], config: Config) -> list[str]:
