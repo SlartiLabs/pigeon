@@ -1646,6 +1646,28 @@ def test_hard_cap_kills_never_idle_task(repo):
     assert t["kill_reason"] == "hard"
 
 
+# Gate B1 regression: a child that writes a PARTIAL line (no newline) then hangs
+# must still be killed by the cap. With a blocking readline() this deadlocks past
+# the timer; the chunked os.read() loop bounds it.
+_PARTIAL_HANG = [sys.executable, "-u", "-c",
+                 "import sys, time; sys.stdout.write('partial-no-newline'); "
+                 "sys.stdout.flush(); time.sleep(30)"]
+
+
+def test_hard_cap_kills_partial_line_then_hang(repo):
+    cfg = _cfg_with(repo, {"stuck": _PARTIAL_HANG}, hard_cap_s=1, grace_kill_s=2)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "stuck", "runner": "stuck", "doing": "x"}]))
+    import time as _time
+    start = _time.monotonic()
+    co.run_coordinate(tasks, cfg)
+    elapsed = _time.monotonic() - start
+    t = co.list_runs(cfg, sid="co1")[0]["tasks"]["stuck"]
+    assert t["status"] == "timed_out"
+    assert t["kill_reason"] == "hard"
+    assert elapsed < 15          # the cap fired; readline() did NOT block 30s
+
+
 # --- integration: salvage detection + scheduling ---
 
 # writes a file (→ a real diff) then exits non-zero

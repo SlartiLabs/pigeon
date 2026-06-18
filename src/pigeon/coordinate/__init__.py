@@ -1121,26 +1121,27 @@ def _classify_status(rc: int, kill_reason: str | None) -> str:
     return "failed"
 
 
-def _kill(proc: subprocess.Popen, grace_s: float) -> None:
-    """SIGTERM the process group, wait up to grace_s, then SIGKILL.
+def _kill(proc: subprocess.Popen, pgid: int, grace_s: float) -> None:
+    """SIGTERM the process group, wait up to grace_s for the leader, then SIGKILL
+    the whole group — reaping grandchildren even if the leader already exited.
 
-    Uses ``os.killpg`` so grandchildren (subshell runners) are also reaped.
-    Assumes the Popen was created with ``start_new_session=True``.
+    ``pgid`` is the child's process-group id, cached by the caller. With
+    ``start_new_session=True`` it equals ``proc.pid``, so we never call
+    ``os.getpgid`` on a pid that may already be reaped (which would raise and
+    leak orphaned grandchildren).
     """
-    if proc.poll() is not None:
-        return
     try:
-        pgid = os.getpgid(proc.pid)
         os.killpg(pgid, signal.SIGTERM)
     except (ProcessLookupError, OSError):
-        return
+        pass
     deadline = time.monotonic() + grace_s
     while time.monotonic() < deadline:
         if proc.poll() is not None:
-            return
+            break
         time.sleep(0.05)
     try:
-        pgid = os.getpgid(proc.pid)
+        # SIGKILL the group unconditionally — even if the leader exited, a
+        # grandchild that ignored SIGTERM is still in the group and must be reaped.
         os.killpg(pgid, signal.SIGKILL)
     except (ProcessLookupError, OSError):
         pass
@@ -1205,38 +1206,55 @@ def _run_task(
         if procs is not None:
             procs[task_id] = proc
         assert proc.stdout is not None
-        # proc.stdout is an unbuffered binary stream (bufsize=0); readline()
-        # returns bytes and select() sees exactly what's unread.
-        fd = proc.stdout
+        # Read raw OS-level chunks, not readline(): select() only guarantees ≥1
+        # byte is ready, not a whole line, so readline() would BLOCK on a
+        # partial-line-then-hang and defeat both timers. Chunked os.read() also
+        # avoids the byte-by-byte syscall overhead of a bufsize=0 readline().
+        fd_int = proc.stdout.fileno()
+        pgid = proc.pid                 # == process-group id (start_new_session)
+        buf = b""
+
+        def _emit(text: str) -> None:
+            nonlocal lines
+            lines += 1
+            tail.append(text)
+            log.write(text + "\n")
+            with _print_lock:
+                print(f"[{task_id}] {text}")
+
+        timed = bool(idle_s or hard_s)
         while True:
-            if idle_s or hard_s:
+            if timed:
                 now = time.monotonic()
                 budget_idle = (idle_s - (now - last_output)) if idle_s else None
                 budget_hard = (hard_s - (now - started))     if hard_s else None
-                wait_s = min(w for w in (budget_idle, budget_hard, 5.0)
+                wait_s = min(w for w in (budget_idle, budget_hard, 1.0)
                              if w is not None)
-                ready, _, _ = _select.select([fd], [], [], max(0.1, wait_s))
+                ready, _, _ = _select.select([fd_int], [], [], max(0.05, wait_s))
                 now = time.monotonic()
                 if idle_s and (now - last_output) >= idle_s:
                     kill_reason = "idle"
-                    _kill(proc, grace_s)
+                    _kill(proc, pgid, grace_s)
                     break
                 if hard_s and (now - started) >= hard_s:
                     kill_reason = "hard"
-                    _kill(proc, grace_s)
+                    _kill(proc, pgid, grace_s)
                     break
                 if not ready:
                     continue
-            raw = fd.readline()
-            if not raw:         # EOF — child ended
+            try:
+                chunk = os.read(fd_int, 65536)   # ready ⇒ returns now (≥1 byte or b"" at EOF)
+            except OSError:
+                break
+            if not chunk:               # EOF — child closed its stream
                 break
             last_output = time.monotonic()
-            line = raw.decode("utf-8", errors="replace").rstrip("\n")
-            lines += 1
-            tail.append(line)
-            log.write(line + "\n")
-            with _print_lock:
-                print(f"[{task_id}] {line}")
+            buf += chunk
+            while b"\n" in buf:
+                rawline, buf = buf.split(b"\n", 1)
+                _emit(rawline.decode("utf-8", errors="replace").rstrip("\r"))
+        if buf:                         # flush a trailing partial line at EOF
+            _emit(buf.decode("utf-8", errors="replace").rstrip("\r"))
         rc = proc.wait()
         if procs is not None:
             procs.pop(task_id, None)
