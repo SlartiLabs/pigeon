@@ -1,0 +1,52 @@
+name: release
+
+# Publish to PyPI on a version tag. Uses PyPI Trusted Publishing (OIDC) — there
+# is NO API token or password anywhere in this file or in repo secrets.
+#
+# One-time setup (PyPI → project `carrier-pigeon` → Publishing → Add a pending
+# publisher): owner = SlartiLabs, repository = pigeon, workflow = release.yml,
+# environment = pypi.
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:                       # gate: the suite must pass before we publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ripgrep (retrieval backend)
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Install from the locked dev set
+        run: |
+          python -m pip install -r requirements-dev.lock
+          python -m pip install -e . --no-deps
+      - run: pytest -q
+      - run: pyrefly check
+      - run: ruff check src tests
+
+  publish:
+    needs: [test]
+    runs-on: ubuntu-latest
+    environment: pypi         # protect releases behind an environment gate
+    permissions:
+      id-token: write         # OIDC trusted publishing — the ONLY credential
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install build
+          python -m build
+      - name: Publish to PyPI (OIDC, no token)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # No `with: password:` — trusted publishing supplies the credential via OIDC.
