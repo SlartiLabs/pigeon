@@ -68,8 +68,10 @@ import hashlib
 import json
 import os
 import re
+import select as _select
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -1086,6 +1088,65 @@ def _opencode_permission_env(cmd: list[str], config: Config) -> dict[str, str]:
     }
 
 
+def _resolve_timeouts(
+    ccfg: dict[str, Any], runner: str
+) -> tuple[float | None, float | None, float]:
+    """Resolve (idle_s, hard_s, grace_s) for a runner.
+
+    Resolution order: per-runner override → global → (None, None, 30).
+    A per-runner ``null`` value explicitly masks a global setting.
+    """
+    global_idle: float | None = ccfg.get("idle_timeout_s")
+    global_hard: float | None = ccfg.get("hard_cap_s")
+    global_grace: float = ccfg.get("grace_kill_s", 30)
+    per: dict[str, Any] = (ccfg.get("timeouts") or {}).get(runner, {})
+    # ``in`` check distinguishes "key absent" (inherit global) from "key=null" (mask it)
+    idle = per["idle_timeout_s"] if "idle_timeout_s" in per else global_idle
+    hard = per["hard_cap_s"]     if "hard_cap_s"     in per else global_hard
+    grace = per["grace_kill_s"]  if "grace_kill_s"   in per else global_grace
+    return idle, hard, float(grace)
+
+
+def _classify_status(rc: int, kill_reason: str | None) -> str:
+    """Map (rc, kill_reason) → task status string.
+
+    NEVER branches on rc == 124 (Ground-truth #2: pigeon kills yield -9/-15).
+    """
+    if rc == 0:
+        return "exited"
+    if kill_reason == "idle":
+        return "timed_out_idle"
+    if kill_reason == "hard":
+        return "timed_out"
+    return "failed"
+
+
+def _kill(proc: subprocess.Popen, pgid: int, grace_s: float) -> None:
+    """SIGTERM the process group, wait up to grace_s for the leader, then SIGKILL
+    the whole group — reaping grandchildren even if the leader already exited.
+
+    ``pgid`` is the child's process-group id, cached by the caller. With
+    ``start_new_session=True`` it equals ``proc.pid``, so we never call
+    ``os.getpgid`` on a pid that may already be reaped (which would raise and
+    leak orphaned grandchildren).
+    """
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except (ProcessLookupError, OSError):
+        pass
+    deadline = time.monotonic() + grace_s
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            break
+        time.sleep(0.05)
+    try:
+        # SIGKILL the group unconditionally — even if the leader exited, a
+        # grandchild that ignored SIGTERM is still in the group and must be reaped.
+        os.killpg(pgid, signal.SIGKILL)
+    except (ProcessLookupError, OSError):
+        pass
+
+
 def _run_task(
     task_id: str,
     cmd: list[str],
@@ -1099,8 +1160,11 @@ def _run_task(
     cwd: Path | None = None,
     budget: BudgetTracker | None = None,
     procs: dict[str, subprocess.Popen] | None = None,
-) -> int:
+) -> tuple[int, str | None]:
     """Spawn one runner; prefix-stream merged stdout/stderr and tee to a log.
+
+    Returns ``(rc, kill_reason)`` where ``kill_reason`` is ``"idle"`` or
+    ``"hard"`` when pigeon killed the process, ``None`` otherwise.
 
     The tail of the output is mined for a usage report; when found, the
     child's *measured* token consumption is written to the run manifest and
@@ -1110,10 +1174,13 @@ def _run_task(
     """
     log_path.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
+    last_output = started
+    kill_reason: str | None = None
     if recorder:
         recorder.task(task_id, status="running", started_at=_utcnow())
     lines = 0
     tail: deque[str] = deque(maxlen=200)
+    idle_s, hard_s, grace_s = _resolve_timeouts(config.coordinate_cfg, runner)
     with log_path.open("w", encoding="utf-8") as log:
         log.write("$ " + " ".join(shlex.quote(c) for c in cmd) + "\n")
         try:
@@ -1123,8 +1190,9 @@ def _run_task(
             proc = subprocess.Popen(
                 cmd, cwd=cwd or config.root,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, bufsize=1,
-                env=env,
+                bufsize=0,          # unbuffered BINARY: select() and readline()
+                env=env,            # see the same bytes (a buffered text wrapper
+                start_new_session=True,   # can hide data select never reports)
             )
         except OSError as exc:
             line = f"failed to spawn: {exc}"
@@ -1134,17 +1202,76 @@ def _run_task(
             if recorder:
                 recorder.task(task_id, status="spawn-failed", exit_code=127,
                               finished_at=_utcnow())
-            return 127
+            return 127, None
         if procs is not None:
             procs[task_id] = proc
         assert proc.stdout is not None
-        for raw in proc.stdout:
-            line = raw.rstrip("\n")
+        # Read raw OS-level chunks, not readline(): select() only guarantees ≥1
+        # byte is ready, not a whole line, so readline() would BLOCK on a
+        # partial-line-then-hang and defeat both timers. Chunked os.read() also
+        # avoids the byte-by-byte syscall overhead of a bufsize=0 readline().
+        fd_int = proc.stdout.fileno()
+        pgid = proc.pid                 # == process-group id (start_new_session)
+        buf = b""
+
+        def _emit(text: str) -> None:
+            nonlocal lines
             lines += 1
-            tail.append(line)
-            log.write(line + "\n")
+            tail.append(text)
+            log.write(text + "\n")
             with _print_lock:
-                print(f"[{task_id}] {line}")
+                print(f"[{task_id}] {text}")
+
+        timed = bool(idle_s or hard_s)
+        while True:
+            if timed:
+                now = time.monotonic()
+                budget_idle = (idle_s - (now - last_output)) if idle_s else None
+                budget_hard = (hard_s - (now - started))     if hard_s else None
+                wait_s = min(w for w in (budget_idle, budget_hard, 1.0)
+                             if w is not None)
+                ready, _, _ = _select.select([fd_int], [], [], max(0.05, wait_s))
+                now = time.monotonic()
+                if idle_s and (now - last_output) >= idle_s:
+                    kill_reason = "idle"
+                    _kill(proc, pgid, grace_s)
+                    break
+                if hard_s and (now - started) >= hard_s:
+                    kill_reason = "hard"
+                    _kill(proc, pgid, grace_s)
+                    break
+                if not ready:
+                    continue
+            try:
+                chunk = os.read(fd_int, 65536)   # ready ⇒ returns now (≥1 byte or b"" at EOF)
+            except OSError:
+                break
+            if not chunk:               # EOF — child closed its stream
+                break
+            last_output = time.monotonic()
+            buf += chunk
+            while b"\n" in buf:
+                rawline, buf = buf.split(b"\n", 1)
+                _emit(rawline.decode("utf-8", errors="replace").rstrip("\r"))
+        if buf:                         # flush a trailing partial line at EOF
+            _emit(buf.decode("utf-8", errors="replace").rstrip("\r"))
+        # The caps must bound TOTAL subprocess lifetime, not just time spent in
+        # the read loop: a child that closes stdout+stderr then keeps running
+        # breaks the loop on EOF with no kill, leaving a bare proc.wait() to
+        # block forever. Re-apply the same idle/hard budget to the final wait.
+        while timed and kill_reason is None and proc.poll() is None:
+            now = time.monotonic()
+            if idle_s and (now - last_output) >= idle_s:
+                kill_reason = "idle"
+                _kill(proc, pgid, grace_s)
+            elif hard_s and (now - started) >= hard_s:
+                kill_reason = "hard"
+                _kill(proc, pgid, grace_s)
+            else:
+                try:
+                    proc.wait(timeout=0.1)
+                except subprocess.TimeoutExpired:
+                    pass
         rc = proc.wait()
         if procs is not None:
             procs.pop(task_id, None)
@@ -1169,16 +1296,18 @@ def _run_task(
             print(f"[{task_id}] telemetry: {telemetry['total_tokens']} tokens (measured){cost}")
     if recorder:
         fields: dict[str, Any] = dict(
-            status="exited" if rc == 0 else "failed",
+            status=_classify_status(rc, kill_reason),
             exit_code=rc,
             finished_at=_utcnow(),
             duration_s=round(time.monotonic() - started, 3),
             output_lines=lines,
         )
+        if kill_reason:
+            fields["kill_reason"] = kill_reason
         if telemetry:
             fields["telemetry"] = telemetry
         recorder.task(task_id, **fields)
-    return rc
+    return rc, kill_reason
 
 
 def run_coordinate(
@@ -1260,7 +1389,8 @@ def run_coordinate(
     # A `receives:` task DEFERS its single (append-only) write to spawn, when
     # its cross-wave pointers actually exist on disk (see _spawn_prepare).
     def _make_handoff(task: dict[str, Any], injected: list[str], *,
-                      do_pack: bool) -> Any:
+                      do_pack: bool,
+                      salvaged_upstream: list[str] | None = None) -> Any:
         artifacts = list(task.get("artifacts") or [])
         if do_pack and task.get("pack"):
             from .. import pack as pack_mod  # lazy: avoids a module cycle
@@ -1284,11 +1414,15 @@ def run_coordinate(
                          **(task.get("constraints") or {})},
             crew=task.get("crew") or None,
             context_ref=task.get("context_ref", "manifest@HEAD"),
+            salvaged_upstream=salvaged_upstream or None,
         )
 
     def _write_handoff_cmd(task: dict[str, Any],
-                           injected: list[str]) -> tuple[list[str], str]:
-        handoff = _make_handoff(task, injected, do_pack=True)
+                           injected: list[str],
+                           salvaged_upstream: list[str] | None = None,
+                           ) -> tuple[list[str], str]:
+        handoff = _make_handoff(task, injected, do_pack=True,
+                                salvaged_upstream=salvaged_upstream)
         path = ho.write_handoff(handoff, config)
         rel = str(path.relative_to(config.root))
         ev = tokens.account_handoff(config, handoff, path=rel)
@@ -1307,6 +1441,10 @@ def run_coordinate(
               if lp.is_relative_to(config.root) else str(lp))
         return lp, lr
 
+    # Phase 3: tasks that need a worktree-isolated upstream are deferred at spawn
+    # so salvage_diff pointers can be injected once we know which upstreams were salvaged.
+    worktree_task_ids: set[str] = {t["id"] for t in tasks
+                                   if t.get("isolation") == "worktree"}
     commands: list[tuple[dict[str, Any], list[str], Path]] = []
     deferred: set[str] = set()
     for task in tasks:
@@ -1314,7 +1452,13 @@ def run_coordinate(
         # A `receives:` task defers to resolve cross-wave pointers at spawn; a
         # `reentry:` task defers so every attempt writes a fresh handoff (its
         # prior verdict's fix list injected). Both write once per spawn.
-        if task.get("receives") or task.get("reentry"):
+        # Phase 3 widening: also defer tasks whose `needs` include a worktree
+        # task (so salvage_diff pointers can be injected at spawn time).
+        needs_worktree = bool(
+            not task.get("block_on_salvage")
+            and set(task.get("needs") or []) & worktree_task_ids
+        )
+        if task.get("receives") or task.get("reentry") or needs_worktree:
             injected = _resolve_receives(config, task, quiet=True)  # speculative
             tokens.account_handoff(
                 config, _make_handoff(task, injected, do_pack=False),
@@ -1325,10 +1469,13 @@ def run_coordinate(
             recorder.task(task["id"], command=disp_cmd, log=log_rel)
             deferred.add(task["id"])
             commands.append((task, disp_cmd, log_path))
-            why = ("reentry — handoff written per attempt"
-                   if task.get("reentry") and not task.get("receives")
-                   else f"receives (resolved at spawn) — matching now: "
-                        f"{', '.join(injected) or 'none yet'}")
+            if task.get("reentry") and not task.get("receives"):
+                why = "reentry — handoff written per attempt"
+            elif task.get("receives"):
+                why = (f"receives (resolved at spawn) — matching now: "
+                       f"{', '.join(injected) or 'none yet'}")
+            else:
+                why = "salvage-aware — handoff written at spawn"
             print(f"[{task['id']}] {why}")
         else:
             cmd, rel = _write_handoff_cmd(task, [])
@@ -1366,10 +1513,11 @@ def run_coordinate(
     def _execute(task: dict[str, Any], cmd: list[str], log_path: Path) -> int:
         tid = task["id"]
         if task.get("isolation") != "worktree":
-            return _run_task(tid, cmd, config, log_path, recorder,
-                             sid=sid, runner=task["runner"],
-                             model=task.get("model") or "", budget=budget,
-                             procs=running_procs)
+            rc, _kill_reason = _run_task(tid, cmd, config, log_path, recorder,
+                                         sid=sid, runner=task["runner"],
+                                         model=task.get("model") or "", budget=budget,
+                                         procs=running_procs)
+            return rc
         try:
             wt_dir, branch, base = _worktree_setup(config, run_id, tid)
         except RuntimeError as exc:
@@ -1379,10 +1527,10 @@ def run_coordinate(
                           isolation_error=str(exc), finished_at=_utcnow())
             return 125
         recorder.task(tid, worktree=str(wt_dir), branch=branch)
-        rc = _run_task(tid, cmd, config, log_path, recorder,
-                       sid=sid, runner=task["runner"],
-                       model=task.get("model") or "", cwd=wt_dir, budget=budget,
-                       procs=running_procs)
+        rc, _kill_reason = _run_task(tid, cmd, config, log_path, recorder,
+                                     sid=sid, runner=task["runner"],
+                                     model=task.get("model") or "", cwd=wt_dir,
+                                     budget=budget, procs=running_procs)
         try:
             info, harvested = _worktree_finish(config, tid, wt_dir, branch, run_id, base)
         except RuntimeError as exc:
@@ -1398,14 +1546,30 @@ def run_coordinate(
             with _print_lock:
                 print(f"[{tid}] work committed to branch {info['branch']} "
                       f"({info.get('commit', '?')})")
+        # Phase 2 — salvage detection: rc!=0 + worktree + materialized diff → salvaged
+        if rc != 0 and not task.get("block_on_salvage") and info.get("diff"):
+            recorder.task(tid, status="salvaged", salvage_diff=info["diff"])
+            recorder.event("salvage.detected", task=tid, diff=info["diff"])
+            with _print_lock:
+                print(f"\n[{tid}] *** SALVAGED *** diff materialized at {info['diff']}\n")
         return rc
 
     def _spawn_prepare(task: dict[str, Any]) -> list[str]:
-        """Deferred write-at-spawn for a `receives:`/`reentry:` task: resolve its
-        cross-wave pointers against the now-populated tree (plus, on a re-entry,
-        the prior verdict's fix list), write its one handoff, return the cmd."""
+        """Deferred write-at-spawn for a `receives:`/`reentry:`/salvage-aware task:
+        resolve cross-wave pointers, inject salvage_diff pointers from salvaged
+        upstreams, write the handoff, return the cmd."""
         injected = _resolve_receives(config, task) + reentry_inject.get(task["id"], [])
-        cmd, rel = _write_handoff_cmd(task, injected)
+        # Phase 3: advisory salvage-diff injection for salvaged upstreams
+        salvaged_upstreams: list[str] = []
+        for dep_tid in (task.get("needs") or []):
+            if dep_tid in salvaged:
+                dep_data = recorder.data.get("tasks", {}).get(dep_tid, {})
+                diff = dep_data.get("salvage_diff")
+                if diff:
+                    injected.append(f"repo://{diff}")
+                    salvaged_upstreams.append(dep_tid)
+        cmd, rel = _write_handoff_cmd(task, injected,
+                                      salvaged_upstream=salvaged_upstreams or None)
         recorder.task(task["id"], handoff=rel)
         recorder.event("handoff.dispatched", task=task["id"], handoff=rel)
         return cmd
@@ -1416,6 +1580,7 @@ def run_coordinate(
     deps = {tid: set(by_id[tid][0].get("needs") or []) for tid in by_id}
     results: dict[str, int | None] = {}  # exit code; None = skipped
     succeeded: set[str] = set()
+    salvaged: set[str] = set()           # rc!=0 but diff materialized — advisory proceed
     blocked: set[str] = set()            # failed or skipped
     pending = set(by_id)
     futures: dict[Any, str] = {}
@@ -1436,7 +1601,13 @@ def run_coordinate(
             while changed:               # cascade skips to a fixpoint
                 changed = False
                 for tid in sorted(pending):
-                    bad = deps[tid] & blocked
+                    task_obj = by_id[tid][0]
+                    # block_on_salvage: a salvaged dep is a blocker too, so a hard
+                    # gate cascade-skips instead of orphaning in `pending`.
+                    if task_obj.get("block_on_salvage"):
+                        bad = deps[tid] & (blocked | salvaged)
+                    else:
+                        bad = deps[tid] & (blocked - salvaged)
                     if bad:
                         pending.discard(tid)
                         results[tid] = None
@@ -1449,7 +1620,12 @@ def run_coordinate(
                                   f"(dependency failed: {', '.join(sorted(bad))})")
             spawn_wait: float | None = None   # soonest a timing-deferred task runs
             for tid in sorted(pending):
-                if not (deps[tid] <= succeeded):
+                task_obj = by_id[tid][0]
+                # block_on_salvage: only succeeded deps satisfy (old conservative behavior)
+                if task_obj.get("block_on_salvage"):
+                    if not (deps[tid] <= succeeded):
+                        continue
+                elif not (deps[tid] <= (succeeded | salvaged)):
                     continue
                 now = time.monotonic()
                 floor = not_before.get(tid, 0.0)
@@ -1522,7 +1698,13 @@ def run_coordinate(
                                   f"{reentry_count[tid]}/{reentry_max[tid]}")
                         continue
                 results[tid] = rc
-                (succeeded if rc == 0 else blocked).add(tid)
+                if rc == 0:
+                    succeeded.add(tid)
+                elif (recorder.data.get("tasks", {})
+                      .get(tid, {}).get("status") == "salvaged"):
+                    salvaged.add(tid)
+                else:
+                    blocked.add(tid)
       except KeyboardInterrupt:
         # Terminate children NOW (their streams close -> workers drain ->
         # the executor can shut down instead of deadlocking on readers).
@@ -1573,7 +1755,16 @@ def run_coordinate(
         if obj.get("sid") == sid and obj.get("to") == COORDINATOR and obj.get("from") in results:
             returns[obj["from"]] = str(path.relative_to(config.root))
 
-    failed = [tid for tid, rc in results.items() if rc not in (0, None)]
+    # Salvaged tasks are NOT genuine failures; exclude them from the failed list.
+    # A salvaged task with no consumer (or with block_on_salvage) counts as failure.
+    salvaged_no_consumer = {
+        tid for tid in salvaged
+        if not any(tid in set(by_id[dtid][0].get("needs") or [])
+                   for dtid in succeeded)
+    }
+    failed = [tid for tid, rc in results.items()
+              if rc not in (0, None) and tid not in salvaged]
+    failed += sorted(salvaged_no_consumer)
     skipped = [tid for tid, rc in results.items() if rc is None]
     print("\n" + "=" * 60)
     for task, _, log_path in commands:
@@ -1586,6 +1777,10 @@ def run_coordinate(
             status = "ok (completed, handed back)"
         elif rc == 0:
             status = "ok (exited; no handoff back to Coordinator)"
+        elif tid in salvaged:
+            task_data = recorder.data.get("tasks", {}).get(tid, {})
+            diff_ref = task_data.get("salvage_diff", "?")
+            status = f"SALVAGED (exit {rc}; diff at {diff_ref})"
         else:
             status = f"FAILED (exit {rc})"
         log_disp = log_path.relative_to(config.root) \
@@ -1600,10 +1795,11 @@ def run_coordinate(
     recorder.finish(
         run_status, invalid_handoffs=invalid,
         summary={"ok": ok, "failed": len(failed), "skipped": len(skipped),
-                 "total": len(tasks)},
+                 "salvaged": len(salvaged), "total": len(tasks)},
         budget=budget.as_dict(),
     )
-    print(f"coordinate: {ok}/{len(tasks)} tasks ok")
+    print(f"coordinate: {ok}/{len(tasks)} tasks ok"
+          + (f"  ({len(salvaged)} salvaged)" if salvaged else ""))
     print(f"run manifest: {recorder.path.relative_to(config.root)}")
     if ccfg.get("auto_distill"):
         from .. import distill as distill_mod  # lazy: avoids a module cycle

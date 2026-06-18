@@ -185,6 +185,7 @@ def build_handoff(
     constraints: dict[str, Any] | None = None,
     crew: dict[str, Any] | None = None,
     context_ref: str | None = None,
+    salvaged_upstream: list[str] | None = None,
     schema_version: str = SCHEMA_VERSION,
 ) -> dict[str, Any]:
     """Construct a handoff dict. Optional fields are omitted when empty."""
@@ -193,6 +194,8 @@ def build_handoff(
         state["artifacts"] = list(artifacts)
     if decisions:
         state["decisions"] = dict(decisions)
+    if salvaged_upstream:
+        state["salvaged_upstream"] = list(salvaged_upstream)
     handoff: dict[str, Any] = {
         "schema_version": schema_version,
         "sid": sid,

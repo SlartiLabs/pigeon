@@ -21,6 +21,7 @@ from ..config import Config
 _STATUS_GLYPHS = {
     "completed": "✔", "exited": "✔", "running": "▶", "queued": "·",
     "failed": "✗", "spawn-failed": "✗", "skipped": "⊘", "dry-run": "·",
+    "timed_out_idle": "⏱", "timed_out": "⏱", "salvaged": "♻",
 }
 
 
@@ -50,6 +51,9 @@ def render_status(run: dict[str, Any], config: Config | None = None) -> str:
         by_status[t.get("status", "?")] = by_status.get(t.get("status", "?"), 0) + 1
     ok = by_status.get("completed", 0) + by_status.get("exited", 0)
     failed = by_status.get("failed", 0) + by_status.get("spawn-failed", 0)
+    salvaged = (by_status.get("salvaged", 0)
+                + by_status.get("timed_out_idle", 0)
+                + by_status.get("timed_out", 0))
     header = (
         f"{run.get('run_id', '?')}  {str(run.get('status', '?')).upper()}  "
         f"{_elapsed(run.get('started_at'), run.get('finished_at'))}   "
@@ -58,7 +62,8 @@ def render_status(run: dict[str, Any], config: Config | None = None) -> str:
     )
     counts = (f"tasks: {ok} ok · {by_status.get('running', 0)} running · "
               f"{by_status.get('queued', 0)} queued · {failed} failed · "
-              f"{by_status.get('skipped', 0)} skipped")
+              f"{by_status.get('skipped', 0)} skipped"
+              + (f" · {salvaged} salvaged/timed-out" if salvaged else ""))
     budget = run.get("budget") or {}
     if budget:
         parts = [f"{budget.get('spent_tokens', 0)}"
@@ -150,7 +155,7 @@ def _aggregate_tasks(run: dict[str, Any], key: str) -> dict[str, dict[str, Any]]
         if bucket is None:
             continue
         a = agg.setdefault(bucket, {
-            "tasks": 0, "ok": 0, "failed": 0, "skipped": 0,
+            "tasks": 0, "ok": 0, "failed": 0, "skipped": 0, "salvaged": 0,
             "duration_s": 0.0, "tokens": 0, "cost_usd": 0.0,
         })
         a["tasks"] += 1
@@ -161,6 +166,8 @@ def _aggregate_tasks(run: dict[str, Any], key: str) -> dict[str, dict[str, Any]]
             a["failed"] += 1
         elif status == "skipped":
             a["skipped"] += 1
+        elif status in ("salvaged", "timed_out_idle", "timed_out"):
+            a["salvaged"] += 1
         a["duration_s"] += float(t.get("duration_s") or 0)
         telemetry = t.get("telemetry") or {}
         a["tokens"] += int(telemetry.get("total_tokens") or 0)
@@ -173,7 +180,8 @@ def _agg_lines(agg: dict[str, dict[str, Any]]) -> list[str]:
     for name in sorted(agg):
         a = agg[name]
         line = (f"  {name:<12} tasks={a['tasks']}  ok={a['ok']} "
-                f"failed={a['failed']} skipped={a['skipped']}  "
+                f"failed={a['failed']} skipped={a['skipped']} "
+                f"salvaged={a.get('salvaged', 0)}  "
                 f"busy={round(a['duration_s'], 1)}s")
         if a["tokens"]:
             line += f"  tokens={a['tokens']} (measured)  cost=${round(a['cost_usd'], 4)}"
