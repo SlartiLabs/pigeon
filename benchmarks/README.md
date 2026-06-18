@@ -26,6 +26,8 @@ never exercised it. See `PROTOCOL.md` §3 and `tasks/README.md`.
 
 ## Files
 - `PROTOCOL.md`, `KILL-CRITERION.md` — method + kill-N (committed).
+- `PUBLIC-REPO-CRITERIA.md` — rubric for picking the ~3 public repos that produce
+  the reproducible headline number.
 - `tasks/` — per-repo task specs (committed, public-label only).
 - `results/<label>.json` — anonymized per-task/per-arm metrics (committed);
   `results.template.json` is the schema. Raw logs live in `results/raw/` (gitignored).
