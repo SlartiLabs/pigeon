@@ -7,7 +7,27 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased] — v0.5.0
+## [0.5.1] — 2026-06-18
+
+### Added
+- `adopt`: `pigeon adopt` discovers and catalogs existing Claude subagents, skills, and MCP servers (inventory-only) behind an allow-list trust gate; `--import <name>` copies an adopted asset into playbooks (unmarked, so `refresh` won't clobber it); deep `.claude/skills` parsing (body, tools, bundled resources).
+- `adopt`: thin MCP pass-through — a task may declare `mcp: [names]`; coordinate warns (non-blocking) when a declared server isn't configured. Validation only — no connect/proxy/orchestration.
+- `probe`: `pigeon probe` qualifies configured runners (ok / slow / protocol_fail / dead) into `.pigeon/probe.json`; `--free-only` skips the trusted CLIs. Advisory — never edits the pool.
+- `coordinate`: progress-aware timeouts — in-process idle-watch + absolute hard cap (SIGTERM→grace→SIGKILL over the process group), default-off; salvage-aware scheduling — a worktree task that exits non-zero but committed a diff is `salvaged`, and its downstream review/gate runs against the materialized diff (`block_on_salvage` opts out).
+- `skills`: cross-runtime renderers — project playbook pages to opencode and agy/antigravity, not just Claude (opt-in via `skills.targets`).
+- `skills`: memory-page typing — pages declare `record_type` (skill/playbook/decision/reference); a decision/reference page is no longer mis-projected as a subagent, and an unknown type fails loud.
+- `agents`/`adopt`: cross-reference between the two human views.
+
+### Changed
+- `coordinate`: the `readonly` constraint is isolation-aware — a shared-tree readonly task may write its artifact under `.pigeon/`; a worktree-isolated one stays findings-only.
+- `coordinate`: `crew_skill_warnings` deduped per (task, skill) + `assume_known_skills` escape hatch.
+
+### Fixed
+- `coordinate`: timeouts and EOF-then-hang no longer bypass the caps (caps bound total subprocess lifetime); a timed-out task that already committed work no longer silently skips its downstream gate.
+
+---
+
+## [0.5.0] — 2026-06-17
 
 ### Added
 - `coordinate`: opencode free-model army runners; per-model telemetry parsing ready.
@@ -100,7 +120,8 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/SlartiLabs/pigeon/compare/v0.4.0...HEAD
+[0.5.1]: https://github.com/SlartiLabs/pigeon/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/SlartiLabs/pigeon/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SlartiLabs/pigeon/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SlartiLabs/pigeon/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SlartiLabs/pigeon/compare/v0.1.3...v0.2.0
