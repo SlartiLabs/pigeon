@@ -264,7 +264,7 @@ def test_budget_stops_new_launches(repo, capsys):
     assert run["tasks"]["c"]["status"] == "skipped"
     assert run["budget"]["spent_tokens"] == 180
     assert run["budget"]["max_tokens"] == 100
-    assert run["summary"] == {"ok": 1, "failed": 0, "skipped": 2, "total": 3}
+    assert run["summary"] == {"ok": 1, "failed": 0, "skipped": 2, "salvaged": 0, "total": 3}
 
 
 def test_no_budget_means_no_ceiling(repo):
@@ -385,7 +385,7 @@ def test_run_manifest_records_successful_run(repo):
     run = runs[0]
     assert run["run_id"] == "co1-1"
     assert run["status"] == "completed"
-    assert run["summary"] == {"ok": 2, "failed": 0, "skipped": 0, "total": 2}
+    assert run["summary"] == {"ok": 2, "failed": 0, "skipped": 0, "salvaged": 0, "total": 2}
     assert run["started_at"] and run["finished_at"]
     for tid in ("t1", "t2"):
         t = run["tasks"][tid]
@@ -512,7 +512,7 @@ def test_failed_dependency_skips_downstream_cascade(repo, capsys):
     assert run["tasks"]["mid"]["skipped_because"] == ["root"]
     assert run["tasks"]["leaf"]["status"] == "skipped"
     assert run["tasks"]["free"]["status"] == "exited"
-    assert run["summary"] == {"ok": 1, "failed": 1, "skipped": 2, "total": 4}
+    assert run["summary"] == {"ok": 1, "failed": 1, "skipped": 2, "salvaged": 0, "total": 4}
 
 
 def test_needs_chain_respects_parallel_limit_one(repo):

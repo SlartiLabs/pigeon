@@ -150,6 +150,17 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
                 "agy": [],
                 "opencode": [],
             },
+            # Three-tier timeout ladder (all null by default → byte-identical to
+            # today's blocking drain; no behavior change unless configured):
+            #   idle_timeout_s   — kill after N seconds of no stdout (progress guard)
+            #   hard_cap_s       — absolute in-loop ceiling, covers fast-talking livelock
+            #   grace_kill_s     — SIGTERM window before SIGKILL; matches `-k 30`
+            # Per-runner overrides in `timeouts:` take precedence; a per-runner
+            # null explicitly disables an otherwise-set global value.
+            "idle_timeout_s": None,
+            "hard_cap_s": None,
+            "grace_kill_s": 30,
+            "timeouts": {},
             # Named model pools for the `model_pool:` task field. A pool's models
             # are round-robined across the tasks that name it, seeded by sid so
             # the assignment is reproducible per session yet spread across
