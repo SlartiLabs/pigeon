@@ -20,11 +20,49 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import yaml
 
 from .config import Config
 from .skills import GEN_MARKER
+
+# Argument tokens that signal a secret is being passed on an MCP server's
+# command line (e.g. ["--api-key", "sk-…"]). Matched case-insensitively.
+_SECRET_ARG_RE = re.compile(
+    r"(?i)(token|secret|api[_-]?key|password|passwd|pwd|auth|credential|bearer)"
+)
+
+
+def _redact_url(url: Any) -> tuple[str | None, bool]:
+    """Strip userinfo and query from an MCP URL; report if either was present.
+
+    A connection string may carry credentials in the userinfo
+    (``postgres://user:pass@host``) or a query token (``?token=sk-…``). Both are
+    secrets that must never reach ``catalog.json`` (§6). Returns
+    ``(safe_url, had_secret)``; an unparseable URL is dropped (``None``) rather
+    than risk leaking an embedded credential.
+    """
+    if not url or not isinstance(url, str):
+        return (url if isinstance(url, str) else None), False
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return None, True
+    had_secret = bool(parts.username or parts.password or parts.query)
+    if not had_secret:
+        return url, False
+    netloc = parts.hostname or ""
+    if parts.port:
+        netloc = f"{netloc}:{parts.port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, "", "")), True
+
+
+def _args_have_secret(args: Any) -> bool:
+    """True if any command-line arg looks like it carries a secret."""
+    if not isinstance(args, list):
+        return False
+    return any(isinstance(a, str) and _SECRET_ARG_RE.search(a) for a in args)
 
 
 def provenance(path: Path) -> str:
@@ -109,6 +147,7 @@ def parse_skill(path: Path) -> dict[str, Any] | None:
     return {
         "name": str(meta["name"]),
         "description": str(meta.get("description", "")),
+        "provenance": "pigeon-generated" if GEN_MARKER in text else "user-authored",
         "kind": "skill",
     }
 
@@ -135,13 +174,16 @@ def parse_mcp_config(path: Path) -> list[dict[str, Any]]:
         if not isinstance(cfg, dict):
             continue
         env = cfg.get("env") or {}
+        # Secrets may hide in env, in the url (userinfo/query) or in args
+        # (e.g. --api-key). Inventory only needs name/command/url + the flag, so
+        # args are dropped entirely and the url is redacted before storage (§6).
+        safe_url, url_secret = _redact_url(cfg.get("url"))
         records.append({
             "name": str(name),
             "kind": "mcp",
             "command": cfg.get("command"),
-            "args": cfg.get("args"),
-            "url": cfg.get("url"),
-            "has_secrets": bool(env),
+            "url": safe_url,
+            "has_secrets": bool(env) or url_secret or _args_have_secret(cfg.get("args")),
         })
     return records
 
@@ -173,7 +215,11 @@ def discover(config: Config) -> list[dict[str, Any]]:
         scope = "user" if str(path_str).startswith("~") else "project"
         if not src.is_dir():
             continue
-        for md_file in sorted(src.glob("*.md")):
+        try:
+            md_files = sorted(src.glob("*.md"))
+        except OSError:
+            continue  # unreadable source dir (e.g. PermissionError) — skip, don't crash
+        for md_file in md_files:
             record = parse_claude_subagent(md_file)
             if record is None or record["provenance"] == "pigeon-generated":
                 continue
@@ -191,11 +237,15 @@ def discover(config: Config) -> list[dict[str, Any]]:
         scope = "user" if str(path_str).startswith("~") else "project"
         if not src.is_dir():
             continue
-        for skill_dir in sorted(src.iterdir()):
+        try:
+            skill_dirs = sorted(src.iterdir())
+        except OSError:
+            continue  # unreadable source dir (e.g. PermissionError) — skip, don't crash
+        for skill_dir in skill_dirs:
             if not skill_dir.is_dir():
                 continue
             record = parse_skill(skill_dir)
-            if record is None:
+            if record is None or record.get("provenance") == "pigeon-generated":
                 continue
             name = record["name"]
             key = f"skill:{name}"
@@ -329,26 +379,94 @@ def preflight_check(names: list[str], config: Config) -> list[str]:
     return warnings
 
 
-def update_allow(names: list[str], config: Config) -> None:
-    """Append names to adopt.allow in the on-disk config.yaml."""
+def update_allow(names: list[str], config: Config) -> list[str]:
+    """Add names to adopt.allow in .pigeon/config.yaml; return those newly added.
+
+    The config is human-edited and heavily commented, so this does a *targeted*
+    text edit (append a fresh ``adopt:`` block, or insert into an existing
+    ``allow:`` list) rather than a full safe_dump round-trip that would strip
+    every comment. It refuses to proceed — rather than silently overwrite — if
+    the existing config is not parseable YAML.
+    """
     cfg_path = config.contract_dir / "config.yaml"
+    text = cfg_path.read_text(encoding="utf-8") if cfg_path.exists() else ""
     try:
-        existing: dict[str, Any] = yaml.safe_load(
-            cfg_path.read_text(encoding="utf-8")
-        ) if cfg_path.exists() else {}
-    except yaml.YAMLError:
-        existing = {}
-    if not isinstance(existing, dict):
-        existing = {}
-    adopt_section = existing.setdefault("adopt", {})
-    allow_list: list[str] = adopt_section.setdefault("allow", [])
-    added = False
-    for name in names:
-        if name not in allow_list:
-            allow_list.append(name)
-            added = True
-    if added:
-        cfg_path.write_text(
-            yaml.safe_dump(existing, sort_keys=False, allow_unicode=True),
-            encoding="utf-8",
+        parsed = yaml.safe_load(text) if text.strip() else {}
+    except yaml.YAMLError as exc:
+        raise ValueError(
+            f"refusing to edit {cfg_path}: it is not valid YAML ({exc}); "
+            "fix it by hand before running `pigeon adopt --allow`"
+        ) from None
+    if parsed is not None and not isinstance(parsed, dict):
+        raise ValueError(
+            f"refusing to edit {cfg_path}: its top level is not a mapping"
         )
+
+    current: list[str] = []
+    adopt_cfg = (parsed or {}).get("adopt")
+    if isinstance(adopt_cfg, dict) and isinstance(adopt_cfg.get("allow"), list):
+        current = [a for a in adopt_cfg["allow"] if isinstance(a, str)]
+    # New names not already allowed, de-duped, order preserved.
+    seen: set[str] = set(current)
+    new = [n for n in names if not (n in seen or seen.add(n))]
+    if not new:
+        return []
+
+    _write_allow(cfg_path, text, current, new)
+    return new
+
+
+def _write_allow(cfg_path: Path, text: str, current: list[str],
+                 new: list[str]) -> None:
+    """Comment-preserving insert of ``new`` names into adopt.allow.
+
+    Handles the three real states of the on-disk config: no ``adopt:`` block
+    (append a fresh one), ``allow: []`` (expand to a block list), and an existing
+    ``allow:`` block list (insert after the last item). Any other hand-authored
+    shape is left untouched and the caller is told to edit by hand — never a
+    blind rewrite.
+    """
+    lines = text.splitlines()
+    adopt_idx = next(
+        (i for i, ln in enumerate(lines) if re.match(r"^adopt:\s*$", ln)), None)
+
+    if adopt_idx is None:
+        block = ["", "adopt:", "  allow:"] + [f"    - {n}" for n in current + new]
+        cfg_path.write_text(
+            (text.rstrip("\n") + "\n" if text.strip() else "") + "\n".join(block) + "\n",
+            encoding="utf-8")
+        return
+
+    end = len(lines)
+    for i in range(adopt_idx + 1, len(lines)):
+        if lines[i] and not lines[i][0].isspace():
+            end = i
+            break
+
+    for i in range(adopt_idx + 1, end):
+        m = re.match(r"^(\s+)allow:\s*\[\s*\]\s*$", lines[i])
+        if m:
+            base = m.group(1)
+            lines[i:i + 1] = (
+                [f"{base}allow:"] + [f"{base}  - {n}" for n in current + new])
+            cfg_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return
+
+    allow_idx = next(
+        (i for i in range(adopt_idx + 1, end)
+         if re.match(r"^\s+allow:\s*$", lines[i])), None)
+    if allow_idx is not None:
+        insert_at, indent = allow_idx + 1, "    "
+        for i in range(allow_idx + 1, end):
+            if re.match(r"^\s+-\s", lines[i]):
+                indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+                insert_at = i + 1
+            elif lines[i].strip():
+                break
+        lines[insert_at:insert_at] = [f"{indent}- {n}" for n in new]
+        cfg_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return
+
+    raise ValueError(
+        f"refusing to auto-edit the existing 'adopt:' block in {cfg_path}; "
+        f"add these to adopt.allow by hand: {', '.join(new)}")

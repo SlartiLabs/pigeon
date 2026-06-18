@@ -258,6 +258,17 @@ def _validate_schema(cfg: dict[str, Any]) -> None:
     _bool("resolve.allow_s3", res["allow_s3"])
     _bool("resolve.allow_outside_root", res["allow_outside_root"])
 
+    ad = cfg.get("adopt")
+    if isinstance(ad, dict):
+        allow = ad.get("allow")
+        if allow is not None:
+            if not isinstance(allow, list) or any(
+                    not isinstance(x, str) for x in allow):
+                raise ValueError(
+                    "config key 'adopt.allow' must be a list of strings, "
+                    f"got {type(allow).__name__!r}"
+                )
+
     co = _section("coordinate", cfg, "coordinate")
     _int("coordinate.parallel_limit", co["parallel_limit"])
 

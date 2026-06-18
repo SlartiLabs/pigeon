@@ -542,7 +542,13 @@ def cmd_adopt(args: argparse.Namespace) -> int:
     cfg = _cfg(args)
 
     if args.allow:
-        adopt_mod.update_allow(args.allow, cfg)
+        try:
+            added = adopt_mod.update_allow(args.allow, cfg)
+        except ValueError as exc:
+            print(f"adopt: {exc}", file=sys.stderr)
+            return 2
+        print(f"allow-listed: {', '.join(added)}" if added
+              else "allow: nothing new to add")
         # Reload config so the new allow list takes effect for this run.
         cfg = _cfg(args)
 

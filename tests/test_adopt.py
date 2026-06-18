@@ -7,6 +7,7 @@ Each test validates one behaviour from adopt.md §8.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -435,3 +436,146 @@ class TestMcpSecretScrubbing:
         lt = [e for e in data if e["name"] == "local-tool"]
         assert len(lt) == 1
         assert lt[0].get("has_secrets") is False
+
+
+# ===========================================================================
+# Gate regression tests (run adopt-gate-2 findings A–E)
+# ===========================================================================
+
+class TestMcpUrlAndArgSecrets:
+    """Gate blocker A: secrets in url / args must not reach the catalog."""
+
+    def _catalog(self, tmp_path: Path) -> list[dict[str, Any]]:
+        cfg = _mk_repo(tmp_path)
+        adopt.write_catalog(adopt.discover(cfg), cfg)
+        return json.loads(
+            (tmp_path / ".pigeon" / "adopt" / "catalog.json").read_text("utf-8"))
+
+    def test_url_userinfo_redacted(self, tmp_path: Path) -> None:
+        _write_mcp_json(tmp_path / ".mcp.json", {"servers": {
+            "db": {"url": "postgres://user:s3cret@db.example.com:5432/app"}}})
+        db = [e for e in self._catalog(tmp_path) if e["name"] == "db"][0]
+        assert "s3cret" not in json.dumps(db)
+        assert db["url"] == "postgres://db.example.com:5432/app"
+        assert db["has_secrets"] is True
+
+    def test_url_query_token_redacted(self, tmp_path: Path) -> None:
+        _write_mcp_json(tmp_path / ".mcp.json", {"servers": {
+            "remote": {"url": "https://host/mcp?token=sk-abc123"}}})
+        r = [e for e in self._catalog(tmp_path) if e["name"] == "remote"][0]
+        assert "sk-abc123" not in json.dumps(r)
+        assert r["url"] == "https://host/mcp"
+        assert r["has_secrets"] is True
+
+    def test_secret_in_args_sets_flag_and_args_dropped(self, tmp_path: Path) -> None:
+        _write_mcp_json(tmp_path / ".mcp.json", {"servers": {
+            "svc": {"command": "npx", "args": ["server", "--api-key", "sk-xyz"]}}})
+        svc = [e for e in self._catalog(tmp_path) if e["name"] == "svc"][0]
+        assert "sk-xyz" not in json.dumps(svc)   # the value must not be stored
+        assert "args" not in svc                  # args are not a catalog field
+        assert svc["has_secrets"] is True
+
+    def test_plain_url_kept_no_secret(self, tmp_path: Path) -> None:
+        _write_mcp_json(tmp_path / ".mcp.json", {"servers": {
+            "plain": {"url": "https://host/mcp"}}})
+        p = [e for e in self._catalog(tmp_path) if e["name"] == "plain"][0]
+        assert p["url"] == "https://host/mcp"
+        assert p["has_secrets"] is False
+
+
+class TestUpdateAllowSafety:
+    """Gate blocker B: --allow must not wipe or de-comment config.yaml."""
+
+    _CONFIG = (
+        "# my hand-written config — keep this comment\n"
+        "tokens:\n"
+        "  encoding: cl100k_base   # inline comment\n"
+    )
+
+    def test_appends_fresh_block_preserving_comments(self, tmp_path: Path) -> None:
+        cfg = _mk_repo(tmp_path, self._CONFIG)
+        added = adopt.update_allow(["code-reviewer"], cfg)
+        assert added == ["code-reviewer"]
+        text = (tmp_path / ".pigeon" / "config.yaml").read_text("utf-8")
+        assert "keep this comment" in text and "inline comment" in text
+        reloaded = load_config(tmp_path)
+        assert reloaded.data["adopt"]["allow"] == ["code-reviewer"]
+
+    def test_second_call_inserts_into_existing_block(self, tmp_path: Path) -> None:
+        cfg = _mk_repo(tmp_path, self._CONFIG)
+        adopt.update_allow(["first"], cfg)
+        added = adopt.update_allow(["second"], load_config(tmp_path))
+        assert added == ["second"]
+        text = (tmp_path / ".pigeon" / "config.yaml").read_text("utf-8")
+        assert "keep this comment" in text
+        assert load_config(tmp_path).data["adopt"]["allow"] == ["first", "second"]
+
+    def test_expands_inline_empty_allow(self, tmp_path: Path) -> None:
+        cfg = _mk_repo(tmp_path, self._CONFIG + "adopt:\n  allow: []\n")
+        adopt.update_allow(["x"], cfg)
+        assert load_config(tmp_path).data["adopt"]["allow"] == ["x"]
+        assert "keep this comment" in (
+            tmp_path / ".pigeon" / "config.yaml").read_text("utf-8")
+
+    def test_idempotent_no_duplicate(self, tmp_path: Path) -> None:
+        cfg = _mk_repo(tmp_path, self._CONFIG)
+        adopt.update_allow(["dup"], cfg)
+        assert adopt.update_allow(["dup"], load_config(tmp_path)) == []
+        assert load_config(tmp_path).data["adopt"]["allow"] == ["dup"]
+
+    def test_refuses_malformed_config_without_wiping(self, tmp_path: Path) -> None:
+        cfg = _mk_repo(tmp_path, self._CONFIG)
+        broken = "adopt: [unterminated\n:::not yaml:::\n"
+        cfg_path = tmp_path / ".pigeon" / "config.yaml"
+        cfg_path.write_text(broken, encoding="utf-8")
+        with pytest.raises(ValueError):
+            adopt.update_allow(["x"], cfg)
+        assert cfg_path.read_text("utf-8") == broken   # untouched, not wiped
+
+
+class TestGeneratedSkillExcluded:
+    """Gate finding C: GEN_MARKER'd skills are excluded like subagents."""
+
+    def test_generated_skill_not_catalogued(self, tmp_path: Path) -> None:
+        d = _write_skill_dir(tmp_path, "gen-skill")
+        sm = d / "SKILL.md"
+        sm.write_text(sm.read_text("utf-8") + f"\n{GEN_MARKER}\n", encoding="utf-8")
+        cfg = _mk_repo(tmp_path)
+        names = {e["name"] for e in adopt.discover(cfg)}
+        assert "gen-skill" not in names
+
+    def test_user_skill_still_catalogued(self, tmp_path: Path) -> None:
+        _write_skill_dir(tmp_path, "user-skill")
+        cfg = _mk_repo(tmp_path)
+        assert "user-skill" in {e["name"] for e in adopt.discover(cfg)}
+
+
+class TestDiscoverRobustness:
+    """Gate finding D: an unreadable source dir must not crash discovery."""
+
+    @pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses chmod perms")
+    def test_unreadable_source_dir_is_skipped(self, tmp_path: Path) -> None:
+        _write_subagent(tmp_path / ".claude" / "agents" / "ok.md", "ok")
+        skills = tmp_path / ".claude" / "skills"
+        skills.mkdir(parents=True)
+        skills.chmod(0o000)
+        try:
+            if os.access(skills, os.R_OK):
+                pytest.skip("chmod did not restrict access in this environment")
+            cfg = _mk_repo(tmp_path)
+            names = {e["name"] for e in adopt.discover(cfg)}  # must not raise
+            assert "ok" in names
+        finally:
+            skills.chmod(0o755)
+
+
+class TestAdoptAllowSchema:
+    """Gate finding E: adopt.allow is type-checked at load."""
+
+    def test_non_list_allow_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError):
+            _mk_repo(tmp_path, "adopt:\n  allow: not-a-list\n")
+
+    def test_non_string_items_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError):
+            _mk_repo(tmp_path, "adopt:\n  allow: [1, 2]\n")
