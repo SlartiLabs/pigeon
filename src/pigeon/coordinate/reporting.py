@@ -10,13 +10,12 @@ critical path. Nothing here spawns work or mutates state; the scheduler core
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pigeon.coordinate as _coord  # scheduler core: compute_waves (call-time)
 
 from ..config import Config
-
 
 _STATUS_GLYPHS = {
     "completed": "✔", "exited": "✔", "running": "▶", "queued": "·",
@@ -30,7 +29,7 @@ def _elapsed(start_iso: str | None, end_iso: str | None = None) -> str:
         return "—"
     try:
         start = datetime.fromisoformat(start_iso)
-        end = datetime.fromisoformat(end_iso) if end_iso else datetime.now(timezone.utc)
+        end = datetime.fromisoformat(end_iso) if end_iso else datetime.now(UTC)
     except ValueError:
         return "—"
     secs = max(0, int((end - start).total_seconds()))

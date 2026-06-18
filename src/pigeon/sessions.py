@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .config import Config
 from . import coordinate
 from . import handoff as ho
+from .config import Config
 
 
 def session_handoffs(config: Config, sid: str) -> list[tuple[str, dict[str, Any]]]:

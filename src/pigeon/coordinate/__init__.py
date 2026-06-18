@@ -78,16 +78,15 @@ import threading
 import time
 from collections import deque
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from ..config import Config
-from .. import SCHEMA_VERSION
+from .. import SCHEMA_VERSION, tokens
 from .. import handoff as ho
-from .. import tokens
+from ..config import Config
 
 COORDINATOR = "Coordinator"
 DEPTH_ENV = "PIGEON_DEPTH"
@@ -612,8 +611,8 @@ def crew_skill_warnings(config: Config, spec: dict[str, Any]) -> list[str]:
     tasks reference it).  Names in ``coordinate.assume_known_skills`` are
     treated as runner-native and suppressed without adoption.
     """
-    from .. import skills as skills_mod
     from .. import adopt as adopt_mod
+    from .. import skills as skills_mod
 
     assume_known = set(config.coordinate_cfg.get("assume_known_skills") or [])
     warnings: list[str] = []
@@ -851,7 +850,7 @@ def format_plan(p: dict[str, Any], tasks: list[dict[str, Any]]) -> str:
 
 # --------------------------------------------------------------- run manifest
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 # Scalar fields worth carrying into the event stream (events are the
@@ -1866,24 +1865,24 @@ def run_coordinate(
 # CLI, the MCP server, and the tests) and the run loop above keeps calling them
 # by their bare names. Imports sit at the foot of the module because the submodules
 # reach back into this package (e.g. `worktree` uses `coordinate._git`).
-from .telemetry import _opencode_usage, _extract_telemetry, USAGE_PARSERS, UsageParser
 from .reporting import (
     _STATUS_GLYPHS,
+    _agg_lines,
+    _aggregate_tasks,
     _elapsed,
+    by_agent_report,
+    critical_path_report,
+    list_runs,
+    model_report,
+    model_stats,
     render_status,
     run_events,
     timeline_report,
-    _aggregate_tasks,
-    _agg_lines,
-    by_agent_report,
-    model_stats,
-    model_report,
-    critical_path_report,
-    list_runs,
 )
+from .telemetry import USAGE_PARSERS, UsageParser, _extract_telemetry, _opencode_usage
 from .worktree import (
-    cleanup,
-    _worktree_setup,
-    _worktree_finish,
     _worktree_commit_and_remove,
+    _worktree_finish,
+    _worktree_setup,
+    cleanup,
 )

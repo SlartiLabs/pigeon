@@ -30,11 +30,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .config import Config, load_config
-from . import agents, context, coordinate, distill, init as init_mod, manifest, retrieval, tokens
-from . import pack as pack_mod
+from . import agents, context, coordinate, distill, manifest, retrieval, tokens
 from . import graph as graph_mod
 from . import handoff as ho
+from . import init as init_mod
+from . import pack as pack_mod
+from .config import Config, load_config
 
 
 def _cfg(args: argparse.Namespace) -> Config:

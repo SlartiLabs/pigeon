@@ -27,9 +27,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from . import SCHEMA_VERSION, sessions
 from .config import Config
-from . import SCHEMA_VERSION
-from . import sessions
 
 _WIKILINK_RE = re.compile(r"\[\[([^\[\]|#]+)(?:[|#][^\[\]]*)?\]\]")
 _SLUG_RE = re.compile(r"[^a-z0-9]+")

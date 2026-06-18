@@ -33,12 +33,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .config import Config, load_config
 from . import context, coordinate, manifest, retrieval, tokens
 from . import distill as distill_mod
-from . import pack as pack_mod
 from . import graph as graph_mod
 from . import handoff as ho
+from . import pack as pack_mod
+from .config import Config, load_config
 
 
 # ------------------------------------------------------------ implementations
@@ -92,7 +92,7 @@ def handoff_write_impl(
     }
 
 
-def _repo_path(config: Config, path: str) -> "Path":
+def _repo_path(config: Config, path: str) -> Path:
     """Resolve a repo-relative path, refusing escapes from the repo root."""
     target = (config.root / path).resolve()
     if not target.is_relative_to(config.root):
@@ -219,8 +219,8 @@ def graph_query_impl(config: Config, query: str | None = None,
 
 def refresh_impl(config: Config) -> dict[str, Any]:
     """Rebuild manifest, pointer files, and projected runtime skill files."""
-    from . import skills as skills_mod
     from . import init as init_mod
+    from . import skills as skills_mod
     schema_note = init_mod.upgrade_schema(config)
     path = manifest.write_manifest(config)
     synced = [str(p.relative_to(config.root)) for p in context.sync_context(config)]

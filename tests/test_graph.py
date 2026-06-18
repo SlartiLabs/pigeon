@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from pigeon import distill, graph
 from pigeon import handoff as ho
 

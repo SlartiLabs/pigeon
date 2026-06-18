@@ -18,7 +18,8 @@ as claude (unchanged from the pre-split behavior).
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 # A parser plugin: given the JSON candidates mined from a child's output (newest
 # event first), return a normalized usage dict, or None if the shape is foreign.

@@ -7,6 +7,8 @@ layer only when ripgrep is available.
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 
 from pigeon import retrieval as rt
@@ -84,14 +86,14 @@ def test_scope_memory_finds_distilled_sessions(repo):
 def test_since_filters_old_files(repo):
     import os
     import time
-    from pigeon import retrieval
+    from datetime import datetime, timedelta
 
-    from datetime import datetime, timedelta, timezone
+    from pigeon import retrieval
 
     target = repo.root / "src" / "pkg" / "alpha.py"
     old = time.time() - 90 * 86400
     os.utime(target, (old, old))
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(days=30)).isoformat()
     fresh = retrieval.query("alpha widget", repo, scope="code", since=cutoff)
     assert not any(r.source.endswith("alpha.py") for r in fresh)
     anytime = retrieval.query("alpha widget", repo, scope="code")
@@ -100,6 +102,7 @@ def test_since_filters_old_files(repo):
 
 def test_bad_scope_and_since_raise(repo):
     import pytest
+
     from pigeon import retrieval
 
     with pytest.raises(ValueError, match="unknown scope"):

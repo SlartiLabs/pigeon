@@ -25,8 +25,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .config import Config
 from . import coordinate, tokens
+from .config import Config
 from .sessions import known_sids, session_handoffs  # re-exported: public API
 
 

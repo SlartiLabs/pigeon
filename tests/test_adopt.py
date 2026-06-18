@@ -13,10 +13,9 @@ from typing import Any
 
 import pytest
 
-from pigeon.config import Config, load_config
 from pigeon import adopt
+from pigeon.config import Config, load_config
 from pigeon.skills import GEN_MARKER
-
 
 # ---------------------------------------------------------------------------
 # Helpers — filesystem scaffolding (all under tmp_path, no real ~/.claude)
@@ -755,8 +754,8 @@ class TestCrewSkillWarnings:
 
     def test_imported_skill_silent(self, tmp_path: Path) -> None:
         """A skill that was imported via F2 is recognized and produces no warning."""
-        from pigeon.coordinate import crew_skill_warnings
         from pigeon.adopt import import_asset
+        from pigeon.coordinate import crew_skill_warnings
 
         cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
         src = tmp_path / ".claude" / "agents" / "my-agent.md"
