@@ -1043,12 +1043,28 @@ def test_readonly_injects_hard_constraint_and_badge(repo):
          "isolation": "shared"}]))  # shared so we can read the handoff easily
     assert co.run_coordinate(tasks, cfg, dry_run=True) == 0
     h = ho.load_handoff(next(cfg.handoffs_dir.glob("co1-*.json")), cfg)
-    assert "READ-ONLY TASK" in h["constraints"]["fs_scope"]
-    assert "every subagent you dispatch to do the same" in h["constraints"]["fs_scope"]
+    fs = h["constraints"]["fs_scope"]
+    assert "READ-ONLY TASK" in fs
+    assert "every subagent you dispatch to do the same" in fs
+    # shared-tree readonly task may persist its artifact under the contract dir
+    assert "MAY write" in fs and ".pigeon/" in fs
     # plan surfaces it
     spec = co.load_tasks(_write_tasks(repo.root, _spec(tasks=[
         {"id": "r", "runner": "py", "doing": "x", "readonly": True}])))
     assert "readonly" in co.format_plan(co.plan(cfg, spec), spec["tasks"])
+
+
+def test_readonly_constraint_matches_isolation():
+    """The fs constraint tracks effective isolation: a shared-tree readonly task
+    may persist artifacts under .pigeon/; a worktree-isolated one must hand
+    findings back only (its writes are discarded on teardown)."""
+    shared = co._readonly_fs({"isolation": "shared"})["fs_scope"]
+    wt = co._readonly_fs({"isolation": "worktree"})["fs_scope"]
+    assert "MAY write" in shared and ".pigeon/" in shared
+    assert "do not create, modify, move, or delete any file in the repository" in shared
+    assert "discarded" in wt and "MAY write" not in wt
+    # a bare readonly task defaults to worktree -> the strict, findings-only form
+    assert co._readonly_fs({})["fs_scope"] == wt
 
 
 def test_readonly_must_be_bool(repo):

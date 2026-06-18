@@ -115,10 +115,12 @@ coordinate:
   default_runner: [agy, opencode]   # claude only where a task asks for it
 ```
 
-Mark review/audit tasks `readonly: true` — pigeon injects a hard read-only
+Mark review/audit tasks `readonly: true` — pigeon injects a read-only
 constraint *and* runs them in a worktree by default, so a contract violation
 (an agent or its subagent writing anyway) is contained to a throwaway branch,
-never the working tree. `pigeon refresh` also upgrades a stale on-disk
+never the working tree. The constraint is isolation-aware: a `readonly` task on
+`isolation: shared` may still write its findings artifact under `.pigeon/`,
+while the default worktree form is findings-only. `pigeon refresh` also upgrades a stale on-disk
 `handoff.schema.json` in place, so repos scaffolded under older releases
 accept current handoff fields like `crew`.
 
