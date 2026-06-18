@@ -579,3 +579,186 @@ class TestAdoptAllowSchema:
     def test_non_string_items_rejected(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):
             _mk_repo(tmp_path, "adopt:\n  allow: [1, 2]\n")
+
+
+# ===========================================================================
+# F2 — import_asset: copies allow-listed catalog entries to playbooks/
+# ===========================================================================
+
+from pigeon.skills import playbooks, project_skills
+
+
+class TestImportAsset:
+    """import_asset writes an unmarked playbook page from the catalog."""
+
+    def _catalog_entry(self, name: str, kind: str = "subagent", *,
+                       allowed: bool = True, scope: str = "user") -> dict:
+        return {"name": name, "kind": kind, "allowed": allowed, "scope": scope}
+
+    def _write_catalog(self, cfg, entries: list) -> None:
+        cfg.adopt_dir.mkdir(parents=True, exist_ok=True)
+        (cfg.adopt_dir / "catalog.json").write_text(
+            json.dumps(entries), encoding="utf-8"
+        )
+
+    def test_import_writes_unmarked_page(self, tmp_path: Path) -> None:
+        """Importing an allow-listed asset writes a playbook page without GEN_MARKER."""
+        from pigeon.adopt import import_asset, _make_import_page
+
+        cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
+        self._write_catalog(cfg, [self._catalog_entry("my-agent")])
+
+        import_asset("my-agent", cfg)
+
+        page = cfg.memory_dir / "playbooks" / "my-agent.md"
+        assert page.exists()
+
+        content = page.read_text(encoding="utf-8")
+        assert GEN_MARKER not in content
+
+        # playbooks() lists it
+        names = {p["name"] for p in playbooks(cfg)}
+        assert "my-agent" in names
+
+    def test_reimport_refuses(self, tmp_path: Path) -> None:
+        """Re-importing a name that already has a playbook page raises FileExistsError."""
+        from pigeon.adopt import import_asset
+
+        cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
+        self._write_catalog(cfg, [self._catalog_entry("my-agent")])
+
+        # Pre-create the playbook
+        playbooks_dir = cfg.memory_dir / "playbooks"
+        playbooks_dir.mkdir(parents=True)
+        (playbooks_dir / "my-agent.md").write_text(
+            "---\nname: my-agent\n---\nExisting.\n", encoding="utf-8"
+        )
+
+        with pytest.raises(FileExistsError, match="already exists"):
+            import_asset("my-agent", cfg)
+
+    def test_import_unallowlisted_refuses(self, tmp_path: Path) -> None:
+        """Importing a name not in adopt.allow raises ValueError."""
+        from pigeon.adopt import import_asset
+
+        cfg = _mk_repo(tmp_path)  # allow list is empty
+        self._write_catalog(cfg, [self._catalog_entry("my-agent", allowed=False)])
+
+        with pytest.raises(ValueError, match="not allow-listed"):
+            import_asset("my-agent", cfg)
+
+    def test_import_unknown_name_refuses(self, tmp_path: Path) -> None:
+        """Importing a name not in the catalog raises KeyError."""
+        from pigeon.adopt import import_asset
+
+        cfg = _mk_repo(tmp_path)
+        self._write_catalog(cfg, [])
+
+        with pytest.raises(KeyError, match="not found"):
+            import_asset("nonexistent", cfg)
+
+    def test_import_mcp_name_refuses(self, tmp_path: Path) -> None:
+        """Importing an MCP-kind asset raises ValueError."""
+        from pigeon.adopt import import_asset
+
+        cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-mcp\n")
+        self._write_catalog(cfg, [self._catalog_entry("my-mcp", kind="mcp")])
+
+        with pytest.raises(ValueError, match="MCP"):
+            import_asset("my-mcp", cfg)
+
+    def test_refresh_preserves_imported_page(self, tmp_path: Path) -> None:
+        """Running project_skills after import does not overwrite the imported page."""
+        from pigeon.adopt import import_asset
+
+        cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
+        self._write_catalog(cfg, [self._catalog_entry("my-agent")])
+
+        import_asset("my-agent", cfg)
+        page = cfg.memory_dir / "playbooks" / "my-agent.md"
+        original_content = page.read_text(encoding="utf-8")
+
+        project_skills(cfg)
+
+        assert page.read_text(encoding="utf-8") == original_content
+
+
+# ===========================================================================
+# F3 — crew_skill_warnings de-noising
+# ===========================================================================
+
+class TestCrewSkillWarnings:
+    """crew_skill_warnings deduplicates and respects assume_known_skills."""
+
+    def test_duplicate_refs_collapse_to_one_warning(self, tmp_path: Path) -> None:
+        """Multiple references to the same unknown skill produce only one warning."""
+        from pigeon.coordinate import crew_skill_warnings
+
+        cfg = _mk_repo(tmp_path)
+        spec = {
+            "tasks": [
+                {"id": "t1", "crew": {"skills": ["mystery-skill"]}},
+                {"id": "t2", "crew": {"skills": ["mystery-skill"]}},
+                {"id": "t3", "crew": {"subagents": [{"role": "r", "skill": "mystery-skill"}]}},
+            ]
+        }
+
+        warnings = crew_skill_warnings(cfg, spec)
+        mystery_warnings = [w for w in warnings if "mystery-skill" in w]
+        assert len(mystery_warnings) == 1
+
+    def test_assume_known_skills_silent(self, tmp_path: Path) -> None:
+        """A skill in coordinate.assume_known_skills produces no warning."""
+        from pigeon.coordinate import crew_skill_warnings
+
+        cfg = _mk_repo(
+            tmp_path,
+            "coordinate:\n  assume_known_skills:\n    - code-architect-python\n"
+        )
+        spec = {
+            "tasks": [
+                {"id": "t1", "crew": {"skills": ["code-architect-python"]}},
+            ]
+        }
+
+        warnings = crew_skill_warnings(cfg, spec)
+        assert not any("code-architect-python" in w for w in warnings)
+
+    def test_imported_skill_silent(self, tmp_path: Path) -> None:
+        """A skill that was imported via F2 is recognized and produces no warning."""
+        from pigeon.coordinate import crew_skill_warnings
+        from pigeon.adopt import import_asset
+
+        cfg = _mk_repo(tmp_path, "adopt:\n  allow:\n    - my-agent\n")
+        cfg.adopt_dir.mkdir(parents=True, exist_ok=True)
+        (cfg.adopt_dir / "catalog.json").write_text(
+            json.dumps([{"name": "my-agent", "kind": "subagent",
+                         "allowed": True, "scope": "user"}]),
+            encoding="utf-8",
+        )
+
+        import_asset("my-agent", cfg)
+
+        spec = {
+            "tasks": [
+                {"id": "t1", "crew": {"skills": ["my-agent"]}},
+            ]
+        }
+
+        warnings = crew_skill_warnings(cfg, spec)
+        assert not any("my-agent" in w for w in warnings)
+
+    def test_unknown_name_warns_once(self, tmp_path: Path) -> None:
+        """A name that is not a playbook, not imported, and not in assume_known warns."""
+        from pigeon.coordinate import crew_skill_warnings
+
+        cfg = _mk_repo(tmp_path)
+        spec = {
+            "tasks": [
+                {"id": "t1", "crew": {"skills": ["totally-unknown"]}},
+            ]
+        }
+
+        warnings = crew_skill_warnings(cfg, spec)
+        unknown_warnings = [w for w in warnings if "totally-unknown" in w]
+        assert len(unknown_warnings) == 1

@@ -379,6 +379,58 @@ def preflight_check(names: list[str], config: Config) -> list[str]:
     return warnings
 
 
+def _make_import_page(entry: dict[str, Any]) -> str:
+    """Build playbook page content from a catalog entry (no GEN_MARKER).
+
+    Frontmatter: name, description, record_type: skill.
+    Body: entry['body'] if present, else empty string.
+    """
+    body = entry.get("body") or ""
+    fm: dict[str, Any] = {
+        "name": entry["name"],
+        "description": entry.get("description") or "",
+        "record_type": "skill",
+    }
+    yaml_block = yaml.dump(fm, default_flow_style=False, allow_unicode=True)
+    return f"---\n{yaml_block}---\n\n{body}"
+
+
+def import_asset(name: str, config: Config) -> None:
+    """Copy an allow-listed catalog entry into .pigeon/memory/playbooks/<name>.md.
+
+    Refuses with a clear exception if:
+    - ``name`` is not in the catalog (KeyError)
+    - ``name`` is not allow-listed (ValueError)
+    - the catalog entry is an MCP record (ValueError)
+    - a playbook of that name already exists (FileExistsError)
+
+    The written page carries no GEN_MARKER, so ``refresh`` treats it as
+    hand-written and never clobbers it.
+    """
+    catalog = load_catalog(config)
+    entry = next((e for e in catalog if e.get("name") == name), None)
+    if entry is None:
+        raise KeyError(f"adopt: {name!r} not found in catalog")
+    if not check_allow(name, config):
+        raise ValueError(
+            f"adopt: {name!r} is not allow-listed — "
+            "use `pigeon adopt --allow` to enable it"
+        )
+    if entry.get("kind") == "mcp":
+        raise ValueError(
+            f"adopt: cannot import MCP asset {name!r} — "
+            "MCP records are inventory-only, not importable"
+        )
+    target = config.memory_dir / "playbooks" / f"{name}.md"
+    if target.exists():
+        raise FileExistsError(
+            f"adopt: {name!r} already exists: "
+            f"{target.relative_to(config.root)}"
+        )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(_make_import_page(entry), encoding="utf-8")
+
+
 def update_allow(names: list[str], config: Config) -> list[str]:
     """Add names to adopt.allow in .pigeon/config.yaml; return those newly added.
 

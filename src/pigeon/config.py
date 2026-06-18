@@ -117,6 +117,8 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
             # downstream as a pointer (a reviewer reads the diff, not the repo).
             "diffs_dir": f"{d}/coordinate/diffs",
             "parallel_limit": 4,
+            # Skill names to treat as runner-native (never warn, no adoption required).
+            "assume_known_skills": [],
             # Runner for tasks that don't name one. A string assigns it to
             # every unassigned task; a LIST round-robins across them (spread
             # load off your metered CLI); null (default) REFUSES unassigned
