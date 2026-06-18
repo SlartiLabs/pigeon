@@ -1,0 +1,59 @@
+sid: adopt-gate
+# ============================================================================
+# RECOVERY: gate + advisory review of the ALREADY-BUILT `pigeon adopt` P0.
+# The first run (adopt-p0-2) timed out at the finish line but `integrate`
+# committed the complete, test-green work to branch pigeon/adopt-p0-2/integrate;
+# its diff is materialized at .pigeon/coordinate/diffs/adopt-p0-2/integrate.diff.
+# This file runs only the two steps the timeout skipped — the opus gatekeeper
+# and the agy advisory — on that diff. NO readonly on `gate` (it writes gate.json).
+#
+# Run:
+#   pigeon coordinate docs/To_do/adopt-p0-gate.tasks.yaml --skip-permissions --telemetry --budget-usd 12
+# ============================================================================
+
+tasks:
+
+  - id: gate
+    runner: opus
+    isolation: shared
+    receives:
+      - "repo://.pigeon/coordinate/diffs/*/integrate.diff"
+      - "repo://.pigeon/coordinate/reviews/adopt/contract.md"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-verifier
+          skill: security-audit
+          doing: Try to break the invariants — find a path where a user source file is mutated, a secret reaches catalog.json, or an un-allow-listed asset becomes usable in a crew.
+          verdict: default to changes-needed if any invariant is unproven at file:line
+    doing: >-
+      GATEKEEPER review of the `pigeon adopt` P0 integration diff
+      (.pigeon/coordinate/diffs/adopt-p0-2/integrate.diff) against
+      .pigeon/coordinate/reviews/adopt/contract.md, docs/design/adopt.md §6/§7/§8,
+      and the live code on branch pigeon/adopt-p0-2/integrate. Do NOT edit source.
+      Verify, citing file:line: (1) non-destruction — no write under a user source
+      path; note that `update_allow` rewrites .pigeon/config.yaml via yaml.safe_dump
+      and assess whether it destroys the file's comments; (2) MCP secret VALUES never
+      land in catalog.json (only name + has_secrets); (3) the allow-gate actually
+      gates USE (un-allow-listed = catalogued but unusable + preflight warns);
+      (4) provenance gate excludes GEN_MARKER'd files; (5) the default sources being
+      project-only (no ~/.claude) — is that the right MVP scope or a gap vs the
+      design? (6) the as-built API name divergences in contract.md "as-built deltas"
+      — do any break a documented behavior, or are they cosmetic? Confirm the diff is
+      minimal with no behavior change to existing features. Write a verdict
+      {verdict: approve|changes-needed, blockers:[...], nits:[...], notes:""} to
+      .pigeon/coordinate/reviews/adopt/gate.json and print a short ranked summary as
+      your final message.
+
+  - id: review-agy
+    runner: agy
+    isolation: shared
+    receives:
+      - "repo://.pigeon/coordinate/diffs/*/integrate.diff"
+    doing: >-
+      Independent ADVISORY second opinion on the `pigeon adopt` P0 integration diff,
+      decorrelated from the gatekeeper. Do NOT edit source. Look for correctness,
+      edge-case, or scope problems they might miss — especially malformed-input
+      handling in the parsers, any place the catalog could leak a secret, and whether
+      `--allow` persisting via a full config rewrite is safe. Print a short verdict
+      (approve / concerns + reasons) as your final message.

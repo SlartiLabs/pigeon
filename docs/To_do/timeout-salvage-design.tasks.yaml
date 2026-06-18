@@ -1,0 +1,140 @@
+sid: timeout-design
+# ============================================================================
+# DESIGN TOURNAMENT — progress-aware timeouts + salvage-aware scheduling.
+# (Problem: .pigeon/coordinate/reviews/timeout-design/problem.md, grounded at
+# file:line.) Output is a DESIGN PROPOSAL, not code.
+#
+# Structure (diversified tournament, per the agreed plan):
+#   * 3 TEAMS, one per model FAMILY (sonnet / agy / free) so the proposals are
+#     decorrelated. Each team = a 4-member crew: 3 racers attacking the design
+#     from different angles + 1 intra-team judge that synthesizes the team's
+#     single best proposal.
+#   * 1 META-JUDGE (opus) reads all proposals and rules a single recommendation.
+#
+# All tasks are `readonly: true` + `isolation: shared` — they touch NO repo
+# source, only write their proposal artifact under .pigeon/. (This also dogfoods
+# the just-merged isolation-aware readonly fix: shared readonly tasks may now
+# write .pigeon/ artifacts.)
+#
+# Robustness: the meta-judge `needs` only the two reliable teams and `receives`
+# ALL proposals by glob — so a flaky free-team run can't skip the judge (the very
+# salvage gap this design targets).
+#
+# Run:
+#   pigeon coordinate docs/To_do/timeout-salvage-design.tasks.yaml --dry-run
+#   pigeon coordinate docs/To_do/timeout-salvage-design.tasks.yaml --skip-permissions --telemetry --budget-usd 20
+# ============================================================================
+
+tasks:
+
+  # ----- TEAM 1: sonnet -----
+  - id: team-sonnet
+    runner: sonnet
+    readonly: true
+    isolation: shared
+    receives: ["repo://.pigeon/coordinate/reviews/timeout-design/problem.md"]
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: racer-minimal
+          skill: code-architect-python
+          doing: Propose the SIMPLEST viable design — idle-timeout in _run_task's poll loop + the budget backstop, minimal config, keep the `timeout` binary as the hard cap. Argue the tradeoffs honestly.
+        - role: racer-robust
+          skill: code-architect-python
+          doing: Propose the most ROBUST design — pigeon-side idle + hard-cap supervision, a "failed-but-committed" status, and salvage-aware downstream that runs review/gate tasks against the materialized diff. Argue tradeoffs.
+        - role: racer-leftfield
+          skill: code-architect-python
+          doing: Propose a DIFFERENT angle — e.g. progress heartbeats/markers from the child, a dedicated supervisor thread, or treating exit 124 specially. Argue tradeoffs.
+        - role: judge
+          skill: code-architect-python
+          doing: Pick the best of the three (or synthesize one), justify the choice against the problem's required-contents checklist, and write the team's SINGLE proposal.
+          verdict: choose the design that best balances correctness, simplicity, and back-compat with existing `timeout -k 30 N` runner templates
+    doing: >-
+      Read problem.md and produce ONE concrete, opinionated design proposal for
+      progress-aware timeouts (Part A) + salvage-aware scheduling (Part B),
+      covering all six required-contents items with file:line change points,
+      config schema, the salvage rule, preserved invariants, a test plan, and
+      risks. Run the racer→judge crew to diversify then converge. Do NOT edit repo
+      source. Write the final proposal to
+      .pigeon/coordinate/reviews/timeout-design/proposal-sonnet.md and hand back
+      listing it in state.artifacts.
+
+  # ----- TEAM 2: agy -----
+  - id: team-agy
+    runner: agy
+    readonly: true
+    isolation: shared
+    receives: ["repo://.pigeon/coordinate/reviews/timeout-design/problem.md"]
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: racer-minimal
+          doing: Propose the SIMPLEST viable design (idle-timeout + budget backstop, `timeout` binary as hard cap). Argue tradeoffs.
+        - role: racer-robust
+          doing: Propose the most ROBUST design (pigeon-side idle + hard-cap supervision + failed-but-committed status + salvage-aware downstream). Argue tradeoffs.
+        - role: racer-leftfield
+          doing: Propose a DIFFERENT angle (heartbeats / supervisor thread / special-case exit 124). Argue tradeoffs.
+        - role: judge
+          doing: Pick or synthesize the team's single best proposal; justify against the required-contents checklist.
+          verdict: best balance of correctness, simplicity, back-compat
+    doing: >-
+      Read problem.md and produce ONE concrete, opinionated design proposal for
+      progress-aware timeouts (Part A) + salvage-aware scheduling (Part B),
+      covering all six required-contents items with concrete change points, config
+      schema, salvage rule, preserved invariants, test plan, and risks. Do NOT
+      edit repo source. Write the final proposal to
+      .pigeon/coordinate/reviews/timeout-design/proposal-agy.md and hand back
+      listing it in state.artifacts.
+
+  # ----- TEAM 3: free (diversity + dogfood the free army on a hard task) -----
+  - id: team-free
+    runner: nv-mistral-large
+    readonly: true
+    isolation: shared
+    receives: ["repo://.pigeon/coordinate/reviews/timeout-design/problem.md"]
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: racer-minimal
+          doing: Propose the simplest viable design. Argue tradeoffs.
+        - role: racer-robust
+          doing: Propose the most robust design. Argue tradeoffs.
+        - role: judge
+          doing: Pick or synthesize the team's single best proposal.
+          verdict: best balance of correctness, simplicity, back-compat
+    doing: >-
+      Read problem.md and produce ONE concrete design proposal for progress-aware
+      timeouts (Part A) + salvage-aware scheduling (Part B), covering the six
+      required-contents items as well as you can with specific change points. Do
+      NOT edit repo source. Write the proposal to
+      .pigeon/coordinate/reviews/timeout-design/proposal-free.md and hand back
+      listing it in state.artifacts.
+
+  # ----- META-JUDGE: opus -----
+  - id: meta-judge
+    runner: opus
+    readonly: true
+    isolation: shared
+    needs: [team-sonnet, team-agy]   # reliable teams only — a flaky free run can't skip the judge
+    receives:
+      - "repo://.pigeon/coordinate/reviews/timeout-design/problem.md"
+      - "repo://.pigeon/coordinate/reviews/timeout-design/proposal-*.md"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-evaluator
+          skill: code-architect-python
+          doing: For each proposal, stress-test it against the problem's invariants (dry-run, budget, append-only, deterministic build) and find where it breaks or under-specifies.
+          verdict: reward the design that survives adversarial scrutiny, not the most elaborate one
+    doing: >-
+      Read problem.md and EVERY proposal-*.md that landed (sonnet, agy, and free if
+      present). Adversarially evaluate each against the six required-contents items
+      and the must-not-break invariants, citing file:line. Then RULE one
+      recommended design — you may synthesize across proposals, grafting the best
+      parts — with: the chosen timeout mechanism (idle + hard-cap + budget, and
+      where supervision lives), the config schema, the salvage detection rule +
+      downstream behavior + new status, preserved invariants, a phased build plan,
+      and a test plan. Note what you rejected and why. Do NOT edit repo source.
+      Write the recommendation to
+      .pigeon/coordinate/reviews/timeout-design/recommendation.md and print a short
+      ranked summary (which team won which part) as your final message.

@@ -1,0 +1,305 @@
+sid: audit
+# ============================================================================
+# Full pigeon audit/review — every runner (claude opus/sonnet, agy, opencode Zen
+# + openrouter + nvidia free), each staffed with a skill + a subagent (crew).
+#   WAVE 0  11 parallel auditors, one per runner, each a different repo slice
+#           (+ decorrelated second passes) — readonly, findings -> JSON artifact.
+#   WAVE 1  opus TRIAGE — adversarially verify each finding at file:line, drop
+#           free-model noise / already-fixed, dedupe, classify, rank, fix-sketch.
+#   WAVE 2  opus FIX — implement the CONFIRMED codeable fixes in a worktree
+#           (reversible diff), minimal + tested; skip decision/deferred items.
+#   WAVE 3  sonnet + agy REVIEW the fix diff (advisory). NO auto-merge; human
+#           verifies + runs CI (pytest + pyrefly) before merging.
+#
+# Routing rationale (this session's evidence): reliable models (opus/sonnet) own
+# the critical slices + triage + fix-writing; free models do discovery breadth
+# (their false positives get filtered by triage); agy is advisory.
+#
+# Run:
+#   pigeon coordinate docs/To_do/full-audit.tasks.yaml --skip-permissions --telemetry --budget-usd 40
+# ============================================================================
+
+tasks:
+
+  # ===== WAVE 0: AUDIT (one runner per slice; readonly; shared so artifacts persist) =====
+
+  - id: a-security
+    runner: opus
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [security-audit]
+      subagents:
+        - role: exploit-prober
+          skill: security-audit
+          doing: Try to construct a concrete input that escapes _contain() in resolve.py or bypasses the env_allowlist / schema validation in config.py.
+          verdict: flag any path-containment escape, pointer-resolution lift, or injection as a blocker
+    doing: >-
+      Read-only SECURITY audit of src/pigeon/resolve.py (the repo:///file:// pointer
+      resolution + _contain() fence — the S1 containment area) and src/pigeon/config.py
+      (env_allowlist default, _validate_schema, schema_version gating, deep-merge).
+      Hunt for: path-containment escapes, pointer lift outside config.root, TOCTOU,
+      injection, unsafe deserialization, env/secret leakage, and any validation gap.
+      The repo is CI-green at 351 tests — prefer precision; only report what you can
+      cite at file:line with a concrete, reproducible reason. Do NOT modify files.
+      Write findings as a JSON array to .pigeon/coordinate/reviews/audit/a-security.json,
+      each {file, line, severity (blocker|major|minor|nit), category (bug|security|perf|quality|docs|test-gap), title, detail, why_real, fix_sketch}. Empty array [] if nothing solid.
+
+  - id: a-coordinate
+    runner: sonnet
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: concurrency-reviewer
+          skill: code-architect-python
+          doing: Scrutinize the parallel dispatch, _GIT_LOCK usage, worktree setup/teardown/diff-harvest, budget/telemetry accounting, and the re-entry loop for races, deadlocks, orphaned worktrees, or miscounts.
+    doing: >-
+      Read-only audit of the src/pigeon/coordinate/ package (__init__.py scheduler/run
+      loop, reporting.py, worktree.py, telemetry.py). Hunt for: concurrency races,
+      worktree lifecycle bugs, diff-harvest edge cases, telemetry parse errors, budget
+      miscounts, re-entry bound bugs, and the recent OPENCODE_PERMISSION / seeding /
+      badge code. CI-green at 351 tests — cite file:line with a concrete reason; no
+      file edits. Write a JSON array to .pigeon/coordinate/reviews/audit/a-coordinate.json
+      (schema as in a-security). Empty [] if nothing solid.
+
+  - id: a-contract
+    runner: nv-mistral-large
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [advanced-python-backend]
+      subagents:
+        - role: schema-drift-checker
+          doing: Diff the two handoff.schema.json copies and check handoff.py builds/validates exactly to the schema; flag any drift.
+    doing: >-
+      Read-only audit of the cross-model CONTRACT: src/pigeon/handoff.py (build/validate/
+      upgrade/migrate), src/pigeon/tokens.py, src/pigeon/pack.py, and both
+      handoff.schema.json copies (.pigeon/ and src/pigeon/templates/). Hunt for: schema
+      drift, version-gate bugs, token-accounting errors, pack truncation bugs, and
+      validation holes. Cite file:line with concrete reasons; no edits. Write a JSON
+      array to .pigeon/coordinate/reviews/audit/a-contract.json (schema as in a-security).
+      Empty [] if nothing solid.
+
+  - id: a-retrieval
+    runner: nv-mixtral
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: edge-case-finder
+          doing: Probe ripgrep invocation, chunking/overlap math, top-k ranking, and file-size/exclude handling for off-by-one and empty-input bugs.
+    doing: >-
+      Read-only audit of src/pigeon/retrieval.py, src/pigeon/context.py, and
+      src/pigeon/manifest.py. Hunt for: retrieval ranking/chunking bugs, ripgrep arg
+      issues, manifest staleness/determinism problems, and generated-pointer drift.
+      Cite file:line; no edits. Write a JSON array to
+      .pigeon/coordinate/reviews/audit/a-retrieval.json (schema as in a-security). Empty [] if nothing solid.
+
+  - id: a-graph
+    runner: oc-north
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [agent-code-analyzer]
+      subagents:
+        - role: dead-code-finder
+          doing: Flag unused functions/exports, unreachable branches, and NotImplementedError stubs advertised as features.
+    doing: >-
+      Read-only audit of src/pigeon/graph.py, src/pigeon/distill.py, src/pigeon/sessions.py,
+      src/pigeon/skills.py. Hunt for: logic bugs, dead code, unimplemented-but-advertised
+      behavior, and error-handling gaps. Cite file:line; no edits. Write a JSON array to
+      .pigeon/coordinate/reviews/audit/a-graph.json (schema as in a-security). Empty [] if nothing solid.
+
+  - id: a-cli-mcp
+    runner: nv-nano
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [agent-reviewer]
+      subagents:
+        - role: arg-parse-checker
+          doing: Check argparse wiring, exit codes, error messages, and MCP tool schemas for mismatches with the underlying functions.
+    doing: >-
+      Read-only audit of src/pigeon/cli.py, src/pigeon/mcp_server.py, src/pigeon/agents.py,
+      src/pigeon/init.py. Hunt for: arg-parsing bugs, wrong exit codes, MCP tool/schema
+      mismatches, and CLI/MCP drift from the underlying functions. Cite file:line; no edits.
+      Write a JSON array to .pigeon/coordinate/reviews/audit/a-cli-mcp.json (schema as in a-security). Empty [] if nothing solid.
+
+  - id: a-tui-tests
+    runner: oc-nemotron
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [agent-tester]
+      subagents:
+        - role: coverage-gap-finder
+          doing: Identify recently-changed code (coordinate seeding/permission/badge, config) with weak or stale test coverage.
+    doing: >-
+      Read-only audit of src/pigeon/tui.py and the tests/ suite. Hunt for: tui bugs,
+      test gaps for recently-changed behavior, and tests that assert stale behavior.
+      Cite file:line; no edits. Write a JSON array to
+      .pigeon/coordinate/reviews/audit/a-tui-tests.json (schema as in a-security). Empty [] if nothing solid.
+
+  - id: a-docs
+    runner: agy
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [agent-docs-api-openapi]
+      subagents:
+        - role: doc-drift-checker
+          doing: Cross-check AGENTS.md repo-map + README + docs against the actual modules/CLI; flag references to files/flags that no longer exist.
+    doing: >-
+      Read-only audit of the docs + packaging surface: AGENTS.md, README.md, docs/,
+      pyproject.toml, .github/workflows/, .pigeon/config.yaml. Hunt for: doc-vs-code
+      drift, stale repo-map/pointers, wrong version/install-name, and CI config gaps.
+      Cite file:line; no edits. Write a JSON array to
+      .pigeon/coordinate/reviews/audit/a-docs.json (schema as in a-security). Empty [] if nothing solid.
+
+  - id: a-sweep-coord
+    runner: oc-nex
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [agent-analyze-code-quality]
+      subagents:
+        - role: skeptic
+          doing: Only record an issue you can point at with a specific file:line and a one-line reproduction/reason.
+    doing: >-
+      Decorrelated SECOND-PASS read-only audit of the most critical area — the
+      coordinate package + handoff contract (src/pigeon/coordinate/*, handoff.py).
+      Do NOT assume the primary auditors caught everything; look for what they would
+      miss. Cite file:line; no edits. Write a JSON array to
+      .pigeon/coordinate/reviews/audit/a-sweep-coord.json (schema as in a-security). Empty [] if nothing solid.
+
+  - id: a-sweep-sec
+    runner: oc-mimo
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [security-audit]
+      subagents:
+        - role: skeptic
+          doing: Only record an issue you can point at with a specific file:line and a concrete reason.
+    doing: >-
+      Decorrelated SECOND-PASS read-only audit of resolve.py + config.py + cli.py for
+      security and correctness — independent of the primary security auditor. Cite
+      file:line; no edits. Write a JSON array to
+      .pigeon/coordinate/reviews/audit/a-sweep-sec.json (schema as in a-security). Empty [] if nothing solid.
+
+  - id: a-sweep-broad
+    runner: nv-minimax
+    isolation: shared
+    readonly: true
+    crew:
+      skills: [agent-code-analyzer]
+      subagents:
+        - role: skeptic
+          doing: Only record an issue you can point at with a specific file:line and a concrete reason.
+    doing: >-
+      Decorrelated read-only sweep of any modules not yet deeply covered:
+      src/pigeon/__init__.py, src/pigeon/context.py, src/pigeon/manifest.py,
+      src/pigeon/agents.py, plus anything that looks fragile across the tree. Cite
+      file:line; no edits. Write a JSON array to
+      .pigeon/coordinate/reviews/audit/a-sweep-broad.json (schema as in a-security). Empty [] if nothing solid.
+
+  # ===== WAVE 1: TRIAGE (opus — adversarially verify, dedupe, classify, rank) =====
+
+  - id: triage
+    runner: opus
+    isolation: shared
+    readonly: true
+    needs: [a-security, a-coordinate, a-contract, a-retrieval, a-graph, a-cli-mcp, a-tui-tests, a-docs, a-sweep-coord, a-sweep-sec, a-sweep-broad]
+    receives:
+      - "repo://.pigeon/coordinate/reviews/audit/a-security.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-coordinate.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-contract.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-retrieval.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-graph.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-cli-mcp.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-tui-tests.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-docs.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-sweep-coord.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-sweep-sec.json"
+      - "repo://.pigeon/coordinate/reviews/audit/a-sweep-broad.json"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-verifier
+          skill: security-audit
+          doing: For each candidate finding, open the cited file:line and try to prove it is NOT a bug; only let through what survives.
+          verdict: default to DISCARD any finding you cannot reproduce at the cited file:line
+    doing: >-
+      Consolidate ALL the audit artifacts into one triaged, ranked list. For EACH raw
+      finding: (a) open the cited file:line and VERIFY it is real — discard
+      hallucinations, vague style gripes, and anything the 351-test suite already
+      covers; (b) drop anything already fixed; (c) dedupe across sources. Classify each
+      survivor: kind {codeable | user_decision | human_credentialed}, category
+      {bug|security|perf|quality|docs|test-gap}, severity, effort {trivial|small|medium|large},
+      and a concrete fix sketch for codeable ones. Rank by (severity, then category:
+      security/bug first). Write a JSON object {confirmed:[...], discarded_count:N,
+      by_runner:{...}, notes:""} to .pigeon/coordinate/reviews/audit/triage.json and print
+      a short human-readable ranked summary (table) as your final message.
+
+  # ===== WAVE 2: FIX (opus — implement confirmed codeable fixes in a worktree) =====
+
+  - id: fix
+    runner: opus
+    isolation: worktree
+    needs: [triage]
+    receives:
+      - "repo://.pigeon/coordinate/reviews/audit/triage.json"
+    crew:
+      skills: [code-architect-python, agent-tester]
+      subagents:
+        - role: test-writer
+          skill: agent-tester
+          doing: For each fix, add or update a focused regression test; run the affected tests in the worktree.
+          verdict: every fix must keep pytest green and add coverage for the bug
+    doing: >-
+      Read triage.json and implement the CONFIRMED codeable fixes — bugs and security
+      first, then trivial/small quality + docs + test-gap items. SKIP anything classified
+      user_decision or human_credentialed, and skip medium/large items that would need a
+      design decision (list those as "deferred" in your hand-back instead). Each fix must
+      be minimal and surgical (no refactors, no behavior change beyond the fix), with a
+      focused regression test added/updated. Keep the whole change reviewable as ONE
+      coherent diff on the worktree branch; do NOT merge. After editing, run the affected
+      tests (and `pigeon` imports cleanly). In your hand-back, list each fix applied
+      (file:line + one line) and each item deferred + why.
+
+  # ===== WAVE 3: REVIEW (sonnet + agy — advisory, on the fix diff) =====
+
+  - id: review
+    runner: sonnet
+    isolation: shared
+    readonly: true
+    needs: [fix]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/audit-1/fix.diff"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: regression-hunter
+          doing: For each hunk, ask what existing behavior or test it could break; flag any over-reach beyond the triaged fix scope.
+    doing: >-
+      ADVISORY review of the fix diff. For each change verify: it matches a confirmed
+      triage item, is minimal, correct, adds/keeps test coverage, and introduces no
+      behavior change beyond the intended fix. Flag over-reach, missed cases, or
+      anything that could regress. Write findings to
+      .pigeon/coordinate/reviews/audit/fix-review.json and print a verdict
+      (approve / changes-needed + reasons) as your final message.
+
+  - id: review-agy
+    runner: agy
+    isolation: shared
+    readonly: true
+    needs: [fix]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/audit-1/fix.diff"
+    doing: >-
+      Independent ADVISORY second opinion on the fix diff. Decorrelated from the primary
+      reviewer — look for correctness or scope problems they might miss. Print a short
+      verdict (approve / concerns + reasons) as your final message.

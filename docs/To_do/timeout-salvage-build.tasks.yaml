@@ -1,0 +1,168 @@
+sid: timeout-build
+# ============================================================================
+# BUILD the timeout + salvage design (docs/design/timeout-salvage.md, Phase 0-3).
+# The design doc is the AUTHORITATIVE contract (code-grounded, with file:line
+# change points + code sketches). Crew routing as agreed:
+#   free models -> small first drafts of the LOW-RISK, well-specified pieces
+#                  (pure helpers, config/reporting, unit tests) -> artifacts.
+#   sonnet      -> integrate the whole phased design in one worktree (drafts are
+#                  raw material; the design doc wins on any conflict).
+#   opus        -> gatekeeper (adversarial verify) ; agy -> advisory.
+#
+# All draft/gate tasks are readonly + shared (they only write .pigeon/ artifacts)
+# — relying on the now-merged isolation-aware readonly fix.
+#
+# Run:
+#   pigeon coordinate docs/To_do/timeout-salvage-build.tasks.yaml --dry-run
+#   pigeon coordinate docs/To_do/timeout-salvage-build.tasks.yaml --skip-permissions --telemetry --budget-usd 20
+# ============================================================================
+
+tasks:
+
+  # ===== WAVE 1: FIRST DRAFTS (free; readonly+shared; one piece each -> artifact) =====
+
+  - id: draft-helpers
+    runner: oc-nemotron
+    readonly: true
+    isolation: shared
+    receives: ["repo://docs/design/timeout-salvage.md"]
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: drafter
+          doing: Draft pure functions only; copy the design's signatures exactly; do not wire them in.
+    doing: >-
+      FIRST DRAFT ONLY of the three helper functions in docs/design/timeout-salvage.md
+      §Part A: `_resolve_timeouts(config, runner)` (per-runner override -> global ->
+      (None,None,30)), `_classify_status(rc, kill_reason)` (rc==0->"exited";
+      kill_reason "idle"->"timed_out_idle", "hard"->"timed_out"; else "failed" — and
+      NEVER key off rc==124), and `_kill(proc, grace_s)` (terminate -> wait grace ->
+      kill; consider start_new_session/os.killpg per the Risks section). Match the
+      design exactly. Do NOT edit repo source. Write the draft (fenced python + a
+      2-line note) to .pigeon/coordinate/reviews/timeout-build/drafts/helpers.md and
+      hand back listing it.
+
+  - id: draft-config-reporting
+    runner: oc-north
+    readonly: true
+    isolation: shared
+    receives: ["repo://docs/design/timeout-salvage.md"]
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: drafter
+          doing: Small, additive config + reporting changes only; default-disabled (null) keys.
+    doing: >-
+      FIRST DRAFT ONLY of the config + reporting changes in
+      docs/design/timeout-salvage.md: (a) the `coordinate` config keys
+      idle_timeout_s/hard_cap_s/grace_kill_s/timeouts added to DEFAULT_CONFIG in
+      config.py (all default null/30 = back-compat), and (b) the reporting.py fix —
+      add a `salvaged`/`timed_out*` bucket so new statuses are not dropped by the
+      string-membership aggregations at reporting.py:51-52, plus glyphs in
+      _STATUS_GLYPHS. Match the design. Do NOT edit repo source. Write the draft to
+      .pigeon/coordinate/reviews/timeout-build/drafts/config_reporting.md and hand
+      back listing it.
+
+  - id: draft-tests
+    runner: oc-mimo
+    readonly: true
+    isolation: shared
+    receives: ["repo://docs/design/timeout-salvage.md"]
+    crew:
+      skills: [agent-tester]
+      subagents:
+        - role: drafter
+          doing: One focused test per case in the design's Test plan; use mocks for select/monotonic; no real subprocess hangs.
+    doing: >-
+      FIRST DRAFT ONLY of the unit tests in docs/design/timeout-salvage.md §Test plan:
+      `_resolve_timeouts` (absent/global/per-runner-null), `_classify_status` matrix
+      incl. real kill codes (-9/-15, and an explicit assert that NO branch keys off
+      124), the poll loop (EOF; idle fire; hard-cap fire on a never-idle stream;
+      all-null = no arming), and the salvage rule (rc!=0+worktree+info["diff"] ->
+      salvaged; empty-diff -> failed; non-worktree -> failed). Mock select/monotonic.
+      Do NOT edit repo source. Write the draft to
+      .pigeon/coordinate/reviews/timeout-build/drafts/tests.md and hand back listing it.
+
+  # ===== WAVE 2: INTEGRATION (sonnet — implement Phase 0-3 from the design doc) =====
+
+  - id: integrate
+    runner: sonnet
+    isolation: worktree
+    reentry: true
+    max_reentry: 2
+    needs: [draft-helpers, draft-config-reporting, draft-tests]
+    receives:
+      - "repo://docs/design/timeout-salvage.md"
+      - "repo://.pigeon/coordinate/reviews/timeout-build/drafts/helpers.md"
+      - "repo://.pigeon/coordinate/reviews/timeout-build/drafts/config_reporting.md"
+      - "repo://.pigeon/coordinate/reviews/timeout-build/drafts/tests.md"
+    crew:
+      skills: [code-architect-python, agent-tester]
+      subagents:
+        - role: test-writer
+          skill: agent-tester
+          doing: Finalize the unit + integration tests from the draft and the design's test plan; run only the affected tests until green.
+          verdict: targeted tests green and the Phase-0 null-default path stays byte-identical
+    doing: >-
+      IMPLEMENT docs/design/timeout-salvage.md (the AUTHORITATIVE spec) Phases 0-3 on
+      this worktree branch, treating the WAVE-1 drafts as raw material and the design
+      doc as the tie-breaker. In ONE coherent diff: (Phase 0) config keys (all
+      null-default), `_resolve_timeouts`, `_classify_status`, and replace the blocking
+      drain in `_run_task` (coordinate/__init__.py ~1141-1148) with the select-based
+      idle+hard-cap poll loop reading the RAW fd, returning (rc, kill_reason); update
+      the two `_execute` call sites. (Phase 1) `_kill` SIGTERM->grace->SIGKILL,
+      statuses timed_out_idle/timed_out, reporting + final-summary labeling. (Phase 2)
+      salvage detection `rc!=0 && worktree && info["diff"]` -> status "salvaged" +
+      salvage_diff + loud banner. (Phase 3) the `salvaged` scheduler set (cascade
+      exemption `blocked - salvaged`, readiness `deps <= succeeded|salvaged`), advisory
+      diff-pointer injection via `_spawn_prepare` + `salvaged_upstream` marker, widen
+      the `deferred` predicate, `block_on_salvage` opt-out, and the run-level exit-code
+      policy (a salvaged-then-gated run exits 0; salvaged-with-no-consumer exits 1).
+      Keep it surgical and additive; the all-null default MUST be byte-identical to
+      today (preserve --dry-run, budget, append-only handoffs, reentry). To stay in the
+      runner timeout, run only TARGETED checks: `python -c "import pigeon"` and
+      `pytest tests/test_coordinate.py -q` (full suite + pyrefly are the gate's job). If
+      your tests are red, hand back decisions.verdict="rework" with your notes in
+      state.artifacts to self-correct; else verdict="approve" and list each file
+      changed (file:line + one line). Do NOT merge.
+
+  # ===== WAVE 3: GATEKEEPER (opus) + ADVISORY (agy) =====
+
+  - id: gate
+    runner: opus
+    readonly: true
+    isolation: shared
+    needs: [integrate]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/timeout-build-*/integrate.diff"
+      - "repo://docs/design/timeout-salvage.md"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-verifier
+          skill: code-architect-python
+          doing: Stress-test the diff against the design's invariants — prove the all-null path is byte-identical, that no branch keys off rc==124, that empty-diff worktree exits are NOT salvaged, and that a salvaged-then-gated run can exit 0 while a salvaged-no-consumer run exits 1.
+          verdict: default to changes-needed if any invariant or phase requirement is unproven at file:line
+    doing: >-
+      GATEKEEPER review of the integration diff against docs/design/timeout-salvage.md
+      and the live code, citing file:line. Verify each phase is implemented as ruled;
+      the two judge-caught fixes (reporting aggregations + final-summary exit policy)
+      are present; the all-null default is byte-identical (back-compat); select reads
+      the RAW fd; salvage uses info["diff"] (not changed/harvested); reentry still
+      fires only on rc==0&&rework; --dry-run/budget/append-only preserved. Do NOT edit
+      source. Write a verdict {verdict, blockers:[...], nits:[...]} to
+      .pigeon/coordinate/reviews/timeout-build/gate.json and print a ranked summary.
+
+  - id: review-agy
+    runner: agy
+    readonly: true
+    isolation: shared
+    needs: [integrate]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/timeout-build-*/integrate.diff"
+    doing: >-
+      Independent ADVISORY second opinion on the integration diff, decorrelated from
+      the gatekeeper. Focus on the process-supervision correctness (select on the raw
+      fd, SIGTERM->grace->SIGKILL, orphaned grandchildren) and any back-compat risk in
+      the all-null default path. Do NOT edit source. Print a short verdict
+      (approve / concerns + reasons) as your final message.

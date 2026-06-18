@@ -1,0 +1,279 @@
+sid: adopt-p0
+# ============================================================================
+# BUILD `pigeon adopt` — P0 / MVP  (design: docs/design/adopt.md; plan:
+# docs/design/adopt-buildplan.md). The last unbuilt item in docs/design/PLAN.md
+# (Phases A-F shipped in v0.5.0). P0 = discovery + catalog + human view for
+# subagents & skills, `adopt.allow` trust gate, same-runtime crew resolution,
+# coordinate preflight warning for unknown skill names, MCP inventory-only.
+#
+# ROUTING (this session's policy):
+#   * free models (oc-* / nv-*)  -> SMALL, well-scoped FIRST DRAFTS (one fn/file
+#     each), written as a draft ARTIFACT — never repo source. NOTE: since the
+#     readonly fix (branch fix/readonly-artifact-scope), `readonly: true` WITH
+#     `isolation: shared` is safe for artifact writers (it permits .pigeon/
+#     writes); on the default worktree it stays findings-only. These tasks rely
+#     on the soft "do not edit repo source" in `doing` and run shared.
+#   * sonnet (+ agy)             -> high-thinking INTEGRATION of the drafts into
+#     real, tested code.
+#   * opus                       -> coordinator (interface contract up front) and
+#     gatekeeper (adversarial verify of the integration); last resort.
+#
+# Shape:  WAVE0 contract (opus)
+#         WAVE1 6 parallel first-drafts (free) -> draft artifacts
+#         WAVE2 integrate (sonnet, worktree)   -> one reviewable diff, self-checks
+#         WAVE3 gate (opus) + review-agy (agy)  -> ADVISORY. NO auto-merge; human
+#               runs pytest + pyrefly and merges.
+#
+# Run (dry-run first to see the DAG, then real with a budget):
+#   pigeon coordinate docs/To_do/adopt-p0.tasks.yaml --dry-run
+#   pigeon coordinate docs/To_do/adopt-p0.tasks.yaml --skip-permissions --telemetry --budget-usd 25
+# ============================================================================
+
+tasks:
+
+  # ===== WAVE 0: CONTRACT (opus coordinator — lock interfaces, kill drift) =====
+
+  - id: contract
+    runner: opus
+    isolation: shared
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: interface-definer
+          skill: code-architect-python
+          doing: Pin exact function signatures, the discovered-record JSON shape, the adopt config keys, the catalog path, and the CLI surface — every drafter must be able to code to it without guessing.
+          verdict: the contract must be concrete enough that two drafters writing different modules cannot disagree on a name or shape
+    doing: >-
+      Read docs/design/adopt.md (esp. §3 design, §6 trust, §7 P0 scope, §9 open
+      questions) and the live seams it builds on: src/pigeon/config.py (defaults +
+      path properties), src/pigeon/skills.py (GEN_MARKER, parse_playbook,
+      project_skills, _RENDERERS), src/pigeon/agents.py (detect_agents,
+      format_agents), and src/pigeon/coordinate/__init__.py crew_instructions.
+      RESOLVE the §9 open questions to the proposed defaults (catalog gitignored;
+      playbook wins on name collision + warn; MCP/skills shallow parse name+desc+path;
+      project scope wins over user + warn). Then WRITE an INTERFACE CONTRACT to
+      .pigeon/coordinate/reviews/adopt/contract.md covering, precisely: (a) the new
+      module layout src/pigeon/adopt.py and every public function signature
+      (parse_claude_subagent, discover_skills, parse_mcp_configs, build_catalog,
+      write_catalog, load_catalog, format_catalog, resolve_adopted); (b) the
+      discovered-record dict schema (name, kind, source, scope, runtime, description,
+      provenance, allowed) exactly as in adopt.md §3.1; (c) the `adopt:` config block
+      keys + a Config.adopt_dir / catalog path property; (d) the CLI surface
+      (`pigeon adopt`, `--allow <name>...`); (e) the coordinate preflight-warning
+      rule for crew skill names neither a playbook nor an allow-listed adopted asset;
+      (f) the non-destruction + secret-redaction invariants the integration must hold.
+      Hand back listing contract.md in state.artifacts.
+
+  # ===== WAVE 1: FIRST DRAFTS (free models; one piece each -> draft artifact) =====
+
+  - id: draft-subagent-parser
+    runner: oc-nemotron
+    isolation: shared
+    needs: [contract]
+    receives: ["repo://.pigeon/coordinate/reviews/adopt/contract.md"]
+    crew:
+      skills: [agent-coder]
+      subagents:
+        - role: drafter
+          doing: Write a first-draft pure function only; do not wire it anywhere.
+    doing: >-
+      FIRST DRAFT ONLY of `parse_claude_subagent(path)` per the contract: read a
+      .claude/agents/*.md file, parse the Claude-subagent frontmatter
+      (name, description, optional tools) + body, and decide provenance from the
+      skills.py GEN_MARKER (marker present => "pigeon-generated"; absent =>
+      "user-authored"). Return the contract's record dict (kind="subagent"). Handle
+      missing/empty frontmatter and a malformed file by returning None. Write the
+      draft (fenced python + a 3-line note on edge cases) to
+      .pigeon/coordinate/reviews/adopt/drafts/subagent_parser.md. Do NOT edit any
+      repo source. Hand back listing that artifact.
+
+  - id: draft-skill-parser
+    runner: oc-north
+    isolation: shared
+    needs: [contract]
+    receives: ["repo://.pigeon/coordinate/reviews/adopt/contract.md"]
+    crew:
+      skills: [agent-coder]
+      subagents:
+        - role: drafter
+          doing: Shallow parse only — name + description + path; defer deep SKILL.md parsing.
+    doing: >-
+      FIRST DRAFT ONLY of `discover_skills(dirs)` per the contract: walk each
+      .claude/skills source dir, recognize both directory-style skills (a SKILL.md
+      with frontmatter) and single-file skill defs, and emit one record per skill
+      (kind="skill") with name, description, source path, scope. Shallow only — name
+      + description + path; do NOT parse resources. Skip unreadable entries. Write the
+      draft (fenced python + edge-case note) to
+      .pigeon/coordinate/reviews/adopt/drafts/skill_parser.md. No repo edits. Hand
+      back listing that artifact.
+
+  - id: draft-mcp-parser
+    runner: oc-nex
+    isolation: shared
+    needs: [contract]
+    receives: ["repo://.pigeon/coordinate/reviews/adopt/contract.md"]
+    crew:
+      skills: [agent-coder]
+      subagents:
+        - role: drafter
+          skill: security-audit
+          doing: Record presence of secrets/env, NEVER their values — secrets must not reach the catalog.
+          verdict: any token/env value copied into a record is a hard failure of this draft
+    doing: >-
+      FIRST DRAFT ONLY of `parse_mcp_configs(paths)` per the contract: parse the
+      MCP server configs from ~/.claude.json, .mcp.json, and .cursor/mcp.json
+      (each has a slightly different shape — handle all three + missing/malformed).
+      Emit one record per server (kind="mcp") with name, command-or-url, scope, and a
+      boolean has_secrets — and CRITICALLY never copy any env/token VALUE into the
+      record. Inventory only; do not connect. Write the draft (fenced python + a note
+      on the three shapes) to .pigeon/coordinate/reviews/adopt/drafts/mcp_parser.md.
+      No repo edits. Hand back listing that artifact.
+
+  - id: draft-human-view
+    runner: nv-mistral-large
+    isolation: shared
+    needs: [contract]
+    receives: ["repo://.pigeon/coordinate/reviews/adopt/contract.md"]
+    crew:
+      skills: [agent-reviewer]
+      subagents:
+        - role: drafter
+          doing: Model the output on agents.format_agents — counts + a per-asset line; readable in a terminal.
+    doing: >-
+      FIRST DRAFT ONLY of `format_catalog(catalog)` per the contract — the human view
+      `pigeon adopt` prints with no args. Read src/pigeon/agents.py format_agents for
+      house style, then produce a string: header counts by kind and scope, then one
+      line per asset (name · kind · scope · allowed?/collides-with-playbook? · short
+      description + source path), and a footer hint that `--allow <name>` opens the
+      trust gate. Write the draft (fenced python + a sample rendering) to
+      .pigeon/coordinate/reviews/adopt/drafts/human_view.md. No repo edits. Hand back
+      listing that artifact.
+
+  - id: draft-tests
+    runner: oc-mimo
+    isolation: shared
+    needs: [contract]
+    receives: ["repo://.pigeon/coordinate/reviews/adopt/contract.md"]
+    crew:
+      skills: [agent-tester]
+      subagents:
+        - role: drafter
+          doing: One focused test per behavior in adopt.md §8; use tmp_path fixtures, no network.
+    doing: >-
+      FIRST DRAFT ONLY of tests/test_adopt.py per adopt.md §8 and the contract:
+      parse tests for each source format incl. malformed/empty; provenance (a
+      GEN_MARKER'd .claude/agents file => excluded as pigeon-generated, unmarked =>
+      adoptable); allow-gate (un-allow-listed name catalogued but a crew referencing
+      it trips the coordinate preflight warning; allow-listing clears it);
+      non-destruction (adopt never modifies a user source file); MCP secret values
+      never appear in catalog.json. Use tmp_path + monkeypatch; no real ~/.claude.
+      Write the draft (fenced python + a list of what each test pins) to
+      .pigeon/coordinate/reviews/adopt/drafts/tests.md. No repo edits. Hand back
+      listing that artifact.
+
+  - id: draft-docs
+    runner: nv-minimax
+    isolation: shared
+    needs: [contract]
+    receives: ["repo://.pigeon/coordinate/reviews/adopt/contract.md"]
+    crew:
+      skills: [agent-docs-api-openapi]
+      subagents:
+        - role: drafter
+          doing: Match existing doc voice; short and concrete.
+    doing: >-
+      FIRST DRAFT ONLY of the doc text for `pigeon adopt` (P0). Produce: (a) an
+      AGENTS.md repo-map line for the new src/pigeon/adopt.py module; (b) a MANUAL.md
+      "pigeon adopt" subsection (what it discovers, the allow gate, MCP inventory-only,
+      that it never touches user source files); (c) a one-line README mention. Match
+      the existing terse voice (read AGENTS.md + docs/MANUAL.md headers first). Write
+      the draft to .pigeon/coordinate/reviews/adopt/drafts/docs.md. No repo edits.
+      Hand back listing that artifact.
+
+  # ===== WAVE 2: INTEGRATION (sonnet — synthesize drafts into real, tested code) =====
+
+  - id: integrate
+    runner: sonnet
+    isolation: worktree
+    reentry: true
+    max_reentry: 2
+    needs: [draft-subagent-parser, draft-skill-parser, draft-mcp-parser, draft-human-view, draft-tests, draft-docs]
+    receives:
+      - "repo://.pigeon/coordinate/reviews/adopt/contract.md"
+      - "repo://.pigeon/coordinate/reviews/adopt/drafts/subagent_parser.md"
+      - "repo://.pigeon/coordinate/reviews/adopt/drafts/skill_parser.md"
+      - "repo://.pigeon/coordinate/reviews/adopt/drafts/mcp_parser.md"
+      - "repo://.pigeon/coordinate/reviews/adopt/drafts/human_view.md"
+      - "repo://.pigeon/coordinate/reviews/adopt/drafts/tests.md"
+      - "repo://.pigeon/coordinate/reviews/adopt/drafts/docs.md"
+    crew:
+      skills: [code-architect-python, agent-tester]
+      subagents:
+        - role: test-writer
+          skill: agent-tester
+          doing: Finalize tests/test_adopt.py from the draft; run the affected tests in the worktree until green.
+          verdict: pytest must be green and pyrefly clean before hand-back
+    doing: >-
+      INTEGRATE the WAVE-1 drafts + the contract into real, minimal, tested code on
+      this worktree branch — treat the free-model drafts as raw material, not gospel;
+      rewrite anything that drifts from the contract. Implement, in ONE coherent diff:
+      (1) src/pigeon/adopt.py — discovery (subagents + skills + MCP inventory),
+      provenance via skills.GEN_MARKER, project-over-user scope precedence,
+      playbook-wins name-collision (warn), build_catalog/write_catalog/load_catalog to
+      .pigeon/adopt/catalog.json, format_catalog, and resolve_adopted (allow-list gated
+      lookup); (2) config.py — the `adopt:` defaults block + an adopt_dir/catalog path
+      property + the .pigeon/adopt gitignore entry; (3) cli.py — the `pigeon adopt`
+      subcommand and `--allow <name>...` (writes adopt.allow); (4) coordinate
+      preflight — warn when a crew skill name is neither a playbook nor an
+      allow-listed adopted asset, and let a same-runtime crew reference resolve against
+      the catalog; (5) tests/test_adopt.py finalized from the draft. Keep it surgical:
+      additive, no behavior change to existing features, secrets never written to the
+      catalog, user source files never modified. To stay inside the runner timeout,
+      run only the TARGETED checks: `python -c "import pigeon.adopt"` and
+      `pytest tests/test_adopt.py -q` (the full suite + pyrefly are the gate's and the
+      human's job, not this task's). If your own tests are red, hand back
+      decisions.verdict="rework" with your notes file in state.artifacts so this task
+      re-runs once to self-correct; otherwise hand back decisions.verdict="approve"
+      and list each file changed (file:line + one line). Do NOT merge.
+
+  # ===== WAVE 3: GATEKEEPER + ADVISORY REVIEW (opus gate, agy 2nd opinion) =====
+
+  - id: gate
+    runner: opus
+    isolation: shared
+    needs: [integrate]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/*/integrate.diff"
+      - "repo://.pigeon/coordinate/reviews/adopt/contract.md"
+    crew:
+      skills: [code-architect-python]
+      subagents:
+        - role: adversarial-verifier
+          skill: security-audit
+          doing: Try to break the invariants — find a path where a user source file is mutated, a secret reaches catalog.json, or an un-allow-listed asset becomes usable.
+          verdict: default to changes-needed if any invariant is unproven at file:line
+    doing: >-
+      GATEKEEPER review of the integration diff against contract.md, adopt.md §6/§7/§8,
+      and the live code. Verify, citing file:line: every contract function exists with
+      the agreed signature; the non-destruction invariant holds (no write under a user
+      source path); MCP secret VALUES never land in catalog.json (only name + presence);
+      the allow-gate actually gates use (un-allow-listed = catalogued but unusable);
+      playbook-wins collision + project-over-user scope are honored; the coordinate
+      preflight warning fires for unknown crew skill names; tests cover §8 and the diff
+      is minimal (no scope creep, no behavior change to existing features). Print a
+      verdict (approve / changes-needed + a concrete fix list keyed to file:line) as
+      your final message and write it to
+      .pigeon/coordinate/reviews/adopt/gate.json. ADVISORY — do not merge.
+
+  - id: review-agy
+    runner: agy
+    isolation: shared
+    needs: [integrate]
+    receives:
+      - "repo://.pigeon/coordinate/diffs/*/integrate.diff"
+    doing: >-
+      Independent ADVISORY second opinion on the integration diff, decorrelated from
+      the gatekeeper. Look for correctness, edge-case, or scope problems they might
+      miss — especially malformed-input handling in the parsers and any place the
+      catalog could leak a secret or the allow-gate could be bypassed. Print a short
+      verdict (approve / concerns + reasons) as your final message.
