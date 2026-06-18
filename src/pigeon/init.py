@@ -22,6 +22,7 @@ def _gitignore_entries(dirname: str) -> list[str]:
         f"{dirname}/coordinate/",
         f"{dirname}/context/",
         f"{dirname}/vector/",
+        f"{dirname}/adopt/",
     ]
 
 def _hook_text() -> str:

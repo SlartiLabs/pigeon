@@ -537,6 +537,25 @@ def cmd_graph(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_adopt(args: argparse.Namespace) -> int:
+    from . import adopt as adopt_mod
+    cfg = _cfg(args)
+
+    if args.allow:
+        adopt_mod.update_allow(args.allow, cfg)
+        # Reload config so the new allow list takes effect for this run.
+        cfg = _cfg(args)
+
+    entries = adopt_mod.discover(cfg)
+    adopt_mod.write_catalog(entries, cfg)
+
+    if args.json:
+        print(json.dumps(adopt_mod.load_catalog(cfg), indent=2, ensure_ascii=False))
+    else:
+        print(adopt_mod.format_catalog(adopt_mod.load_catalog(cfg)))
+    return 0
+
+
 def cmd_mcp(args: argparse.Namespace) -> int:
     from . import mcp_server  # lazy: needs the optional [mcp] extra
     return mcp_server.serve(args.root)
@@ -722,6 +741,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--critical-path", action="store_true",
                    help="Duration-weighted longest dependency chain.")
     p.set_defaults(func=cmd_runs)
+
+    p = sub.add_parser(
+        "adopt",
+        help="Discover existing subagents/skills/MCP servers and write "
+             "the adopt catalog.  Use --allow to trust names in crews.",
+    )
+    p.add_argument(
+        "--allow", metavar="NAME", nargs="+",
+        help="Add name(s) to adopt.allow in config.yaml so they can be "
+             "referenced in coordinate crews.",
+    )
+    p.add_argument("--json", action="store_true", help="Emit catalog as JSON.")
+    p.set_defaults(func=cmd_adopt)
 
     p = sub.add_parser(
         "mcp",

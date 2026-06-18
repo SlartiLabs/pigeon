@@ -92,6 +92,21 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
                 "claude": ".claude/agents",
             },
         },
+        # Adopt: discover & catalogue existing subagents, skills, MCP servers.
+        # Sources are relative to repo root; ~ paths expand to the real home.
+        # Project-scope sources should be listed first so project wins on name
+        # collision with user scope.  allow: [] means nothing is usable until
+        # explicitly allow-listed via `pigeon adopt --allow <name>`.
+        "adopt": {
+            "enabled": True,
+            "sources": {
+                "subagents": [".claude/agents"],
+                "skills": [".claude/skills"],
+                "mcp": [".mcp.json", ".cursor/mcp.json"],
+            },
+            "allow": [],
+            "import": False,
+        },
         "coordinate": {
             "log_dir": f"{d}/coordinate/logs",
             "runs_dir": f"{d}/coordinate/runs",
@@ -389,6 +404,14 @@ class Config:
     @property
     def coordinate_events_dir(self) -> Path:
         return self._p(self.data["coordinate"]["events_dir"])
+
+    @property
+    def adopt_dir(self) -> Path:
+        return self.contract_dir / "adopt"
+
+    @property
+    def catalog_path(self) -> Path:
+        return self.adopt_dir / "catalog.json"
 
 
 def load_config(root: Path | str | None = None) -> Config:
