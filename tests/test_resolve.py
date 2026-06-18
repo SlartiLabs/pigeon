@@ -157,3 +157,13 @@ def test_s3_reads_via_mocked_client(repo, monkeypatch):
     monkeypatch.setattr(boto3, "client", lambda svc: _Client())
     r = rs.resolve("s3://my-bucket/a/b.txt", repo)
     assert r.scheme == "s3" and r.read_bytes() == b"s3-bytes"
+
+
+def test_external_rejected_when_opt_out_key_absent(repo, tmp_path):
+    """The S1 fence must FAIL CLOSED when allow_outside_root is absent from config
+    (exercises the .get(..., False) safe default — kills the 'default True' mutant)."""
+    repo.data["resolve"].pop("allow_outside_root", None)
+    outside = tmp_path.parent / "ext_default.txt"
+    outside.write_text("x", encoding="utf-8")
+    with pytest.raises(rs.PointerError, match="outside the repo root"):
+        rs.resolve(f"file://{outside.resolve()}", repo)
