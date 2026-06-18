@@ -221,3 +221,18 @@ def test_unknown_runtime_target_skipped(tmp_path):
     _write_page(cfg)
     out = skills.project_skills(cfg)
     assert any("nonesuch" in s and "no renderer" in s for s in out["skipped"])
+
+
+def test_projects_agy_uses_claude_format(tmp_path):
+    """agy/antigravity reuses the Claude subagent format at a different dir."""
+    cfg = _mk_repo(tmp_path, "skills:\n  targets:\n    agy: .gemini/agents\n")
+    _write_page(cfg, meta="description: Adversarial review.\ntools: Read, Grep\n")
+    out = skills.project_skills(cfg)
+    agy = cfg.root / ".gemini" / "agents" / "security-audit.md"
+    assert str(agy.relative_to(cfg.root)) in out["written"]
+    text = agy.read_text(encoding="utf-8")
+    # Claude-format frontmatter (name + description + tools), GEN_MARKER, body
+    assert text.startswith("---\nname: security-audit\n")
+    assert "description: Adversarial review." in text
+    assert "tools: Read, Grep" in text
+    assert skills.GEN_MARKER in text and "You are a security reviewer." in text

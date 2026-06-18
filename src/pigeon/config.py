@@ -87,8 +87,10 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
             "encoding": "cl100k_base",
         },
         # Skill projection: playbook pages -> each runtime's native subagent files.
-        # Renderers exist for "claude" and "opencode"; add a target to opt in,
-        # e.g. opencode: .opencode/agent  (default stays claude-only for back-compat).
+        # Renderers exist for "claude", "opencode", and "agy" (antigravity, which
+        # reuses the Claude format); add a target to opt in, e.g.
+        # opencode: .opencode/agent  or  agy: .gemini/agents  (default stays
+        # claude-only for back-compat).
         "skills": {
             "targets": {
                 "claude": ".claude/agents",

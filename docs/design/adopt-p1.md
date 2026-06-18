@@ -70,8 +70,13 @@ Cross-runtime `_RENDERERS` (opencode/gemini projection of adopted defs); `pigeon
 Added `_RENDERERS["opencode"] = _render_opencode` (verified against opencode 1.16 agent
 files: `description` + `mode: subagent` frontmatter, body; name from filename; Claude
 `tools` vocab not projected). Available as a `skills.targets` opt-in
-(`opencode: .opencode/agent`); default stays claude-only (byte-equivalent). **gemini
-deferred** — not installed and has no subagent concept to project into; revisit if/when a
-gemini agent format is verifiable. Factored the shared frontmatter+marker+body shape into
-`_render_marked`. Still open: `pigeon agents`↔`adopt` cross-ref, deep `.claude/skills` parse,
-MCP pass-through (P2).
+(`opencode: .opencode/agent`); default stays claude-only (byte-equivalent). Factored the
+shared frontmatter+marker+body shape into `_render_marked`.
+
+Also added **`agy`** (antigravity) — verified it consumes the **Claude format verbatim**
+(`~/.gemini/agents/*.md` use name/description/tools frontmatter; its skills dir symlinks to
+`~/.claude/skills`), so `_RENDERERS["agy"] = _render_claude`; opt in with e.g.
+`agy: .gemini/agents`. The **bare `gemini` CLI is deferred** — different tool, not installed,
+no subagent concept (don't confuse with agy/antigravity).
+
+Still open: `pigeon agents`↔`adopt` cross-ref, deep `.claude/skills` parse, MCP pass-through (P2).
