@@ -64,6 +64,11 @@
           "type": "object",
           "additionalProperties": true,
           "description": "Key decisions carried forward, e.g. {\"auth_flow\": \"oauth2_pkce\"}."
+        },
+        "salvaged_upstream": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Task IDs of upstream salvaged tasks whose diff this handoff carries (advisory; downstream reviews materialized-but-unverified work)."
         }
       }
     },

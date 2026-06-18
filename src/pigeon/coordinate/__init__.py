@@ -1189,9 +1189,9 @@ def _run_task(
             proc = subprocess.Popen(
                 cmd, cwd=cwd or config.root,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, bufsize=1,
-                env=env,
-                start_new_session=True,
+                bufsize=0,          # unbuffered BINARY: select() and readline()
+                env=env,            # see the same bytes (a buffered text wrapper
+                start_new_session=True,   # can hide data select never reports)
             )
         except OSError as exc:
             line = f"failed to spawn: {exc}"
@@ -1205,9 +1205,9 @@ def _run_task(
         if procs is not None:
             procs[task_id] = proc
         assert proc.stdout is not None
-        # Read from the raw fd so select() and readline() see the same buffer.
-        # (Selecting on a bufsize=1 TextIOWrapper can disagree with readline.)
-        fd = proc.stdout.buffer if hasattr(proc.stdout, "buffer") else proc.stdout
+        # proc.stdout is an unbuffered binary stream (bufsize=0); readline()
+        # returns bytes and select() sees exactly what's unread.
+        fd = proc.stdout
         while True:
             if idle_s or hard_s:
                 now = time.monotonic()
@@ -1567,9 +1567,10 @@ def run_coordinate(
                 changed = False
                 for tid in sorted(pending):
                     task_obj = by_id[tid][0]
-                    # block_on_salvage: treat salvaged deps as blockers (opt-out)
+                    # block_on_salvage: a salvaged dep is a blocker too, so a hard
+                    # gate cascade-skips instead of orphaning in `pending`.
                     if task_obj.get("block_on_salvage"):
-                        bad = deps[tid] & blocked
+                        bad = deps[tid] & (blocked | salvaged)
                     else:
                         bad = deps[tid] & (blocked - salvaged)
                     if bad:

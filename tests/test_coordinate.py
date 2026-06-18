@@ -1572,3 +1572,130 @@ def test_opencode_permission_env_grants_repo_root_reads(repo):
     assert perm["external_directory"][f"{cfg.root}/**"] == "allow"
     # non-opencode runners get nothing (claude/agy use --dangerously-skip-permissions)
     assert co._opencode_permission_env(["claude", "-p", "hi", "--model", "sonnet"], cfg) == {}
+
+
+# ------------------------------------------- timeout + salvage (Phase 0-3)
+# (docs/design/timeout-salvage.md)
+
+def _cfg_with(repo, runners, **coord):
+    """Like _setup but also writes extra coordinate.* keys (timeout knobs)."""
+    (repo.root / ".git").mkdir(exist_ok=True)
+    (repo.root / ".agentctx" / "config.yaml").write_text(
+        yaml.safe_dump({"coordinate": {
+            "runners": runners,
+            "skip_permissions_flags": {r: [] for r in runners},
+            **coord,
+        }}), encoding="utf-8")
+    return load_config(repo.root)
+
+
+# --- unit: the pure helpers ---
+
+def test_resolve_timeouts_precedence():
+    assert co._resolve_timeouts({}, "py") == (None, None, 30.0)
+    g = {"idle_timeout_s": 100, "hard_cap_s": 200, "grace_kill_s": 10}
+    assert co._resolve_timeouts(g, "py") == (100, 200, 10.0)
+    # a per-runner null MASKS the global; an absent runner inherits it
+    masked = {**g, "timeouts": {"opus": {"idle_timeout_s": None}}}
+    assert co._resolve_timeouts(masked, "opus") == (None, 200, 10.0)
+    assert co._resolve_timeouts(masked, "sonnet") == (100, 200, 10.0)
+    # a per-runner override wins
+    over = {**g, "timeouts": {"oc": {"idle_timeout_s": 5, "hard_cap_s": 9}}}
+    assert co._resolve_timeouts(over, "oc") == (5, 9, 10.0)
+
+
+def test_classify_status_never_keys_on_124():
+    assert co._classify_status(0, None) == "exited"
+    assert co._classify_status(-9, "idle") == "timed_out_idle"
+    assert co._classify_status(-15, "hard") == "timed_out"
+    assert co._classify_status(1, None) == "failed"
+    # 124 with no kill_reason is a plain failure, NOT special-cased as a timeout
+    assert co._classify_status(124, None) == "failed"
+
+
+def test_default_config_timeouts_are_null(repo):
+    assert repo.coordinate_cfg.get("idle_timeout_s") is None
+    assert repo.coordinate_cfg.get("hard_cap_s") is None
+    assert repo.coordinate_cfg.get("grace_kill_s") == 30
+
+
+# --- integration: progress-aware kill ---
+
+_SLEEPER = [sys.executable, "-c", "import time; time.sleep(30)"]
+_CHATTY = [sys.executable, "-u", "-c",
+           "import time\nwhile True:\n    print('tick'); time.sleep(0.05)"]
+
+
+def test_idle_timeout_kills_silent_task(repo):
+    cfg = _cfg_with(repo, {"sleeper": _SLEEPER}, idle_timeout_s=1, grace_kill_s=2)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "hang", "runner": "sleeper", "doing": "x"}]))
+    co.run_coordinate(tasks, cfg)
+    t = co.list_runs(cfg, sid="co1")[0]["tasks"]["hang"]
+    assert t["status"] == "timed_out_idle"
+    assert t["kill_reason"] == "idle"
+
+
+def test_hard_cap_kills_never_idle_task(repo):
+    cfg = _cfg_with(repo, {"chatty": _CHATTY}, hard_cap_s=1, grace_kill_s=2)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "loop", "runner": "chatty", "doing": "x"}]))
+    co.run_coordinate(tasks, cfg)
+    t = co.list_runs(cfg, sid="co1")[0]["tasks"]["loop"]
+    assert t["status"] == "timed_out"
+    assert t["kill_reason"] == "hard"
+
+
+# --- integration: salvage detection + scheduling ---
+
+# writes a file (→ a real diff) then exits non-zero
+_SAVER_FAIL = [sys.executable, "-c",
+               "open('salv_{task_id}.txt','w').write('partial'); "
+               "import sys; sys.exit(1)"]
+
+
+def test_salvage_detected_and_downstream_proceeds(repo):
+    cfg = _cfg_with(repo, {"saver": _SAVER_FAIL, "py": _PY_OK})
+    _real_git(repo.root)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "edit", "runner": "saver", "doing": "x", "isolation": "worktree"},
+        {"id": "gate", "runner": "py", "doing": "review", "needs": ["edit"]},
+    ]))
+    rc = co.run_coordinate(tasks, cfg, parallel_limit=1)
+    run = co.list_runs(cfg, sid="co1")[0]
+    assert run["tasks"]["edit"]["status"] == "salvaged"
+    assert run["tasks"]["edit"]["salvage_diff"]                 # a materialized diff
+    # downstream proceeds advisory (NOT skipped) against the salvaged work
+    assert run["tasks"]["gate"]["status"] in ("exited", "completed")
+    # its input handoff carries the salvage pointer + the advisory marker
+    gate_h = next(ho.load_handoff(p, cfg)
+                  for p in cfg.handoffs_dir.glob("co1-*.json")
+                  if ho.load_handoff(p, cfg).get("to") == "gate")
+    assert gate_h["state"]["salvaged_upstream"] == ["edit"]
+    assert any(a.endswith("edit.diff") for a in gate_h["state"].get("artifacts", []))
+    assert rc == 0                                              # salvaged-then-gated = green
+
+
+def test_block_on_salvage_restores_conservative_skip(repo):
+    cfg = _cfg_with(repo, {"saver": _SAVER_FAIL, "py": _PY_OK})
+    _real_git(repo.root)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "edit", "runner": "saver", "doing": "x", "isolation": "worktree"},
+        {"id": "deploy", "runner": "py", "doing": "ship", "needs": ["edit"],
+         "block_on_salvage": True},
+    ]))
+    rc = co.run_coordinate(tasks, cfg, parallel_limit=1)
+    run = co.list_runs(cfg, sid="co1")[0]
+    assert run["tasks"]["edit"]["status"] == "salvaged"
+    assert run["tasks"]["deploy"]["status"] == "skipped"       # hard gate refuses partial work
+    assert rc == 1
+
+
+def test_salvaged_without_consumer_fails_the_run(repo):
+    cfg = _cfg_with(repo, {"saver": _SAVER_FAIL})
+    _real_git(repo.root)
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "lonely", "runner": "saver", "doing": "x", "isolation": "worktree"}]))
+    rc = co.run_coordinate(tasks, cfg)
+    assert co.list_runs(cfg, sid="co1")[0]["tasks"]["lonely"]["status"] == "salvaged"
+    assert rc == 1                                             # nothing validates it
