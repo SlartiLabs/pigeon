@@ -7,6 +7,8 @@ Commands:
   retrieve    hybrid ripgrep + BM25 query over the repo + manifest
   metrics     token-accounting report (--by-model for per-model track record)
   agents      discover agent CLIs installed here (usable as coordinate runners)
+  adopt       discover/catalog existing subagents, skills, MCP servers (--import to adopt)
+  probe       qualify configured runners (respond/protocol/latency) — advisory
   demo        whole-MVP acceptance: 3-agent chain + retrieval, with totals
   plan        preview a tasks file: waves, badges, preflight — writes nothing
   coordinate  fan a tasks file out to agent CLIs (claude/agy/opencode) in parallel
@@ -574,6 +576,19 @@ def cmd_adopt(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_probe(args: argparse.Namespace) -> int:
+    from . import probe as probe_mod
+    cfg = _cfg(args)
+    records = probe_mod.probe(cfg, free_only=args.free_only,
+                              timeout_s=args.timeout, soft_s=args.soft)
+    probe_mod.write_probe(records, cfg)
+    if args.json:
+        print(json.dumps(records, indent=2, ensure_ascii=False))
+    else:
+        print(probe_mod.format_probe(records))
+    return 0
+
+
 def cmd_mcp(args: argparse.Namespace) -> int:
     from . import mcp_server  # lazy: needs the optional [mcp] extra
     return mcp_server.serve(args.root)
@@ -777,6 +792,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--json", action="store_true", help="Emit catalog as JSON.")
     p.set_defaults(func=cmd_adopt)
+
+    p = sub.add_parser(
+        "probe",
+        help="Probe configured runners (respond / protocol / latency) and write "
+             ".pigeon/probe.json. Advisory — never edits the runner pool.",
+    )
+    p.add_argument("--free-only", action="store_true",
+                   help="Skip the trusted claude/agy runners (probe only the free pool).")
+    p.add_argument("--timeout", type=float, default=60.0,
+                   help="Per-runner hard timeout in seconds (default 60).")
+    p.add_argument("--soft", type=float, default=30.0,
+                   help="Latency (s) above which a responding runner is 'slow' (default 30).")
+    p.add_argument("--json", action="store_true", help="Emit probe records as JSON.")
+    p.set_defaults(func=cmd_probe)
 
     p = sub.add_parser(
         "mcp",
