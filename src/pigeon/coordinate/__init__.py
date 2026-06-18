@@ -564,6 +564,37 @@ def receives_warnings(config: Config, spec: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def crew_skill_warnings(config: Config, spec: dict[str, Any]) -> list[str]:
+    """Non-blocking advisories for crew skill names that are neither a
+    canonical playbook nor an allow-listed adopted asset.  The run proceeds;
+    the runner may still find the skill via its own search path, but pigeon
+    cannot verify it.  Use `pigeon adopt --allow <name>` to clear the warning."""
+    from .. import skills as skills_mod
+    from .. import adopt as adopt_mod
+
+    known_playbooks = {p["name"] for p in skills_mod.playbooks(config)}
+    warnings: list[str] = []
+
+    for task in spec.get("tasks", []):
+        crew = task.get("crew") or {}
+        skill_names = list(crew.get("skills", []))
+        for member in crew.get("subagents", []):
+            if member.get("skill"):
+                skill_names.append(member["skill"])
+        for sname in skill_names:
+            if sname in known_playbooks:
+                continue
+            if adopt_mod.check_allow(sname, config):
+                continue
+            warnings.append(
+                f"task {task['id']!r}: crew skill {sname!r} is neither a playbook "
+                "nor an allow-listed adopted asset — run `pigeon adopt --allow` "
+                "to reference it in a crew"
+            )
+
+    return warnings
+
+
 def telemetry_warnings(config: Config, spec: dict[str, Any],
                        run_telemetry: bool = False) -> list[str]:
     """Telemetry was requested (run-level ``--telemetry`` or a task's
@@ -710,6 +741,7 @@ def plan(config: Config, spec: dict[str, Any]) -> dict[str, Any]:
         "isolated_env": isolated_env(),
         "budget": ccfg.get("budget", {}),
         "preflight_errors": preflight(config, spec),
+        "crew_skill_warnings": crew_skill_warnings(config, spec),
     }
 
 
@@ -734,6 +766,8 @@ def format_plan(p: dict[str, Any], tasks: list[dict[str, Any]]) -> str:
         lines += [f"    ✗ {e}" for e in p["preflight_errors"]]
     else:
         lines.append("  preflight: ok")
+    for w in p.get("crew_skill_warnings", []):
+        lines.append(f"  warning: {w}")
     return "\n".join(lines)
 
 
@@ -1177,7 +1211,8 @@ def run_coordinate(
             _git(config.root, "worktree", "prune", "--expire=now", check=False)
 
     for warning in (model_warnings(config, spec) + receives_warnings(config, spec)
-                    + telemetry_warnings(config, spec, run_telemetry=telemetry)):
+                    + telemetry_warnings(config, spec, run_telemetry=telemetry)
+                    + crew_skill_warnings(config, spec)):
         print(f"coordinate: warning: {warning}", file=sys.stderr)
 
     print(

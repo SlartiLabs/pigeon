@@ -53,6 +53,7 @@ pigeon = ["py.typed", "templates/*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+pythonpath = ["src"]
 
 [tool.pyrefly]
 project-includes = ["src", "tests"]
