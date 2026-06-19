@@ -278,6 +278,25 @@ def test_no_budget_means_no_ceiling(repo):
     assert "cost budget exhausted" in capped.exhausted()
 
 
+def test_runner_spawn_closes_stdin(repo, monkeypatch):
+    """Runners are headless batch processes: coordinate must spawn them with
+    stdin=DEVNULL. Without it the child inherits pigeon's stdin and a CLI that
+    reads stdin for a 'next message' (e.g. agy) blocks forever instead of getting
+    immediate EOF. Regression for that hang."""
+    cfg = _setup(repo)  # default {"py": _PY_OK}
+    seen: dict = {}
+    real_popen = co.subprocess.Popen
+
+    def spy(*args, **kwargs):
+        seen["stdin"] = kwargs.get("stdin", "INHERITED")
+        return real_popen(*args, **kwargs)
+
+    monkeypatch.setattr(co.subprocess, "Popen", spy)
+    tasks = _write_tasks(repo.root, _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    assert seen["stdin"] == co.subprocess.DEVNULL
+
+
 # ----------------------------------------------------------------- worktrees
 import subprocess as sp
 

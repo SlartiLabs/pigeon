@@ -1235,6 +1235,10 @@ def _run_task(
             env.update(_opencode_permission_env(cmd, config))
             proc = subprocess.Popen(
                 cmd, cwd=cwd or config.root,
+                stdin=subprocess.DEVNULL,  # headless batch: never inherit pigeon's
+                                           # stdin. Some agent CLIs (e.g. agy) block
+                                           # reading stdin for a "next message" and
+                                           # never exit; DEVNULL gives immediate EOF.
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 bufsize=0,          # unbuffered BINARY: select() and readline()
                 env=env,            # see the same bytes (a buffered text wrapper
