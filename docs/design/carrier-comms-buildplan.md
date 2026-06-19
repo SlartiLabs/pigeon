@@ -394,7 +394,41 @@ the polymath" become "it saves tokens" before a locked gate says so. Lock each g
 
 ---
 
-## 9. Run log & lessons
+## 9. Next steps — live (execution underway on `feat/carrier-comms`)
+
+**Done (committed):**
+- `2a87f66` — `stdin=DEVNULL` runner fix (prerequisite for any `agy` coordinate run; §1).
+- `be8a6ac` — Tier-A report + Fork-A capability result (bridge 5/5 vs cold 0/5; §2). **This is
+  Lever 2's quality win — reuse it.**
+- `b813df3` — this handoff doc set (build plan + `carrier-comms.md` brief + `comms-panel.tasks.yaml`).
+
+**In progress:** Phase 1 instrumentation — `src/pigeon/tokens.py` has the `account_handoff`
+`components` split + `scaffold` kind started (uncommitted). Finish and commit it before measuring.
+
+**Do next, in order (each step ends at its gate; lock the threshold before the run):**
+1. **Finish Phase 1.** Complete `account_scaffold` + its call in `_build_command`
+   (`coordinate/__init__.py:963`); add `src/pigeon/bench_join.py` (tokens×success join); run the
+   suite. Commit `tokens.py` + `bench_join.py`. → **Gate G0:** `bench_join` reproduces
+   `marshmallow.json` totals + the recorded success tie; full suite green.
+2. **(Optional, runnable now) Phase 0 panel.** `pigeon coordinate docs/To_do/comms-panel.tasks.yaml
+   --dry-run`, then `--skip-permissions --telemetry`. Synthesize the mimo/nemotron/agy critiques
+   into `carrier-comms.md`; fold any valid premise-correction back into this plan **before** building further.
+3. **Phase 2.** Instrumented marshmallow `t1-slug` WITH-arm run. → **Gate G1:** pack ≫ handoff.
+4. **Phase 3 (Lever 1).** Moves 1–4 + pack/top-k sweep → U-curve knee. → **Gate G-Lever1** (or the
+   clean "channel already minimal" null).
+5. **Phase 4 (Lever 2).** `derived` v1.2 schema + capture (i); same-model re-run. → **Gate G2a**
+   (bloat check; parity = working).
+6. **Phase 5.** Optional cross-model confirm re-run through the `derived` schema (reuse Fork-A as
+   the standing quality win); add the token axis. → **Gate G-Lever2** (quality OR token).
+
+**Housekeeping:** commit each phase on `feat/carrier-comms`; **lock each gate's threshold before
+its first run** (the `KILL-CRITERION.md` discipline); **do not push** until a clean stopping point
+and only after the active session has paused (concurrency hazard); commits are the user's — no
+Claude attribution.
+
+---
+
+## 10. Run log & lessons
 
 _(Fill after execution — mirror `adopt-buildplan.md §9`: per-phase outcome, gate verdicts,
 as-built deltas, the kill/continue call. Commits are the user's; no Claude attribution.)_
