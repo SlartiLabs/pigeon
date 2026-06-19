@@ -1,0 +1,35 @@
+{
+  "experiment": "Fork A — cross-model coordination CAPABILITY (possibility, not cost/value)",
+  "date": "2026-06-19",
+  "claim_type": "capability / possibility — pigeon carries state across model boundaries that the chain cannot reconstruct without it. NOT a cost or value/need claim.",
+  "substrate": "3 separate agent CLIs, no shared memory: claude (Anthropic, architect) -> opencode/mimo-v2.5-free (to_wire) -> agy/Antigravity (from_wire). Genuinely cross-model.",
+  "repo": "controlled minimal package `ledger` (an Account dataclass); appropriate for a capability demo (a controlled scenario, not a public OSS repo).",
+  "design": {
+    "task": "Implement to_wire/from_wire against a fixed wire CONTRACT (keys acct/cents/ts, ts=epoch-seconds int, omit note when None; lenient from_wire). The contract is ARBITRARY and the idiomatic Python defaults are its opposite.",
+    "off_disk_thread": "The contract is given ONLY to hop 1 (architect) by prompt and never written into the code; nothing in the repo lets a downstream model infer it.",
+    "ablation": "bridge = pigeon coordinate carries the architect's contract handoff to the implementers (receives pointer). no-bridge = same opencode->agy implementers, cold, no contract handoff, sharing only the filesystem (the realistic 'remove the bridge' baseline).",
+    "held_out_grader": "accept.py (agents never see it): asserts the exact contract keys/types + round-trip + leniency. Validated to fail-pristine / pass-reference.",
+    "competence_control": "Require bridge ~N/N (chain CAN do it -> rules out model weakness) AND no-bridge ~0/N with failures = contract violations (not crashes)."
+  },
+  "results": {
+    "N": 5,
+    "bridge_pass": 5,
+    "nobridge_pass": 0,
+    "per_trial_csv": "trial,arm,accept_rc,to_wire,from_wire,wall_s",
+    "rows": [
+      [1, "bridge", 0, 1, 1, 187], [1, "nobridge", 1, 1, 1, 96],
+      [2, "bridge", 0, 1, 1, 149], [2, "nobridge", 1, 1, 1, 113],
+      [3, "bridge", 0, 1, 1, 110], [3, "nobridge", 1, 1, 1, 85],
+      [4, "bridge", 0, 1, 1, 130], [4, "nobridge", 1, 1, 1, 130],
+      [5, "bridge", 0, 1, 1, 173], [5, "nobridge", 1, 1, 1, 92]
+    ]
+  },
+  "failure_mode_nobridge": "Identical across all 5 trials: cold implementers produced working, internally-consistent code (to_wire+from_wire both present, mutually round-tripping) but used IDIOMATIC keys ['name','balance_cents','created','note'] with isoformat/strict parsing instead of the contract's ['acct','cents','ts'] epoch-int/lenient. The held-out test catches the contract violation. This is exactly the state pigeon's handoff carries and the bare filesystem does not.",
+  "verdict": "CAPABILITY DEMONSTRATED. With pigeon's bridge the cross-model chain reproduces an off-disk contract 5/5; without it the same models default to incompatible idiomatic choices 0/5. Proves POSSIBILITY (the one thing pigeon does that nothing else does), not value or need.",
+  "caveats": [
+    "Possibility, not value: this shows pigeon ENABLES cross-model state transfer; it does NOT show anyone needs a 3-model chain. (Pairs with the cost benchmark, which showed pigeon is token-neutral, not cheaper.)",
+    "Controlled scenario (synthetic `ledger` repo) — chosen for an airtight off-disk contract + held-out grader; could be replicated on a public OSS repo for grounding.",
+    "agy/Antigravity required two fixes to participate (see notes): a pigeon source fix (stdin=DEVNULL on runner spawn) + pure-edit task design (agy 1.0.10 cannot run shell commands under coordinate)."
+  ],
+  "pigeon_fix_applied": "src/pigeon/coordinate/__init__.py runner Popen now passes stdin=subprocess.DEVNULL (headless runners must not inherit/read stdin). Root cause of agy hanging; full pigeon suite green. UNCOMMITTED pending review."
+}
