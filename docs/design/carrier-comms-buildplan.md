@@ -430,5 +430,25 @@ Claude attribution.
 
 ## 10. Run log & lessons
 
-_(Fill after execution — mirror `adopt-buildplan.md §9`: per-phase outcome, gate verdicts,
-as-built deltas, the kill/continue call. Commits are the user's; no Claude attribution.)_
+### Phase 1 — instrument (Gate G0) ✅ PASS
+
+- **As built.** `tokens.py`: `_handoff_components()` (per-slice handoff breakdown incl. the
+  `derived` residue meter) + `account_scaffold()` (new `scaffold` kind) landed; `summarize()`
+  refactored to delegate to a new pure-path engine `aggregate_metrics(path)` so off-ledger files
+  aggregate through the *same* code as `pigeon metrics`. New `src/pigeon/bench_join.py` joins a
+  recorded ledger to its held-out acceptance + regression gate, exposing
+  `(channel_tokens, accept_pass, regression_count)` per arm. New `tests/test_bench_join.py` (5).
+- **Gate G0 verdict — PASS.** `bench_join` over `benchmarks/results/raw/marshmallow` reproduces the
+  published `marshmallow.json` accounting exactly: events 16, overall 95.5%, handoff 97.5%, pack
+  92.1%, channel (handoff actual) 3142, pack 5985 — and the recorded success **tie** (both arms
+  PASS). Full suite **477 passed**; ruff clean; `pigeon metrics` unaffected.
+- **As-built delta vs the plan.** `account_scaffold`'s call-site wiring in `_build_command`
+  (`coordinate/__init__.py:963`) is **deferred to Phase 3** (the finalized prompt isn't cleanly
+  available at the spawn chokepoint — it's embedded in runner-dependent argv and needs a small
+  thread-through G0 doesn't require). The accounting fn + `scaffold` kind exist now; the scaffold
+  *measurement* happens in Phase 3 where the scaffold-drop is the thing being measured.
+- **Continue.** Next: Phase 0 panel (optional, runnable now) or Phase 2 (instrumented WITH-arm run →
+  G1: pack ≫ handoff).
+
+_(Remaining phases: mirror `adopt-buildplan.md §9` — per-phase outcome, gate verdicts, as-built
+deltas, the kill/continue call. Commits are the user's; no Claude attribution.)_
