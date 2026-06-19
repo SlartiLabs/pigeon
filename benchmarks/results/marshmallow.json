@@ -1,0 +1,50 @@
+{
+  "repo": "marshmallow",
+  "repo_url": "https://github.com/marshmallow-code/marshmallow",
+  "license": "MIT",
+  "base_sha": "7b4ab6a08292a3abacb88aaaf5c7a97c7bd5ebf4",
+  "config": "Reframe (naive multi-agent vs pigeon multi-agent), same model (claude/sonnet), 3-agent chain plan->implement->review",
+  "purpose": "Decisive LARGE-CONTEXT test: does pigeon win in its best case (large files requiring exploration, multi-agent chain)? Designed after cookiecutter showed pigeon net-negative on small tasks.",
+  "harness": "held-out acceptance test (never shown to agents) + full suite as regression gate; gate validated to fail pristine / pass a reference impl",
+  "date": "2026-06-18",
+  "task": {
+    "name": "t1-slug",
+    "kind": "feature-across-layers (exploration-heavy)",
+    "description": "Add a `Slug` validator (validate.py, 708 lines) and a `Slug` String-field that wires it (fields.py, 2148 lines), mirroring the Email/Url/Regexp conventions, exported as marshmallow.validate.Slug and marshmallow.fields.Slug.",
+    "why_pigeons_best_case": "Both files are large, so agents must explore to follow conventions -> the regime where pigeon's pack/retrieve curated context could cut exploration turns, and where its fixed overhead is a small fraction of a heavy task.",
+    "arms": {
+      "without-naive-3step": {
+        "agents": ["claude/sonnet x3 (plan, implement, review), hand-rolled, filesystem-shared, plan text forwarded as the manual handoff (NO source-file pasting -> honest realistic baseline)"],
+        "metrics": {"success": true, "est_cost_usd": 1.1117, "claude_usage_tokens_incl_cache": 868342, "wall_clock_s": 133, "human_interventions": 0},
+        "per_agent": {
+          "plan": {"cost_usd": 0.4555, "tokens": 316611, "turns": 7},
+          "implement": {"cost_usd": 0.2760, "tokens": 374503, "turns": 11},
+          "review": {"cost_usd": 0.3802, "tokens": 177228, "turns": 5}
+        },
+        "diff": "fields.py +19, validate.py +25 (1178 passed)"
+      },
+      "with-pigeon-3wave": {
+        "agents": ["claude/sonnet x3 via pigeon coordinate (plan->implement->review), pack + retrieve + handoff pointers"],
+        "metrics": {"success": true, "est_cost_usd": 1.2016, "wall_clock_s": 239, "handoffs": 11, "human_interventions": 0},
+        "per_agent_cost_usd": {"plan": 0.4419, "implement": 0.4434, "review": 0.3163},
+        "diff": "fields.py +19, validate.py +23 (1178 passed)",
+        "pigeon_internal_accounting": {
+          "note": "pigeon's pointers-vs-payloads metric vs a re-transmission baseline; NOT a real total-cost saving",
+          "events": 16, "handoff_saved_pct": 97.5, "pack_saved_pct": 92.1, "overall_reduction_pct_vs_retransmission": 95.5
+        }
+      }
+    },
+    "delta_pigeon_vs_naive": {
+      "success": "tie (both pass)",
+      "est_cost_usd": "+8.1% (pigeon still more expensive, but near parity)",
+      "wall_clock": "+79.7% (pigeon slower; chain was sequential, parallel_limit 1)",
+      "token_basis_caveat": "Headline metric is COST (both from claude total_cost_usd). naive tokens = claude usage incl cache; pigeon tokens = pigeon tiktoken accounting -> different bases, not comparable."
+    },
+    "verdict": "DECISIVE: pigeon does NOT win on cost even in its best case. The penalty amortized from +59% (small) to +8% (large) -- overhead is ~fixed and shrinks with task size -- but never crossed into savings, and pigeon was ~80% slower in this sequential chain. pigeon's pack/retrieve did not cut the exploration cost (plan step ~parity). Conclusion: pigeon's value is NOT token savings.",
+    "caveats_and_untested": [
+      "Sequential only (parallel_limit 1, and a linear plan->implement->review chain). pigeon's coordinate can run INDEPENDENT subtasks in parallel; hand-rolled sequential coordination cannot easily. On workloads with independent parallel subtasks, pigeon could win on WALL-CLOCK -- this regime was not tested.",
+      "Single model (sonnet) on both arms. pigeon's cross-CLI value (handing off between claude/opencode/gemini, which share no memory) is structural, not captured by a same-model cost benchmark.",
+      "Automation/observability/reproducibility (run manifests, per-model token accounting, audit trail) are real pigeon capabilities a cost benchmark does not measure."
+    ]
+  }
+}

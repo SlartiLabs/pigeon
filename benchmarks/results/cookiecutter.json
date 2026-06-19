@@ -1,0 +1,97 @@
+{
+  "repo": "cookiecutter",
+  "repo_url": "https://github.com/cookiecutter/cookiecutter",
+  "license": "BSD-3-Clause",
+  "base_sha": "c88fbe921c97c58b65f1883ba90a0ab53cc91b34",
+  "config": "B — same model (claude/sonnet), pigeon coordination contract on/off",
+  "harness": "benchmarks (held-out acceptance test, never shown to agents; full suite as regression gate)",
+  "date": "2026-06-18",
+  "tasks": [
+    {
+      "task": "t1-shoutcase",
+      "kind": "feature-across-layers",
+      "description": "Add a built-in `shoutcase` Jinja2 filter, available by default (no _extensions). Requires defining the extension in extensions.py AND registering it in environment.py's default_extensions.",
+      "acceptance": "held-out accept.py (filter available by default, exact semantics on 4 cases) exits 0 AND `pytest tests/` stays green. Validated to FAIL on pristine, PASS on a reference impl.",
+      "arms": {
+        "without-pigeon": {
+          "agents": ["claude/sonnet (1, naked)"],
+          "metrics": {
+            "success": true,
+            "est_cost_usd": 0.4394,
+            "tokens_actual_incl_cache": 693205,
+            "billable_io_tokens": 4930,
+            "wall_clock_s": 113,
+            "num_turns": 19,
+            "handoffs": 0,
+            "merge_conflicts": 0,
+            "human_interventions": 0
+          },
+          "diff": "extensions.py +15, environment.py +1; also added 1 of its own tests (380 passed)"
+        },
+        "with-pigeon": {
+          "agents": ["claude/sonnet x2 (implement -> review, handoff-chained)"],
+          "metrics": {
+            "success": true,
+            "est_cost_usd": 0.6397,
+            "tokens_actual_incl_cache": 885959,
+            "wall_clock_s": 176,
+            "handoffs": 8,
+            "merge_conflicts": 0,
+            "human_interventions": 0
+          },
+          "diff": "extensions.py +14, environment.py +1 (379 passed)",
+          "pigeon_internal_accounting": {
+            "note": "pigeon's own pointers-vs-payloads metric, NOT a with-vs-without delta",
+            "events": 11,
+            "handoff_saved_pct": 92.4,
+            "pack_saved_pct": 75.0,
+            "overall_reduction_pct_vs_retransmission": 87.9
+          }
+        },
+        "without-naive-multiagent": {
+          "_comment": "The reframe's WITHOUT arm: same 2-agent implement->review, same model, coordinated by hand (no pigeon). Manual handoff = harness pastes the changed files into agent 2's prompt (the payload pigeon replaces with a pointer; here only ~10KB / ~2.5k tokens because cookiecutter's files are tiny).",
+          "agents": ["claude/sonnet x2 (implement, then review with pasted payload)"],
+          "metrics": {
+            "success": true,
+            "est_cost_usd": 0.4016,
+            "claude_usage_tokens_incl_cache": 327864,
+            "wall_clock_s": 123,
+            "handoffs": "1 manual payload (10304 chars)",
+            "merge_conflicts": 0,
+            "human_interventions": 0
+          },
+          "per_agent": {
+            "implement": {"cost_usd": 0.2703, "tokens": 257108, "turns": 8},
+            "review": {"cost_usd": 0.1313, "tokens": 70756, "turns": 2}
+          },
+          "diff": "extensions.py +17, environment.py +1 (379 passed)"
+        }
+      },
+      "cost_ranking_all_from_claude_total_cost_usd": {
+        "naive-multiagent": 0.4016,
+        "solo": 0.4394,
+        "pigeon": 0.6397,
+        "note": "pigeon is the highest-cost of the three for the same successful outcome."
+      },
+      "delta_with_vs_without": {
+        "success": "tie (both pass)",
+        "est_cost_usd": "+45.6% (WITH more expensive)",
+        "tokens_actual": "+27.8% (WITH more)",
+        "wall_clock": "+55.8% (WITH slower)"
+      },
+      "delta_pigeon_vs_naive_multiagent": {
+        "success": "tie (both pass)",
+        "est_cost_usd": "+59.3% (pigeon more expensive than hand-rolled coordination)",
+        "wall_clock": "+43.1% (pigeon slower)",
+        "token_basis_caveat": "Clean cross-arm comparison is COST (both from claude total_cost_usd). Token totals are on different bases: naive/solo = claude usage sum incl cache; pigeon = pigeon's own tiktoken accounting. Do not headline the token ratio.",
+        "why": "pigeon's fixed per-agent contract overhead (AGENTS.md protocol + pack + manifest + `pigeon retrieve` + handoff scaffolding loaded into EACH agent) exceeds the payload it saves. On cookiecutter the saved payload is ~2.5k tokens; pigeon's overhead is far larger, so it is net-negative even vs naive coordination."
+      },
+      "verdict": "NEGATIVE in BOTH framings. (1) vs solo: pigeon's 2-agent pipeline is pure overhead on a single-agent-tractable task (+46% cost, tie on success). (2) vs naive multi-agent (the reframe): pigeon is STILL more expensive (+59% cost, tie) because its fixed per-agent contract overhead exceeds the tiny payload it saves on small files. cookiecutter is the weakest possible demonstrator (tiny files, tiny per-agent workload), so it maximally exposes pigeon's fixed overhead and minimally rewards its pointer savings. Open question: does a crossover exist on tasks with large per-agent workload + large re-transmission across a longer chain?",
+      "methodology_findings": [
+        "An automated harness cannot measure human interventions (0/0 both arms); under Config B the only live GO triggers are success (+1 task) and tokens (-20%).",
+        "Structural property of Config B: WITH runs N agents, WITHOUT runs 1, same model -> WITH only wins when coordination yields a success the single agent cannot, or prevents enough rework to offset the extra agents. On easy tasks WITH loses by construction.",
+        "pigeon's headline internal number (87.9% reduction) is handoff/pack pointer-vs-payload savings WITHIN multi-agent flows; it is not a with-vs-without task-cost saving."
+      ]
+    }
+  ]
+}
