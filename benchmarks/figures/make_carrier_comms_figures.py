@@ -207,12 +207,15 @@ def fig7_frontier():
     ax2.plot(ch, cost, "--D", color=BASE, lw=2.0, ms=7, mfc="white", zorder=6)
     for x, c, lb in zip(ch, cost, labels):
         ax2.annotate(lb, (x, c), (x, c+0.07), fontsize=8.0, color=BASE, ha="center")
-    # knee marker: smallest channel that still holds success (leftmost point)
+    # the tested window is entirely on the over-provisioned (right) arm; the
+    # too-terse left arm (where success breaks) is below 1k pack and UNTESTED.
+    # Do NOT mark a knee — it was inferred, not measured.
     ax.scatter([ch[0]], [1.0], s=150, facecolor="none", edgecolor=DERIVED, lw=2.2, zorder=7)
-    ax.annotate("knee at/​below here\nsuccess holds 3/3;\ndefault is over-provisioned",
+    ax.annotate("smallest tested (pack 1k):\nsuccess still 3/3 →\ndefault is over-provisioned",
                 (ch[0], 1.0), (ch[0]+700, 0.62), fontsize=8.4, color=DERIVED, ha="left",
                 arrowprops=dict(arrowstyle="-|>", color=DERIVED, lw=1.2))
-    ax.text(ch[0]-180, 0.18, "too-terse upturn\nis below 1k pack\n(untested)",
+    ax.axvspan(3800, ch[0], color=FAINT, alpha=0.55)
+    ax.text(3860, 0.30, "left arm /​ knee\nlive below 1k pack\n— UNTESTED",
             ha="left", fontsize=7.8, color=MUTE)
     ax.set_xlabel("channel tokens per spawn  (pack + handoff + scaffold)")
     ax.set_ylabel("held-out success rate", color=DERIVED)
@@ -220,8 +223,8 @@ def fig7_frontier():
     ax.set_ylim(0, 1.12); ax2.set_ylim(0, 1.5); ax.set_xlim(3800, 9400)
     ax.tick_params(axis="y", colors=DERIVED); ax2.tick_params(axis="y", colors=BASE)
     ax.spines["top"].set_visible(False); ax2.spines["top"].set_visible(False)
-    ax.set_title("Figure 7 — Lever-1 rate–distortion frontier\n"
-                 "success holds across [1k,4k] pack; channel & cost both fall (N=3/config)",
+    ax.set_title("Figure 7 — Lever-1: tested window is all over-provisioned\n"
+                 "success holds 3/3 across [1k,4k] pack; the knee is below 1k (untested)",
                  fontsize=11.5, fontweight="bold")
     fig.tight_layout()
     fig.savefig(OUT / "fig7_lever1_frontier.png", bbox_inches="tight", facecolor="white")

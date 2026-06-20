@@ -10,9 +10,9 @@ handoff channel and the context pigeon injects — and whether two levers improv
 > (5/5 vs 0/5); **Exp. 4 confirms the carried reasoning residue is *necessary*** in
 > that regime — same model, fully isolated, through the productionized
 > `state.derived`→markdown injection: **8/8 with residue vs 0/8 without (N=8, exact
-> 95% CIs cleanly separated)**, at parity-or-better cost. **Exp. 3** finds Lever-1
-> channel compression holds success across a 4× pack range and the default is
-> **over-provisioned** (channel and cost both fall to pack=1k with no success loss).
+> 95% CIs cleanly separated)**, at parity-or-better cost. **Exp. 3** finds the default
+> pack is **over-provisioned** (compress to pack=1k, success holds 3/3 across the tested
+> 4× range); the knee itself is below 1k and untested — not pursued (Lever 1 is maintenance).
 
 ---
 
@@ -140,20 +140,21 @@ vs held-out success + regressions + measured USD.
 
 ![Figure 7 — Lever-1 rate–distortion frontier](figures/fig7_lever1_frontier.png)
 
-**Figure 7.** Across the whole **4× pack range, success holds 3/3** — there is **no
-failing "too-terse" regime** in `[1k, 4k]`. As the pack shrinks, the channel falls
-monotonically (8 706 → 6 092 → 4 659 tok) **and so does mean cost** ($1.123 → $1.006 →
-$0.855). Turns rise at pack=1k (51 vs 46) — the **multi-turn tool tax** the panel
-predicted (smaller pack → more file reads) — but the pack input savings dominate, so
-net USD still falls. The knee is **at or below pack=1k**: the default 4 000-token pack
-is over-provisioned for this task.
+**Figure 7.** The tested window `[1k, 4k]` is **entirely on the over-provisioned (right)
+arm** of the U-curve. Across the whole 4× pack range, **success holds 3/3**; as the pack
+shrinks the channel falls monotonically (8 706 → 6 092 → 4 659 tok) **and so does mean
+cost** ($1.123 → $1.006 → $0.855). Turns rise at pack=1k (51 vs 46) — the **multi-turn
+tool tax** the panel predicted (smaller pack → more file reads) — but the pack input
+savings dominate, so net USD still falls.
 
-**Verdict (Exp. 3): no knee in `[1k, 4k]`; default over-provisioned.** This is
-modestly **better than the pre-registered expectation** (parity, never savings): a
-small *genuine* USD reduction at held success. Caveats: single task; N=3 with high
-sonnet cost variance, so the cost-drop CIs overlap — the **firm** finding is "compress
-to 1k with no success loss"; the cost win is **directional**, not locked. The
-too-terse upturn lives below 1k pack (untested). Data: `results/lever1-sweep.json`.
+**Verdict (Exp. 3): the default pack is over-provisioned; compress to 1k free.**
+The **firm, shippable** finding is "pack=1k holds success 3/3" — the default 4 000 is
+larger than this task needs. **Scoping honesty:** this did **not** find the knee. The
+left arm of the U-curve (where too-terse breaks success) and the knee both live **below
+1k pack and are untested**; "the knee is below 1k" is an *inference from three monotone
+points*, not a measurement. The cost reduction is **directional** (N=3, overlapping
+CIs), not locked. Per the "Lever 1 is maintenance" steer, the sub-1k knee hunt is
+**not pursued** — the actionable result is already in hand. Data: `results/lever1-sweep.json`.
 
 ## 7. Experiment 4 — Lever 2 (CONFIRMED, N=8): residue is **necessary**, at parity cost
 
@@ -205,7 +206,7 @@ discarded and re-run; the 8 reported per arm are all valid; see §9.)
 |---|---|---|---|---|
 | 1 | Cost benchmark (WITH vs WITHOUT, 2 public repos) | +46–59 % (small), +8.1 % (large); success ties | 1/arm/repo | **NULL** — token-savings NO-GO |
 | 2 | Fork-A cross-model capability | bridge 5/5 vs no-bridge 0/5 | 5 | **POSSIBILITY** proven |
-| 3 | Lever 1 — channel compression (pack sweep) | success holds 3/3 across [1k,4k]; channel 8.7k→4.7k, cost $1.12→$0.86 | 3/config | **OVER-PROVISIONED** — compress to 1k free; cost-win directional |
+| 3 | Lever 1 — channel compression (pack sweep) | success holds 3/3 across tested [1k,4k]; knee below 1k untested | 3/config | **OVER-PROVISIONED** — compress to 1k free (firm); cost-win directional; knee not pursued |
 | 4 | Lever 2 — derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; residue cheaper ($0.417 vs $0.436) | 8 / 8 / 5 | **GO — CONFIRMED** |
 
 ---
