@@ -1,0 +1,21 @@
+{
+  "experiment": "Lever-1 channel-compression U-curve sweep",
+  "date": "2026-06-20",
+  "substrate": "marshmallow slug task (wt-with), same model (sonnet), 3-agent chain",
+  "knob": "coordinate pack_max_tokens varied {4000, 2000, 1000}; channel = pack + handoff + scaffold actual tokens",
+  "N": 3,
+  "note": "Some first-batch trials hit a session rate-limit (429 turn-1 no-ops) and were discarded + re-run. All reported trials are valid real runs.",
+  "configs": {
+    "pack_4000": {"success": "3/3", "mean_channel_tokens": 8706, "mean_turns": 45.7, "mean_cost_usd": 1.123},
+    "pack_2000": {"success": "3/3", "mean_channel_tokens": 6092, "mean_turns": 42.0, "mean_cost_usd": 1.006},
+    "pack_1000": {"success": "3/3", "mean_channel_tokens": 4659, "mean_turns": 51.0, "mean_cost_usd": 0.855}
+  },
+  "observations": [
+    "Success HELD at 3/3 across the whole range — no failing 'too-terse' regime observed in [1000, 4000].",
+    "Channel shrank monotonically 8706 -> 6092 -> 4659 tokens as pack_max dropped.",
+    "Net USD DECREASED monotonically $1.123 -> $1.006 -> $0.855 (point estimates; N=3 cost variance is high and CIs overlap).",
+    "Turns rose at pack=1000 (51 vs 46) — the multi-turn tool tax the panel predicted (smaller pack -> more file reads) — but the pack input savings dominated, so net cost still fell."
+  ],
+  "verdict": "No U-curve knee located within [1000, 4000]: success holds throughout and both channel and cost fall, so the default pack=4000 is OVER-PROVISIONED for this task. This is modestly BETTER than the pre-registered expectation (parity, never savings) — a small genuine USD reduction at held success. The too-terse upturn is below 1000 (untested); the firm finding is 'compress to 1000 with no success loss', the cost reduction is suggestive (overlapping CIs) not proven. Lever 1 remains defensive in spirit; here it also trimmed cost.",
+  "caveat": "Single task; N=3 with high sonnet cost variance. A locked GO on a cost win needs N>=8 and a second task; the success-holds result is firm, the cost-win is directional."
+}

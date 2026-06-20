@@ -1,0 +1,28 @@
+{
+  "experiment": "Lever-2 derived-residue CONFIRM (N=8, real state.derived injection path)",
+  "date": "2026-06-20",
+  "substrate": "Fork-A ledger repo + off-disk wire contract; held-out accept.py (anti-idiomatic, not inferable from pristine code)",
+  "model": "claude/sonnet throughout all hops",
+  "mechanism": "PRODUCTIONIZED path (differs from the screen's DERIVED.md proxy): the architect emits the contract into state.derived via `pigeon handoff --json-in`; coordinate._upstream_derived_markdown renders it as a '## Carried reasoning' markdown block injected into each downstream prompt. inject=1 verified on every with-derived trial.",
+  "design": "Two physically separate worktrees (wt-bridge / wt-nobridge); schema synced to 1.2 (else state.derived is rejected); pristine-asserted per trial.",
+  "N": 8,
+  "note": "Trials 6-8 of the first batch hit a session rate-limit (api_error_status 429, turn-1 no-ops) and were discarded + re-run after the limit refreshed. The 8 reported trials are all valid real runs (22-26 turns, 130-155s).",
+  "arms": {
+    "pointers+derived": {
+      "success": "8/8",
+      "ci95_clopper_pearson": [0.631, 1.0],
+      "mean_turns": 24.6,
+      "mean_cost_usd": 0.417,
+      "inject_fired": "8/8"
+    },
+    "pointers-only": {
+      "success": "0/8",
+      "ci95_clopper_pearson": [0.0, 0.369],
+      "mean_turns": 23.0,
+      "mean_cost_usd": 0.436,
+      "failure_mode": "idiomatic keys / ISO-string ts instead of the contract's acct/cents/ts epoch-int"
+    },
+    "cold": {"note": "Fork-A cross-model no-bridge (Exp. 2)", "success": "0/5"}
+  },
+  "verdict": "GO — CONFIRMED. In the regime where the reasoning is genuinely irreducible, the carried derived residue is NECESSARY (8/8 vs 0/8; CIs cleanly separated, no overlap) and FREE (cheaper than the failing null: $0.417 vs $0.436). The panel's 're-derives cheaply' failure mode does NOT fire for a capable same-model receiver on a non-re-derivable constraint. This confirms the N=3 screen on the productionized injection path."
+}

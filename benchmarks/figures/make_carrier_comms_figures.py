@@ -193,29 +193,36 @@ def fig2_ceilings():
 # FIGURE 7 — Lever-1 rate-distortion frontier (framework; Phase-3 pending)
 # =====================================================================
 def fig7_frontier():
-    fig, ax = plt.subplots(figsize=(7.2, 4.6))
+    # Real sweep data (marshmallow slug, N=3/config). channel = pack+handoff+scaffold.
+    ch =   [4659, 6092, 8706]            # mean channel tokens (pack 1k, 2k, 4k)
+    succ = [1.0, 1.0, 1.0]               # held-out success (3/3 at every config)
+    cost = [0.855, 1.006, 1.123]         # mean measured USD
+    labels = ["pack 1k", "pack 2k", "pack 4k (default)"]
+
+    fig, ax = plt.subplots(figsize=(7.4, 4.7))
     ax2 = ax.twinx()
-    # the one config measured so far: the current default (Phase-2 confirm run)
-    ax.scatter([3433], [1.0], s=90, color=DERIVED, zorder=6, label="held-out success")
-    ax2.scatter([3433], [1.25], s=90, marker="D", facecolor="white",
-                edgecolor=BASE, lw=1.8, zorder=6)
-    ax.annotate("current default\n(channel 3433 tok · 1/1 pass · $1.25)",
-                (3433, 1.0), (2300, 0.66), fontsize=8.6, color=INK,
-                arrowprops=dict(arrowstyle="-|>", color=MUTE, lw=1.1))
-    # the sweep to be filled
-    ax.axvspan(800, 4200, color=FAINT, alpha=0.45)
-    ax.text(2500, 0.13, "Phase-3 sweep — channel ∈ {1k,2k,3k,4k} × top-k {3,5,8},\n"
-            "N≥8 per config, CIs, knee + equivalence band  (not yet run)",
-            ha="center", fontsize=8.4, color=MUTE)
-    ax.set_xlabel("channel tokens per spawn  (handoff + pack + scaffold)")
+    # success (held at 1.0 across the whole range)
+    ax.plot(ch, succ, "-o", color=DERIVED, lw=2.2, ms=8, zorder=6, label="held-out success")
+    # cost (rises with channel)
+    ax2.plot(ch, cost, "--D", color=BASE, lw=2.0, ms=7, mfc="white", zorder=6)
+    for x, c, lb in zip(ch, cost, labels):
+        ax2.annotate(lb, (x, c), (x, c+0.07), fontsize=8.0, color=BASE, ha="center")
+    # knee marker: smallest channel that still holds success (leftmost point)
+    ax.scatter([ch[0]], [1.0], s=150, facecolor="none", edgecolor=DERIVED, lw=2.2, zorder=7)
+    ax.annotate("knee at/​below here\nsuccess holds 3/3;\ndefault is over-provisioned",
+                (ch[0], 1.0), (ch[0]+700, 0.62), fontsize=8.4, color=DERIVED, ha="left",
+                arrowprops=dict(arrowstyle="-|>", color=DERIVED, lw=1.2))
+    ax.text(ch[0]-180, 0.18, "too-terse upturn\nis below 1k pack\n(untested)",
+            ha="left", fontsize=7.8, color=MUTE)
+    ax.set_xlabel("channel tokens per spawn  (pack + handoff + scaffold)")
     ax.set_ylabel("held-out success rate", color=DERIVED)
-    ax2.set_ylabel("net cost per task  (USD)", color=BASE)
-    ax.set_ylim(0, 1.08); ax2.set_ylim(0, 1.6); ax.set_xlim(600, 4400)
+    ax2.set_ylabel("mean net cost per task  (USD, measured)", color=BASE)
+    ax.set_ylim(0, 1.12); ax2.set_ylim(0, 1.5); ax.set_xlim(3800, 9400)
     ax.tick_params(axis="y", colors=DERIVED); ax2.tick_params(axis="y", colors=BASE)
-    for s in ("top",):
-        ax.spines[s].set_visible(False); ax2.spines[s].set_visible(False)
-    ax.set_title("Figure 7 — Lever-1 rate–distortion frontier  (framework)",
-                 fontsize=12, fontweight="bold")
+    ax.spines["top"].set_visible(False); ax2.spines["top"].set_visible(False)
+    ax.set_title("Figure 7 — Lever-1 rate–distortion frontier\n"
+                 "success holds across [1k,4k] pack; channel & cost both fall (N=3/config)",
+                 fontsize=11.5, fontweight="bold")
     fig.tight_layout()
     fig.savefig(OUT / "fig7_lever1_frontier.png", bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -229,12 +236,12 @@ def fig8_three_arm():
     # pointers+derived (same-model). Clopper-Pearson 95% CIs.
     arms = ["cold\n(cross-model,\nno bridge)", "pointers-only\n(same-model,\nnull)",
             "pointers + derived\n(same-model,\nresidue carried)"]
-    succ = [0/5, 0/3, 3/3]
-    n =    [5, 3, 3]
+    succ = [0/5, 0/8, 8/8]
+    n =    [5, 8, 8]
     # exact 95% CIs (Clopper-Pearson)
-    ci_lo = [0.0, 0.0, 0.292]
-    ci_hi = [0.522, 0.708, 1.0]
-    cost = [None, 0.465, 0.383]   # mean USD (cold arm cost not comparable substrate)
+    ci_lo = [0.0, 0.0, 0.631]
+    ci_hi = [0.522, 0.369, 1.0]
+    cost = [None, 0.436, 0.417]   # mean USD over N=8 (cold arm cost not comparable substrate)
     colors = [MUTE, BASE, DERIVED]
 
     fig, (axA, axB) = plt.subplots(1, 2, figsize=(11, 4.6),
@@ -262,13 +269,13 @@ def fig8_three_arm():
     for b, c in zip(bars, cb):
         axB.text(b.get_x()+b.get_width()/2, c+0.008, f"${c:.3f}", ha="center", fontsize=9.5)
     axB.set_xticks(xb); axB.set_xticklabels(lab, fontsize=9)
-    axB.set_ylabel("mean cost per run  (USD, measured)")
+    axB.set_ylabel("mean cost per run  (USD, measured, N=8)")
     axB.set_ylim(0, 0.6)
-    axB.set_title("(b) cost — residue is a quality win at parity\n(the null arm flails, then fails)", fontsize=10)
+    axB.set_title("(b) cost — residue is a quality win at parity-or-better\n(the null arm flails, then fails)", fontsize=10)
     _despine(axB)
 
     fig.suptitle("Figure 8 — Lever-2 three-arm comparison   "
-                 "(SCREEN, N=3/5 · exact 95% CIs · N≥8 confirm pending)",
+                 "(CONFIRM, N=8 · exact 95% CIs · CIs cleanly separated)",
                  fontsize=12.5, fontweight="bold", y=1.02)
     fig.tight_layout()
     fig.savefig(OUT / "fig8_lever2_three_arm.png", bbox_inches="tight", facecolor="white")

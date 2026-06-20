@@ -7,10 +7,12 @@ handoff channel and the context pigeon injects — and whether two levers improv
 > **Headline.** pigeon does **not** save tokens (it is token-neutral to mildly
 > negative; Exp. 1). Its value is **cross-model capability**: a carrier can carry a
 > constraint the next carrier cannot re-derive. Exp. 2 shows this is *possible*
-> (5/5 vs 0/5); Exp. 4 shows the carried **reasoning residue is *necessary*** in
-> that regime — same model, fully isolated, **3/3 with residue vs 0/3 without** —
-> at parity cost. Both Exp. 3/4 numbers below are **screens (N=3)**; the N≥8
-> confirmation is pre-registered (Table 1) and pending.
+> (5/5 vs 0/5); **Exp. 4 confirms the carried reasoning residue is *necessary*** in
+> that regime — same model, fully isolated, through the productionized
+> `state.derived`→markdown injection: **8/8 with residue vs 0/8 without (N=8, exact
+> 95% CIs cleanly separated)**, at parity-or-better cost. **Exp. 3** finds Lever-1
+> channel compression holds success across a 4× pack range and the default is
+> **over-provisioned** (channel and cost both fall to pack=1k with no success loss).
 
 ---
 
@@ -125,44 +127,60 @@ visible markdown, not buried JSON. Full critiques: `docs/design/panel-reviews/`.
 
 ---
 
-## 6. Experiment 3 — Lever 1 (status: **framework; Phase-3 sweep pending**)
+## 6. Experiment 3 — Lever 1 (the sweep): the default pack is **over-provisioned**
 
 **Gate G1 (classification) — PASS.** On the recorded marshmallow WITH-arm, per spawn
 the **pack injects ~2 992 tokens vs the handoff doc's ~286 — pack is ~10.5× the
 handoff.** So the over-send lives in the pack + scaffolding, not the handoff doc;
-Lever 1 is correctly aimed there. The `scaffold` meter is now wired and fires live
-(confirmed on the Phase-2 run: 3 events/run).
+Lever 1 is correctly aimed there. The `scaffold` meter is wired and fires live.
 
-![Figure 7 — Lever-1 frontier (framework)](figures/fig7_lever1_frontier.png)
+The U-curve sweep then varied `pack_max_tokens ∈ {4000, 2000, 1000}` on the
+marshmallow slug task, same model (sonnet), **N=3/config**, measuring channel tokens
+vs held-out success + regressions + measured USD.
 
-**Figure 7.** The rate–distortion frame with the **one** config measured so far (the
-current default: channel 3 433 tok, 1/1 pass, $1.25). The sweep that fills the
-frontier and locates the knee is **pre-registered (Table 1) and not yet run** — by the
-panel's own steer, Lever 1 is maintenance, so it is de-prioritised behind Lever 2.
+![Figure 7 — Lever-1 rate–distortion frontier](figures/fig7_lever1_frontier.png)
 
-**Verdict (Exp. 3): pending.** Expectation per Exp. 1: movement toward parity, never
-savings — most likely a clean "channel already near-minimal" null.
+**Figure 7.** Across the whole **4× pack range, success holds 3/3** — there is **no
+failing "too-terse" regime** in `[1k, 4k]`. As the pack shrinks, the channel falls
+monotonically (8 706 → 6 092 → 4 659 tok) **and so does mean cost** ($1.123 → $1.006 →
+$0.855). Turns rise at pack=1k (51 vs 46) — the **multi-turn tool tax** the panel
+predicted (smaller pack → more file reads) — but the pack input savings dominate, so
+net USD still falls. The knee is **at or below pack=1k**: the default 4 000-token pack
+is over-provisioned for this task.
 
-## 7. Experiment 4 — Lever 2 (the result): residue is **necessary**, at parity cost
+**Verdict (Exp. 3): no knee in `[1k, 4k]`; default over-provisioned.** This is
+modestly **better than the pre-registered expectation** (parity, never savings): a
+small *genuine* USD reduction at held success. Caveats: single task; N=3 with high
+sonnet cost variance, so the cost-drop CIs overlap — the **firm** finding is "compress
+to 1k with no success loss"; the cost win is **directional**, not locked. The
+too-terse upturn lives below 1k pack (untested). Data: `results/lever1-sweep.json`.
+
+## 7. Experiment 4 — Lever 2 (CONFIRMED, N=8): residue is **necessary**, at parity cost
 
 The decisive test, **same model throughout (sonnet ×3)** to isolate the residue's
 value from any cross-model confound, on the Fork-A contract substrate, in **two
 physically separate worktrees** so the contract cannot leak between arms (it did, in
 two earlier harness versions — see §9). Pristine-asserted before every trial.
 
-- **pointers + derived** (architect writes the contract to `DERIVED.md`; downstream
-  receives it): **3/3 PASS**, 28.3 turns, **$0.383**/run.
+The confirm runs the **productionized mechanism**, not the screen's `DERIVED.md`
+proxy: the architect emits the contract into **`state.derived`**, and
+`coordinate._upstream_derived_markdown` injects it as a `## Carried reasoning`
+markdown block into each downstream prompt (the panel's correction #4 — don't bury the
+constraint in JSON). Injection fired on **8/8** with-derived trials.
+
+- **pointers + derived** (`state.derived` → markdown injection): **8/8 PASS**,
+  CI95 **[0.631, 1.0]**, 24.6 turns, **$0.417**/run.
 - **pointers-only** (downstream gets only `repo://ledger/account.py`, pristine):
-  **0/3 PASS**, 24.0 turns, **$0.465**/run.
+  **0/8 PASS**, CI95 **[0.0, 0.369]**, 23.0 turns, **$0.436**/run.
 - **cold** (Exp. 2 cross-model, no bridge): **0/5**.
 
 ![Figure 8 — Lever-2 three-arm comparison](figures/fig8_lever2_three_arm.png)
 
 **Figure 8.** *(a)* The anti-idiomatic constraint survives **only** when the residue is
-carried — a capable sonnet receiver does **not** re-derive it from pristine code (the
-panel's "re-derives cheaply" failure mode does **not** fire here). *(b)* The residue
-arm is **cheaper**: the null agents explore more, then fail. So this is a **quality win
-at parity-or-better cost**, not a quality/cost trade.
+carried — the two CIs are **cleanly separated** (no overlap). A capable sonnet receiver
+does **not** re-derive it from pristine code (the panel's "re-derives cheaply" failure
+mode does **not** fire). *(b)* The residue arm is **cheaper**: the null agents explore
+more, then fail. A **quality win at parity-or-better cost**, not a quality/cost trade.
 
 ![Figure 9 — USD-weighting vs raw tokens](figures/fig9_usd_weighting.png)
 
@@ -170,11 +188,12 @@ at parity-or-better cost**, not a quality/cost trade.
 **+18 % raw-token cost** but a **−18 % net-USD outcome** — the two deltas point
 opposite ways. A raw-token accounting would have mis-scored this.
 
-**Verdict (Exp. 4): GO at screen level (N=3); confirm at N≥8 pending.** In the regime
-where the reasoning is genuinely irreducible (a constraint invisible in the final
-code), the `derived` residue is **necessary and free**. The exact 95 % CIs at N=3 are
-wide (3/3 → [0.29, 1.0]; 0/3 → [0, 0.71]) — the point estimates are starkly separated,
-but the pre-registered **N≥8** run is required before this is more than a strong screen.
+**Verdict (Exp. 4): GO — CONFIRMED at N=8.** In the regime where the reasoning is
+genuinely irreducible (a constraint invisible in the final code), the `state.derived`
+residue is **necessary and free**: 8/8 vs 0/8 with exact 95 % CIs that do not overlap,
+at lower mean cost. This holds through the real injection mechanism, not just the
+screen proxy. (Trials that hit a mid-run session rate-limit — turn-1 $0 no-ops — were
+discarded and re-run; the 8 reported per arm are all valid; see §9.)
 
 ---
 
@@ -186,8 +205,8 @@ but the pre-registered **N≥8** run is required before this is more than a stro
 |---|---|---|---|---|
 | 1 | Cost benchmark (WITH vs WITHOUT, 2 public repos) | +46–59 % (small), +8.1 % (large); success ties | 1/arm/repo | **NULL** — token-savings NO-GO |
 | 2 | Fork-A cross-model capability | bridge 5/5 vs no-bridge 0/5 | 5 | **POSSIBILITY** proven |
-| 3 | Lever 1 — channel compression | G1: pack ≈10.5× handoff; sweep pending | — | **PENDING** (expect parity null) |
-| 4 | Lever 2 — derived residue (same-model, isolated) | **3/3 vs 0/3 vs 0/5**; residue cheaper | 3 / 3 / 5 | **GO (screen)** — confirm N≥8 pending |
+| 3 | Lever 1 — channel compression (pack sweep) | success holds 3/3 across [1k,4k]; channel 8.7k→4.7k, cost $1.12→$0.86 | 3/config | **OVER-PROVISIONED** — compress to 1k free; cost-win directional |
+| 4 | Lever 2 — derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; residue cheaper ($0.417 vs $0.436) | 8 / 8 / 5 | **GO — CONFIRMED** |
 
 ---
 
@@ -207,11 +226,17 @@ pass/fail headline:
    the null arm refuse to spawn — `num_turns=0, cost=0, wall=0` exposed it. → configs
    unified; re-run produced real executions (22–26 turns) that genuinely failed.
 
-Remaining limits: **N=3** (screen only); the residue is delivered as a `DERIVED.md`
-artifact pointer rather than the `state.derived`→auto-markdown injection (the panel's
-correction #4 — that productionisation is the "scale" step, built only once the screen
-showed signal); single task substrate (one contract). The N≥8 confirm + a second
-substrate are the next runs.
+4. **Session rate-limit mid-run.** Both the N=8 confirm and the Lever-1 sweep hit a
+   `429 "session limit"` partway through; the affected trials are turn-1, $0, ~5 s
+   no-ops — the same "physically impossible" signature as #3. They were **discarded
+   and re-run** after the limit refreshed; every reported trial is a valid real run
+   (22–26 turns / 130–155 s for Lever 2; 33–53 turns for Lever 1).
+
+Remaining limits: Lever 2 is confirmed at **N=8 on one task/contract** — a second
+substrate would strengthen external validity; Lever 1's **cost-win is directional**
+(N=3, overlapping cost CIs) — a locked GO needs N≥8 and a second task, though
+"compress to 1k with no success loss" is firm. The productionized `state.derived`→
+markdown injection is now the mechanism under test (no longer the `DERIVED.md` proxy).
 
 ## 10. Reproduce
 
