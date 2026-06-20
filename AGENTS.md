@@ -102,6 +102,8 @@ break.
   ranked slices. Do not paste whole files or the repo tree into your context.
 - **Hand off via the contract.** To pass work to another runtime or sub-agent,
   emit a handoff validated against the schema; carry pointers, not payloads.
+- **Constraints are hard rules.** Treat every entry in your handoff's
+  `constraints` object as a non-negotiable rule for the step you perform.
 - **Resolve pointers on demand.** Use the shared resolver; do not inline
   artifact contents into a handoff.
 - **Carry the reasoning residue, point at the rest.** Put in `state.derived`

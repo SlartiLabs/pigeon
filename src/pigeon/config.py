@@ -137,6 +137,15 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
             # event and warns at write time, so residue bloat is visible before it
             # silently reinvents the overhead the polymath is meant to avoid.
             "derived_token_budget": 400,
+            # Lever 1 (carrier-comms): tunable channel knobs for the U-curve sweep.
+            # Defaults are today's values, so behaviour is byte-identical unless
+            # set. A per-task ``pack_max_tokens``/``pack_top_k`` still wins over
+            # these. ``terse_scaffold`` drops the protocol prose from the per-spawn
+            # wrapper prompt (it already lives in the auto-loaded AGENTS.md), the
+            # "say-once" Move-1 trim — measured by the ``scaffold`` kind dropping.
+            "pack_max_tokens": 4000,
+            "pack_top_k": 5,
+            "terse_scaffold": False,
             # argv templates; placeholders: {prompt} {handoff} {root} {task_id} {sid}
             "runners": {
                 "claude": ["claude", "-p", "{prompt}"],

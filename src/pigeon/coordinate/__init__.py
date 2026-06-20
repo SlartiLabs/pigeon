@@ -153,6 +153,23 @@ DEFAULT_PROMPT = (
     "(from '{task_id}' to '" + COORDINATOR + "')."
 )
 
+# Lever-1 Move 1 ("say-once scaffolding"): the irreducible per-spawn delta only —
+# identity, where to start, do-the-step-and-hand-back. The protocol prose
+# (constraints are hard rules, the handoff contract) lives in the auto-loaded
+# AGENTS.md, so it is not re-emitted every spawn. Opt-in via
+# ``coordinate.terse_scaffold``; the ``scaffold`` kind measures the drop.
+TERSE_PROMPT = (
+    "You are sub-agent '{task_id}' in pigeon session '{sid}'. "
+    "Read your handoff at {handoff}, then follow AGENTS.md. "
+    "Do only the 'doing' step; hand back with `pigeon handoff` "
+    "(from '{task_id}' to '" + COORDINATOR + "')."
+)
+
+
+def _scaffold_prompt(config: Config) -> str:
+    """The per-spawn wrapper prompt template (terse when configured)."""
+    return TERSE_PROMPT if config.coordinate_cfg.get("terse_scaffold") else DEFAULT_PROMPT
+
 def crew_instructions(crew: dict[str, Any],
                       playbooks_rel: str = "the memory playbooks dir") -> str:
     """Render a crew block as marching orders for the receiving agent.
@@ -1028,7 +1045,7 @@ def _build_command(
         "task_id": task["id"],
         "sid": sid,
     }
-    prompt = _fill(task.get("prompt") or DEFAULT_PROMPT, subs)
+    prompt = _fill(task.get("prompt") or _scaffold_prompt(config), subs)
     if task.get("crew"):
         playbooks_rel = str(config.memory_dir.relative_to(config.root) / "playbooks")
         prompt += " " + crew_instructions(task["crew"], playbooks_rel)
@@ -1512,8 +1529,10 @@ def run_coordinate(
         artifacts = list(task.get("artifacts") or [])
         if do_pack and task.get("pack"):
             from .. import pack as pack_mod  # lazy: avoids a module cycle
-            bundle = pack_mod.pack(config, task["doing"],
-                                   max_tokens=int(task.get("pack_max_tokens", 4000)))
+            ccfg = config.coordinate_cfg
+            max_tokens = int(task.get("pack_max_tokens", ccfg.get("pack_max_tokens", 4000)))
+            top_k = int(task.get("pack_top_k", ccfg.get("pack_top_k", 5)))
+            bundle = pack_mod.pack(config, task["doing"], max_tokens=max_tokens, top_k=top_k)
             artifacts.append(f"repo://{bundle['path']}")
             print(f"[{task['id']}] packed context: {bundle['path']} "
                   f"({bundle['tokens']['actual_tokens']} tokens)")

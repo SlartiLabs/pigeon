@@ -222,6 +222,46 @@ def test_custom_log_dir(repo, tmp_path):
     assert (log_dir / "co1-a.log").is_file()
 
 
+# --------------------------------------------------------- Lever-1 knobs (L1)
+def test_terse_scaffold_drops_protocol_prose(repo):
+    """terse_scaffold yields the say-once wrapper; default stays verbose (byte-identical)."""
+    cfg = _setup(repo, runners={"pyp": [sys.executable, "-c", "print('ok')", "{prompt}"]})
+    assert co._scaffold_prompt(cfg) is co.DEFAULT_PROMPT          # default unchanged
+    cfg.coordinate_cfg["terse_scaffold"] = True
+    terse = co._scaffold_prompt(cfg)
+    assert terse is co.TERSE_PROMPT
+    # the terse variant is strictly shorter and drops the constraints prose
+    assert len(terse) < len(co.DEFAULT_PROMPT)
+    assert "hard rule" not in terse and "hard rule" in co.DEFAULT_PROMPT
+    # the per-spawn command reflects the selected template
+    task = {"id": "a", "runner": "pyp", "doing": "x"}
+    cfg.coordinate_cfg["terse_scaffold"] = True
+    terse_cmd = " ".join(co._build_command(task, cfg, "h.json", "s", skip_permissions=False))
+    cfg.coordinate_cfg["terse_scaffold"] = False
+    full_cmd = " ".join(co._build_command(task, cfg, "h.json", "s", skip_permissions=False))
+    assert "Treat every entry" in full_cmd and "Treat every entry" not in terse_cmd
+    assert len(terse_cmd) < len(full_cmd)
+
+
+def test_pack_knobs_read_from_config(repo, monkeypatch):
+    """pack_max_tokens / pack_top_k come from coordinate config."""
+    import pigeon.pack as pack_mod
+    seen = {}
+    def fake_pack(config, task, *, max_tokens=4000, top_k=5, since=None):
+        seen["max_tokens"] = max_tokens
+        seen["top_k"] = top_k
+        return {"path": ".pigeon/context/x.md", "tokens": {"actual_tokens": 1}}
+    monkeypatch.setattr(pack_mod, "pack", fake_pack)
+
+    cfg = _setup(repo, runners={"py": _PY_OK})
+    cfg.coordinate_cfg["pack_max_tokens"] = 1500
+    cfg.coordinate_cfg["pack_top_k"] = 3
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "a", "runner": "py", "doing": "do it", "pack": True}]))
+    co.run_coordinate(tasks, cfg, dry_run=True)
+    assert seen == {"max_tokens": 1500, "top_k": 3}
+
+
 # ------------------------------------------------------- derived injection (L2)
 def test_upstream_derived_injected_as_markdown(repo):
     """An upstream's state.derived is surfaced to the receiver as a markdown block."""
