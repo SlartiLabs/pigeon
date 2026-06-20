@@ -486,15 +486,20 @@ this is the single recorded run (n=1); G1 is a *classification of where tokens l
 win-claim, so n=1 is adequate to aim Lever 1 — but any *compression* claim still needs the N≥3
 discipline below.
 
-### Phase 3 — Lever 1 channel compression: instrument ready, compression STAGED
+### Phase 3 — Lever 1 channel compression: meter WIRED & GREEN; compression STAGED
 
-`account_scaffold()` (the scaffold meter) is built and unit-tested (`test_derived.py`). Its
-**live-path wiring is deliberately deferred** (not forced): the prompt is rebuilt at three spawn
-sites (`__init__.py:1567/1581/1699` via `_spawn_prepare`), so threading the finalized text risks
-a double-count or dry-run pollution in the core path, and the meter's only payoff is the Move-1
-measurement — a blocked live run. Per panel refinement #3, **Move 3's pack sweep is not
-pre-committed.** Moves 1/2/4 are behavior-changing and, by the plan's own measure-before-compress
-rule, must not flip defaults without an N≥3 success run — so they are staged, not silently landed.
+`account_scaffold()` (the scaffold meter) is built, **wired, and end-to-end green** (`8fb5b5e`+).
+The wiring resolves the G0 deferral cleanly: rather than thread the prompt through three spawn
+sites, `_prompt_from_cmd()` recovers the *exact* finalized prompt from the built command by
+locating the runner template's `{prompt}` slot, and `_execute()` (the single real-spawn
+chokepoint, never reached on dry-run) records it once per launch. A custom template with no
+`{prompt}` slot records nothing (no mis-attribution). Two new `test_coordinate.py` tests assert
+both. **The scaffold channel is now measurable** — Move 1's whole point.
+
+**Still STAGED (need the live N≥3 runs):** Moves 1/2/4 are behavior-changing, and by the plan's
+own measure-before-compress rule must not flip defaults without an N≥3 success run. Per panel
+refinement #3, **Move 3's pack sweep is not pre-committed** — decide it after G1's margin (which
+now says the pack is the fat target: ~10.5× the handoff).
 
 ### Phase 5 — cross-model (Gate G-Lever2): quality win REUSED; token-axis confirm STAGED
 
@@ -515,11 +520,11 @@ the first run (KILL-CRITERION discipline). **Do not push until a clean stopping 
    the documented free-model timeouts. Low value — the verdict is already PROCEED.
 2. **Phase 2 confirm (1 sonnet run).** Re-run marshmallow `t1-slug` WITH-arm against `/tmp/bench`,
    instrumented, to confirm G1 on a fresh ledger (the recorded-data verdict already passed).
-3. **Phase 3 Lever-1 (N≥3 sonnet).** Land Move 1 (say-once scaffolding) + wire `account_scaffold`,
-   re-run marshmallow plan→implement N≥3, apply the U-curve stop rule. **Decide Move 3 (pack
-   sweep) only if G1's margin says the pack is worth it** (it is — 10.5×). Threshold: accept C over
-   B iff `accept(C)=accept(B)=pass ∧ regressions(C)≤regressions(B) ∧ channel(B)−channel(C) >
-   agent(C)−agent(B)`.
+3. **Phase 3 Lever-1 (N≥3 sonnet).** Land Move 1 (say-once scaffolding — the `scaffold` meter is
+   already wired, so its drop is measured for free), re-run marshmallow plan→implement N≥3, apply
+   the U-curve stop rule. **Decide Move 3 (pack sweep) only if G1's margin says the pack is worth
+   it** (it is — 10.5×). Threshold: accept C over B iff `accept(C)=accept(B)=pass ∧
+   regressions(C)≤regressions(B) ∧ channel(B)−channel(C) > agent(C)−agent(B)`.
 4. **Phase 4 G2a (N≥3 sonnet).** Re-run same-model with `state.derived` populated (capture i).
    Threshold: `components.derived < 400` AND cost parity vs the no-derived run. Parity = working.
 5. **Phase 5 G-Lever2 (N≥3 cross-model).** Build capture (ii) `distill.extract_derived`, recast

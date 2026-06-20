@@ -995,6 +995,19 @@ def _build_command(
     return cmd
 
 
+def _prompt_from_cmd(cmd: list[str], runner_template: list[str]) -> str | None:
+    """Recover the finalized prompt arg from a built command.
+
+    The runner template marks the prompt slot with a ``{prompt}`` placeholder;
+    the same positional arg in the filled ``cmd`` is the exact wrapper-prompt +
+    crew string re-emitted to the runner. Returns ``None`` if the template has no
+    ``{prompt}`` slot (so a custom template never mis-attributes scaffolding)."""
+    for i, arg in enumerate(runner_template):
+        if "{prompt}" in arg:
+            return cmd[i] if i < len(cmd) else None
+    return None
+
+
 # ------------------------------------------------------------------ worktrees
 def _git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
     proc = subprocess.run(
@@ -1563,6 +1576,13 @@ def run_coordinate(
 
     def _execute(task: dict[str, Any], cmd: list[str], log_path: Path) -> int:
         tid = task["id"]
+        # Account the per-spawn scaffolding (wrapper prompt + crew) the runner
+        # receives every launch — tokens the ledger never counted. Recorded here,
+        # the single real-spawn chokepoint (never on dry-run), once per launch.
+        prompt_text = _prompt_from_cmd(cmd, ccfg["runners"].get(task["runner"], []))
+        if prompt_text is not None:
+            tokens.account_scaffold(config, prompt_text=prompt_text,
+                                    kind_detail=f"{task['runner']}:{tid}", sid=sid)
         if task.get("isolation") != "worktree":
             rc, _kill_reason = _run_task(tid, cmd, config, log_path, recorder,
                                          sid=sid, runner=task["runner"],

@@ -222,6 +222,32 @@ def test_custom_log_dir(repo, tmp_path):
     assert (log_dir / "co1-a.log").is_file()
 
 
+# -------------------------------------------------------------- scaffold meter
+def test_real_run_records_scaffold(repo):
+    """A real spawn records the per-spawn wrapper prompt under the 'scaffold' kind."""
+    from pigeon import tokens as tk
+    # a runner template WITH a {prompt} slot (the script ignores the arg, exits 0)
+    cfg = _setup(repo, runners={"pyp": [sys.executable, "-c", "print('ok')", "{prompt}"]})
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "solo", "runner": "pyp", "doing": "do the thing"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+
+    sc = tk.summarize(cfg)["by_kind"].get("scaffold")
+    assert sc is not None, "expected a scaffold event from the real spawn"
+    assert sc["events"] == 1
+    assert sc["actual_tokens"] > 0
+    assert sc["baseline_tokens"] == 0  # overhead, never a transmitted saving
+
+
+def test_runner_without_prompt_slot_records_no_scaffold(repo):
+    """A custom template with no {prompt} placeholder never mis-attributes scaffolding."""
+    from pigeon import tokens as tk
+    cfg = _setup(repo)  # default {"py": _PY_OK}, which has no {prompt} slot
+    tasks = _write_tasks(repo.root, _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    assert "scaffold" not in tk.summarize(cfg)["by_kind"]
+
+
 # -------------------------------------------------------------- depth/budget
 def test_depth_guard_refuses_nested_coordination(repo, monkeypatch, capsys):
     cfg = _setup(repo)
