@@ -450,6 +450,18 @@ Claude attribution.
 - **Continue.** Next: Phase 0 panel (optional, runnable now) or Phase 2 (instrumented WITH-arm run →
   G1: pack ≫ handoff).
 
+### Phase 0 — panel RE-RUN (Gate G-panel-v2) ✅ PROCEED, methodology revised
+
+The second panel run (operator-authorized `--skip-permissions`, `agy` re-authed) **delivered**
+where the prior session timed out: `critique-mimo` + `critique-agy`(Gemini) produced substantive
+adversarial critiques and handed back via the 1.2 schema (`critique-nemotron` still timed out, 1/3).
+Full text: `.pigeon/coordinate/reviews/comms/{mimo,agy}.md`; synthesis + the six adopted corrections
+in [`carrier-comms.md`](carrier-comms.md) §"Phase-0 panel RE-RUN". **Material upshot — the
+measurement design was partly falsified even though the levers were not:** raw-token win rules and
+N=3 would measure the wrong thing. Folded into §11 below: USD-weighted win + `num_turns` tracking
+(multi-turn tool tax), a pointers-only NULL arm as the real Lever-2 test, N=3 screen / **N≥8**
+confirm, and `derived`-as-markdown injection (not raw nested JSON).
+
 ### Phase 0 — multi-model panel (Gate G-panel) ✅ PROCEED (carried over from prior session)
 
 Already executed by the prior terminal and recorded in
@@ -518,8 +530,14 @@ the first run (KILL-CRITERION discipline). **Do not push until a clean stopping 
 1. **Phase 0 panel re-run (optional, free models).** `pigeon coordinate
    docs/To_do/comms-panel.tasks.yaml --skip-permissions --telemetry`. Needs `agy` re-auth; expect
    the documented free-model timeouts. Low value — the verdict is already PROCEED.
-2. **Phase 2 confirm (1 sonnet run).** Re-run marshmallow `t1-slug` WITH-arm against `/tmp/bench`,
-   instrumented, to confirm G1 on a fresh ledger (the recorded-data verdict already passed).
+2. **Phase 2 confirm (1 sonnet run).** ✅ **DONE 2026-06-19 pm.** Fresh WITH-arm run against
+   `/tmp/bench/marshmallow/wt-with` (operator-authorized `--skip-permissions`): 3/3 tasks ok,
+   **ACCEPT: PASS**, **1178 passed** (0 regressions), diff fields +20 / validate +22. Cost
+   $1.25 (plan $0.57 / impl $0.39 / review $0.29). `bench_join` on the live ledger: channel 3433,
+   pack 6745, 95.2% reduction, success tie — **G1 reproduced on fresh data**, and the new
+   **`scaffold` meter fired live (3 events)**. Raw preserved at
+   `benchmarks/results/raw/marshmallow-phase2/`. This validates the live harness + the instrument
+   end-to-end; the bigger sweep below now runs on the G-panel-v2 methodology.
 3. **Phase 3 Lever-1 (N≥3 sonnet).** Land Move 1 (say-once scaffolding — the `scaffold` meter is
    already wired, so its drop is measured for free), re-run marshmallow plan→implement N≥3, apply
    the U-curve stop rule. **Decide Move 3 (pack sweep) only if G1's margin says the pack is worth

@@ -98,3 +98,48 @@ refinements applied to the build (gate-level, not premise-level — no lever was
 
 **G-panel verdict: PROCEED.** No premise was falsified; the refinements tighten the
 gates. Next: Phase 1 (channel instrumentation — the real prize).
+
+---
+
+## Phase-0 panel RE-RUN (2026-06-19 pm) — the free substrate delivered this time
+
+The second panel run (after the `stdin=DEVNULL` fix + with `agy` re-authed) **succeeded
+where the first timed out**: `critique-mimo` and `critique-agy` (Gemini) both produced
+substantive adversarial critiques and handed back via the 1.2 schema; `critique-nemotron`
+still hit "Upstream idle timeout exceeded" (free-model flakiness confirmed, 1/3). Full
+critiques: `.pigeon/coordinate/reviews/comms/{mimo,agy}.md`. This is also a live proof the
+cross-model channel + the operator-authorized `--skip-permissions` path work end to end.
+
+**These critiques are sharp and several are premise-level. Adopted corrections (fold into the
+methodology BEFORE the paid sweep):**
+
+1. **USD-weight the win rule, and track `num_turns`** (agy). `state.derived` is *output*
+   tokens (≈3–5× input price), and pointer-izing code (Move 4) can force extra tool-call
+   turns that re-send the whole history — so a raw-token "win" can be a USD *loss*. The Phase 3 /
+   Phase 5 rule changes from "net token win" to **net USD win** (output priced at the model's
+   real multiplier), and `bench_join` must record `num_turns` so the multi-turn tool tax is
+   visible. A compression config that raises turns is penalized.
+2. **Add a pointers-only NULL arm for Lever 2** (mimo). Fork-A tested *contract compliance*,
+   not *inference from code alone*. The honest Lever-2 test gives the receiver pointers but
+   **no `derived` residue**; if a capable model re-derives the constraint anyway, the residue
+   was unnecessary. This arm is now the core of Gate G-Lever2.
+3. **N=3 screens, N≥8 confirms** (mimo + agy). 0.5³ = 12.5% all-pass by luck; one fluke drops
+   a binary success rate from 100%→67%. Keep N=3 for cheap screening, require **N≥8** before any
+   final GO on Lever 1 or Lever 2.
+4. **Inject `derived` as visible markdown, not raw nested JSON** (agy). Models attend to nested
+   JSON fields weakly; Fork-A carried its constraint *in the prompt*. Capture (i)'s harness
+   surface should render `state.derived` as a top-level markdown block in the receiver's prompt,
+   not assume the model parses it from the handoff JSON. (Affects whether Lever 2 works at all.)
+5. **Lever 1 is DEFENSIVE, not optimization** (mimo). Token-neutral means Lever 1 prevents
+   regression; it does not create savings. Frame it as maintenance, and state the baseline
+   explicitly (today's pack/scaffold overhead) so "parity" is falsifiable.
+6. **Falsification + exit ramp** (mimo). Lever 2 is abandoned if, at N≥8, the pointers-only null
+   matches the with-derived arm on success AND regressions (capable models re-derive cheaply) —
+   a real, publishable negative.
+
+**Deferred (real but heavier):** run checkpointing/resumption so a hop-K failure doesn't waste
+the whole cross-model pipeline (agy #5); a full power analysis toward N≥20 (mimo #3).
+
+**G-panel-v2 verdict: PROCEED, methodology revised.** No lever was falsified, but the *measurement*
+was — raw-token wins and N=3 would have measured the wrong thing. These corrections are folded into
+the build plan's staged runs before any paid sweep.
