@@ -7,12 +7,15 @@ handoff channel and the context pigeon injects — and whether two levers improv
 > **Headline.** pigeon does **not** save tokens (it is token-neutral to mildly
 > negative; Exp. 1). Its value is **cross-model capability**: a carrier can carry a
 > constraint the next carrier cannot re-derive. Exp. 2 shows this is *possible*
-> (5/5 vs 0/5); **Exp. 4 confirms the carried reasoning residue is *necessary*** in
-> that regime — same model, fully isolated, through the productionized
-> `state.derived`→markdown injection: **8/8 with residue vs 0/8 without (N=8, exact
-> 95% CIs cleanly separated)**, at parity-or-better cost. **Exp. 3** finds the default
-> pack is **over-provisioned** (compress to pack=1k, success holds 3/3 across the tested
-> 4× range); the knee itself is below 1k and untested — not pursued (Lever 1 is maintenance).
+> (5/5 vs 0/5); **Exp. 4 confirms the carried `state.derived` residue is *necessary***
+> when the constraint is **absent from the code** — same model, fully isolated, **8/8
+> with residue vs 0/8 without (N=8, CIs separated)**, at parity-or-better cost, surviving
+> a 3-hop chain (7a). **Exp. 5 bounds it:** when the constraint is *present and
+> recoverable* in the code, a capable receiver re-derives it **for free (8/8 pointers-only,
+> read-cue 8/8)** — so residue earns its tokens **iff the reasoning left no recoverable
+> trace**, not merely when it is non-obvious. **Exp. 3** finds the default pack
+> **over-provisioned** (compress to pack=1k, success holds 3/3 across the tested 4× range;
+> knee below 1k, untested — not pursued, Lever 1 is maintenance).
 
 ---
 
@@ -216,6 +219,39 @@ a task's **full `needs` closure** (so A→B→C reaches C even when C only needs
 Data: `results/lever2-3hop.json`. (The unit test `test_derived_survives_multiple_hops`
 shows the pre-fix direct-needs path **loses** the constraint at hop 3.)
 
+### 7b. External validity (Exp. 5) — the effect is **bounded**, not universal
+
+Exp. 4 proved residue *necessary* on Fork-A, a constraint **engineered to be invisible**
+in the code (~0 % recoverable). The honest question (pre-registered,
+`PREREG-lever2-natural.md`): does residue still help when the constraint is **present and
+recoverable** in the code, just non-salient? Substrate (fallback, semi-synthetic): a
+`ledger` where the wire convention lives in an existing `to_legacy`/`from_legacy`
+boundary with a comment that external clients depend on the keys; the task neutrally asks
+for a v2 `to_wire`/`from_wire` "consistent with the codebase."
+
+**Manipulation check (prereg §4) — pointers-only, N=8: 8/8 PASS, read-cue 8/8.** A
+capable sonnet receiver re-derives the convention **for free** — and `read-cue 8/8` is
+the mechanism: every trial read `to_legacy` and matched it, so this is genuine
+re-derivation, not luck. Per the pre-registered routing, `8/8` **is the H0 outcome**;
+the `+derived` arm was **not run** (no headroom — there is nothing above 8/8 for a
+success win to occupy).
+
+**This is the more valuable result.** Paired with Fork-A it **bounds Lever 2 from both
+sides**:
+
+| Constraint trace in the artifacts | Residue | Evidence |
+|---|---|---|
+| **absent** (Fork-A: idiomatic default is the opposite) | **necessary** | 8/8 vs 0/8 (Exp. 4) |
+| **present & recoverable** (Exp. 5: in-code cue) | **unnecessary** — re-derived 8/8 | 8/8 pointers-only (Exp. 5) |
+
+So the rule the program opened with — *spend channel tokens only on what the receiver
+cannot cheaply regenerate* — is now **empirically pinned**: the `state.derived` residue
+earns its tokens **iff the reasoning left no recoverable trace in the code**, not merely
+when it is non-obvious. *Limitation:* one semi-synthetic substrate, and its in-code cue
+is fairly salient (a named sibling method + explicit comment); a subtler cue might land
+pointers-only in the partial regime (1–7/8) — that boundary is untested. Data:
+`results/lever2-natural.json`.
+
 ---
 
 ## 8. Results summary
@@ -229,7 +265,7 @@ shows the pre-fix direct-needs path **loses** the constraint at hop 3.)
 | 3 | Lever 1 — channel compression (pack sweep) | success holds 3/3 across tested [1k,4k]; knee below 1k untested | 3/config | **OVER-PROVISIONED** — compress to 1k free (firm); cost-win directional; knee not pursued |
 | 4 | Lever 2 — derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; residue cheaper ($0.417 vs $0.436) | 8 / 8 / 5 | **GO — CONFIRMED** |
 | 4a | Lever 2 — multi-hop survival (H2) on a natural A→B→C chain | **3/3 pass, hop-3 injection 3/3** (transitive fix); pre-fix loses it (unit test) | 3 | **SURVIVES** (fix load-bearing) |
-| 5 | Lever 2 — natural partially-recoverable substrate | pre-registered (`PREREG-lever2-natural.md`); not yet run | 8 (planned) | **PENDING** — external validity |
+| 5 | Lever 2 — natural substrate (in-code recoverable constraint) | pointers-only **8/8** (read-cue 8/8) — re-derived for free | 8 | **H0** — residue unnecessary when recoverable; **bounds** the effect |
 
 ---
 

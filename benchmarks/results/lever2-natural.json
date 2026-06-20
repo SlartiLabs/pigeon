@@ -1,0 +1,24 @@
+{
+  "experiment": "Experiment 5 — Lever-2 on a natural, partially-recoverable substrate",
+  "date": "2026-06-20",
+  "prereg": "benchmarks/PREREG-lever2-natural.md",
+  "substrate": "naturalistic ledger (fallback per prereg §2); the wire convention lives IN the code as an existing to_legacy/from_legacy boundary (keys acct/cents/ts, epoch-int ts, omit-null note, lenient consumer) + a comment that external clients depend on the exact keys. The task neutrally asks for a v2 to_wire/from_wire 'consistent with the codebase'.",
+  "model": "claude/sonnet x3, 3-hop chain (from_wire needs only to_wire)",
+  "manipulation_check": {
+    "arm": "pointers-only (null)",
+    "N": 8,
+    "pass": "8/8",
+    "ci95_clopper_pearson": [0.631, 1.0],
+    "read_cue": "8/8",
+    "mean_turns": 26.5,
+    "mean_cost_usd": 0.392,
+    "regime": "FULLY RECOVERABLE -> H0",
+    "interpretation": "Per prereg §4, pointers-only = 8/8 is the H0 outcome: the constraint is re-derived for free. read_cue=8/8 supplies the mechanism — every trial read the in-code to_legacy cue and matched its convention, so success is genuine re-derivation, not luck. A capable same-model receiver does NOT need the residue when the constraint is recoverable from the artifacts."
+  },
+  "with_derived_arm": "NOT RUN — the manipulation check is at ceiling (8/8), so there is no headroom for a success-rate H1 win; running +derived would only show 8/8 vs 8/8. Per prereg §4 the manipulation check routes interpretation to H0 before the comparison.",
+  "verdict": "H0 CONFIRMED on this substrate: when the constraint is present-and-recoverable in the code (even non-salient), sonnet re-derives it 8/8 and the carried residue is unnecessary. Paired with Fork-A/Exp-4 (constraint NOT in code, 0% recoverable -> residue necessary, 8/8 vs 0/8), this BOUNDS Lever 2: the derived residue is necessary IFF the reasoning left no recoverable trace in the artifacts. That is the original design rule ('spend tokens only on what the receiver cannot cheaply regenerate') now empirically pinned from both sides.",
+  "limitations": [
+    "Fallback (semi-synthetic) substrate, chosen for grader cleanliness (exact-key check). The in-code cue here is fairly SALIENT — a named sibling method to_legacy + an explicit 'external clients depend on these keys' comment. A subtler cue (no comment; convention only inferable from usage) might land pointers-only in the partial regime (1-7/8); that boundary is untested.",
+    "One substrate, one constraint. The dichotomy (necessary iff non-recoverable) is sharp but rests on Fork-A + this single natural point."
+  ]
+}
