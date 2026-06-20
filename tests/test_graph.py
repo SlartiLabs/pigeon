@@ -20,6 +20,18 @@ def _seed(repo):
         "# North Sector\n\nPatrolled by [[MV Aurora]].\n", encoding="utf-8")
 
 
+def test_build_graph_harvests_derived_constraints(repo):
+    """A state.derived.constraint_found becomes a queryable constraint node + edge."""
+    ho.write_handoff(ho.build_handoff(
+        sid="cs", frm="architect", to="impl", done=[], doing="x",
+        derived={"constraint_found": ["wire keys are acct/cents/ts"]}), repo)
+    g = graph.build_graph(repo)
+    ids = {n["id"] for n in g["nodes"]}
+    assert "constraint:wire keys are acct/cents/ts" in ids
+    edges = {(e["src"], e["rel"], e["dst"]) for e in g["edges"]}
+    assert ("session:cs", "discovered", "constraint:wire keys are acct/cents/ts") in edges
+
+
 def test_build_graph_nodes_edges_and_stubs(repo):
     _seed(repo)
     g = graph.build_graph(repo)

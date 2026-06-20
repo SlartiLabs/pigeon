@@ -977,6 +977,23 @@ def _fill(template: str, subs: dict[str, str]) -> str:
     return out
 
 
+def _transitive_ancestors(tasks: list[dict[str, Any]]) -> dict[str, set[str]]:
+    """``task_id`` → the full set of transitive upstream task ids (its ``needs``
+    closure). A constraint discovered by any ancestor must reach a downstream
+    carrier, even when the chain is A→B→C and C only directly ``needs`` B —
+    otherwise the residue dies one hop short of where it is needed."""
+    direct = {t["id"]: set(t.get("needs") or []) for t in tasks}
+
+    def walk(tid: str, seen: set[str]) -> set[str]:
+        for up in direct.get(tid, ()):
+            if up not in seen:
+                seen.add(up)
+                walk(up, seen)
+        return seen
+
+    return {tid: walk(tid, set()) for tid in direct}
+
+
 def _upstream_derived_markdown(config: Config, sid: str, needs: list[str]) -> str:
     """Render the ``state.derived`` residue emitted by this task's direct upstreams
     as a visible markdown block for the receiver's prompt (Lever 2 — carry only the
@@ -1037,6 +1054,7 @@ def _build_command(
     *,
     skip_permissions: bool,
     telemetry: bool = False,
+    ancestors: set[str] | None = None,
 ) -> list[str]:
     ccfg = config.coordinate_cfg
     subs = {
@@ -1049,8 +1067,12 @@ def _build_command(
     if task.get("crew"):
         playbooks_rel = str(config.memory_dir.relative_to(config.root) / "playbooks")
         prompt += " " + crew_instructions(task["crew"], playbooks_rel)
-    # Lever 2: inject any irreducible reasoning the direct upstreams carried.
-    prompt += _upstream_derived_markdown(config, sid, task.get("needs") or [])
+    # Lever 2: inject the irreducible reasoning any TRANSITIVE upstream carried —
+    # the full needs closure, so a constraint from hop 1 reaches hop 3 even when
+    # the receiver only directly needs hop 2. Falls back to direct needs when the
+    # closure isn't supplied (e.g. a unit-test or single-task call).
+    upstreams = sorted(ancestors) if ancestors is not None else (task.get("needs") or [])
+    prompt += _upstream_derived_markdown(config, sid, upstreams)
     subs["prompt"] = prompt
     # {model} is substituted ONLY when a model resolved (direct `model:` or a
     # `model_pool:`). Absent that, it is never added to subs, so a template with
@@ -1554,6 +1576,11 @@ def run_coordinate(
             salvaged_upstream=salvaged_upstream or None,
         )
 
+    # Transitive needs closure per task — drives Lever-2 multi-hop survival: the
+    # residue from any ancestor reaches a downstream carrier, not just its direct
+    # upstream. Computed once; the spawn closures below capture it.
+    ancestors_of = _transitive_ancestors(tasks)
+
     def _write_handoff_cmd(task: dict[str, Any],
                            injected: list[str],
                            salvaged_upstream: list[str] | None = None,
@@ -1569,7 +1596,8 @@ def run_coordinate(
         # are gitignored, so a fresh worktree does not contain them.
         handoff_ref = str(path) if task.get("isolation") == "worktree" else rel
         cmd = _build_command(task, config, handoff_ref, sid,
-                             skip_permissions=skip_permissions, telemetry=telemetry)
+                             skip_permissions=skip_permissions, telemetry=telemetry,
+                             ancestors=ancestors_of.get(task["id"]))
         return cmd, rel
 
     def _log_paths(task: dict[str, Any]) -> tuple[Path, str]:
@@ -1602,7 +1630,8 @@ def run_coordinate(
                 path="(speculative)")
             disp_cmd = _build_command(
                 task, config, "<handoff resolved at spawn>", sid,
-                skip_permissions=skip_permissions, telemetry=telemetry)
+                skip_permissions=skip_permissions, telemetry=telemetry,
+                ancestors=ancestors_of.get(task["id"]))
             recorder.task(task["id"], command=disp_cmd, log=log_rel)
             deferred.add(task["id"])
             commands.append((task, disp_cmd, log_path))

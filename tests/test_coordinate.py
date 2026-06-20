@@ -296,6 +296,49 @@ def test_derived_injection_reaches_the_spawn_command(repo):
     assert "Carried reasoning" in joined
 
 
+def test_transitive_ancestors_closure():
+    """A→B→C: C's ancestor set is {A, B} even though C only directly needs B."""
+    tasks = [{"id": "A"}, {"id": "B", "needs": ["A"]}, {"id": "C", "needs": ["B"]}]
+    anc = co._transitive_ancestors(tasks)
+    assert anc["A"] == set()
+    assert anc["B"] == {"A"}
+    assert anc["C"] == {"A", "B"}
+
+
+def test_derived_survives_multiple_hops(repo):
+    """A constraint discovered at hop 1 reaches hop 3 via the transitive closure,
+    even though hop 3 only directly `needs` hop 2 (the multi-hop survival fix)."""
+    cfg = _setup(repo, runners={"pyp": [sys.executable, "-c", "print('ok')", "{prompt}"]})
+    # hop 1 (architect) discovers the constraint; hop 2 carries nothing new
+    ho.write_handoff(ho.build_handoff(
+        sid="s9", frm="architect", to="Coordinator", done=[], doing="x",
+        derived={"constraint_found": ["wire keys are acct/cents/ts"]}), cfg)
+    ho.write_handoff(ho.build_handoff(
+        sid="s9", frm="midhop", to="Coordinator", done=[], doing="y"), cfg)
+    # hop 3 only directly needs midhop, NOT architect
+    task = {"id": "final", "runner": "pyp", "doing": "z", "needs": ["midhop"]}
+    # without the closure (direct needs only): architect's constraint is LOST
+    direct = " ".join(co._build_command(task, cfg, "h.json", "s9", skip_permissions=False))
+    assert "acct/cents/ts" not in direct
+    # with the transitive closure: it survives to hop 3
+    closure = {"midhop", "architect"}
+    withanc = " ".join(co._build_command(task, cfg, "h.json", "s9",
+                                         skip_permissions=False, ancestors=closure))
+    assert "acct/cents/ts" in withanc
+
+
+def test_distill_harvests_derived_constraints(repo):
+    """distill writes a 'Constraints discovered' section from state.derived."""
+    from pigeon import distill
+    ho.write_handoff(ho.build_handoff(
+        sid="cdsess", frm="architect", to="impl", done=["spec"], doing="implement",
+        derived={"constraint_found": ["ts must be an int epoch, not ISO"]}), repo)
+    res = distill.distill_session(repo, "cdsess")
+    text = (repo.root / res["session"]).read_text(encoding="utf-8")
+    assert "Constraints discovered" in text
+    assert "ts must be an int epoch" in text
+
+
 # -------------------------------------------------------------- scaffold meter
 def test_real_run_records_scaffold(repo):
     """A real spawn records the per-spawn wrapper prompt under the 'scaffold' kind."""
