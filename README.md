@@ -170,7 +170,7 @@ Scopes: `code` (the repo), `history` (raw handoffs + runs), `memory`
 ### Crews and skill projection
 
 Tasks can contract their staffing: a `crew:` block (validated by handoff
-schema 1.1) names the skills to load and the subagents to dispatch, with
+schema 1.2) names the skills to load and the subagents to dispatch, with
 optional verdict gates. The receiving agent spawns them via its own native
 mechanism — but *who* runs is decided in the contract, deterministically.
 

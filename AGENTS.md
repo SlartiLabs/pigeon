@@ -104,6 +104,14 @@ break.
   emit a handoff validated against the schema; carry pointers, not payloads.
 - **Resolve pointers on demand.** Use the shared resolver; do not inline
   artifact contents into a handoff.
+- **Carry the reasoning residue, point at the rest.** Put in `state.derived`
+  only what the receiver cannot cheaply re-derive from the pointed-to code:
+  approaches you ruled out and why (`ruled_out`), a non-obvious constraint you
+  discovered (`constraint_found`), your intended `next_action`, `open_questions`,
+  and the `rationale` for the path chosen. One line each. Never restate
+  re-derivable facts there — point at the code for those. Residue over its soft
+  budget is flagged (`derived_over_budget`): if you see it, you are re-sending
+  what a pointer would carry.
 - **Measure.** Every handoff and retrieval is token-accounted. Prefer the
   approach `pigeon metrics` shows to be cheaper; do not assume savings.
 

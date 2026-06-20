@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/SlartiLabs/pigeon/schemas/handoff-1.1.json",
+  "$id": "https://github.com/SlartiLabs/pigeon/schemas/handoff-1.2.json",
   "title": "AgentHandoff",
   "description": "Cross-model agent handoff: sparse state deltas plus pointers, never payloads.",
   "$comment": "Compatibility policy: schema_version is MAJOR.MINOR. A handoff is compatible with a running pigeon iff it has the SAME major and a minor <= the reader's minor (minor bumps are additive, so the current schema is a superset of older minors). A newer minor or a different major is rejected on receipt; carry an older handoff forward with `pigeon migrate`. The gate is enforced in pigeon.handoff.validate_handoff; the authoritative prose lives in that module.",
@@ -69,6 +69,41 @@
           "type": "array",
           "items": {"type": "string"},
           "description": "Task IDs of upstream salvaged tasks whose diff this handoff carries (advisory; downstream reviews materialized-but-unverified work)."
+        },
+        "derived": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Reasoning the receiver cannot cheaply re-derive from the pointed-to artifacts (added in 1.2). PAYLOAD for hard-won reasoning — approaches ruled out, a constraint discovered through failed experiments, the rationale and intended next action — never for re-derivable facts (point at code for those). Caps bound worst-case residue to ~900-1100 tokens.",
+          "properties": {
+            "ruled_out": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "required": ["path", "reason"],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {"type": "string", "maxLength": 120},
+                  "reason": {"type": "string", "maxLength": 240}
+                }
+              },
+              "description": "Approaches tried and abandoned: what, and why it failed (so the receiver doesn't re-walk the dead end)."
+            },
+            "constraint_found": {
+              "type": "array",
+              "maxItems": 6,
+              "items": {"type": "string", "maxLength": 240},
+              "description": "Non-obvious constraints discovered (one line each) that the final artifacts do not make visible."
+            },
+            "next_action": {"type": "string", "maxLength": 280, "description": "The single intended next action the sender would take."},
+            "open_questions": {
+              "type": "array",
+              "maxItems": 6,
+              "items": {"type": "string", "maxLength": 200},
+              "description": "Unresolved questions the receiver should weigh."
+            },
+            "rationale": {"type": "string", "maxLength": 400, "description": "Why the chosen approach over the alternatives — the decision residue."}
+          }
         }
       }
     },

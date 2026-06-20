@@ -154,6 +154,7 @@ def account_handoff(
     actual = count_tokens(serialize_handoff(handoff), encoding)
     baseline = count_tokens(_prose_baseline_for_handoff(handoff, config), encoding)
     components = _handoff_components(handoff, encoding)
+    budget = int(config.coordinate_cfg.get("derived_token_budget", 400))
     event = {
         "kind": "handoff",
         "sid": handoff.get("sid"),
@@ -164,9 +165,26 @@ def account_handoff(
         "baseline_tokens": baseline,
         "saved_tokens": baseline - actual,
         "components": components,
+        "derived_over_budget": components["derived"] > budget,
         "exact": using_tiktoken(encoding),
     }
     return record(config, event) if record_event else event
+
+
+def derived_budget_status(config: Config, handoff: dict[str, Any]) -> tuple[int, int] | None:
+    """Return ``(derived_tokens, budget)`` when a handoff's ``state.derived`` residue
+    exceeds ``coordinate.derived_token_budget``, else ``None``.
+
+    The soft check behind the write-time warning: it never rejects (residue bloat
+    is a quality signal to surface, not a contract violation), it only reports.
+    """
+    encoding = config.tokens_cfg.get("encoding", "cl100k_base")
+    derived = (handoff.get("state") or {}).get("derived")
+    if not derived:
+        return None
+    budget = int(config.coordinate_cfg.get("derived_token_budget", 400))
+    tokens = count_tokens(json.dumps(derived, ensure_ascii=False, sort_keys=True), encoding)
+    return (tokens, budget) if tokens > budget else None
 
 
 def _handoff_components(handoff: dict[str, Any], encoding: str) -> dict[str, int]:

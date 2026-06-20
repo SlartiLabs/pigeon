@@ -63,6 +63,7 @@ def handoff_write_impl(
     done: list[str] | None = None,
     artifacts: list[str] | None = None,
     decisions: dict[str, Any] | None = None,
+    derived: dict[str, Any] | None = None,
     constraints: dict[str, Any] | None = None,
     rag_query: str | None = None,
     rag_top_k: int | None = None,
@@ -79,17 +80,22 @@ def handoff_write_impl(
         sid=sid, frm=from_agent, to=to_agent,
         done=list(done or []), doing=doing,
         artifacts=artifacts or None, decisions=decisions or None,
+        derived=derived or None,
         rag=rag, constraints=constraints or None, crew=crew or None,
         context_ref=context_ref,
     )
     path = ho.write_handoff(handoff, config)  # validates on write
     rel = str(path.relative_to(config.root))
     ev = tokens.account_handoff(config, handoff, path=rel)
-    return {
+    result = {
         "path": rel,
         "handoff": handoff,
         "tokens": {k: ev[k] for k in ("actual_tokens", "baseline_tokens", "saved_tokens")},
     }
+    over = tokens.derived_budget_status(config, handoff)
+    if over is not None:
+        result["derived_over_budget"] = {"tokens": over[0], "budget": over[1]}
+    return result
 
 
 def _repo_path(config: Config, path: str) -> Path:
@@ -276,6 +282,7 @@ def build_server(root: Path | str | None = None):
         done: list[str] | None = None,
         artifacts: list[str] | None = None,
         decisions: dict | None = None,
+        derived: dict | None = None,
         constraints: dict | None = None,
         rag_query: str | None = None,
         rag_top_k: int | None = None,
@@ -285,10 +292,14 @@ def build_server(root: Path | str | None = None):
         """Append a schema-validated handoff (sparse deltas + pointers, never
         payloads) to .pigeon/handoffs/. crew = deterministic staffing the
         receiver must dispatch ({skills: [...], subagents: [{role, skill,
-        doing, verdict}]}). Returns its path and token cost."""
+        doing, verdict}]}). derived = reasoning the receiver cannot cheaply
+        re-derive from the pointed-to code ({ruled_out, constraint_found,
+        next_action, open_questions, rationale}) — PAYLOAD for hard-won
+        reasoning only, never re-derivable facts. Returns its path and token
+        cost (plus derived_over_budget when the residue exceeds its soft cap)."""
         return handoff_write_impl(
             cfg(), sid=sid, from_agent=from_agent, to_agent=to_agent, doing=doing,
-            done=done, artifacts=artifacts, decisions=decisions,
+            done=done, artifacts=artifacts, decisions=decisions, derived=derived,
             constraints=constraints, rag_query=rag_query, rag_top_k=rag_top_k,
             crew=crew, context_ref=context_ref,
         )

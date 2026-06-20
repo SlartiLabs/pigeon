@@ -131,6 +131,12 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
             "default_runner": None,
             # Run `pigeon distill <sid>` automatically when a coordinate run ends.
             "auto_distill": False,
+            # Lever 2 (carrier-comms): soft ceiling for the optional
+            # ``state.derived`` reasoning residue, in tokens. Exceeding it never
+            # rejects a handoff — it flags ``derived_over_budget`` on the metric
+            # event and warns at write time, so residue bloat is visible before it
+            # silently reinvents the overhead the polymath is meant to avoid.
+            "derived_token_budget": 400,
             # argv templates; placeholders: {prompt} {handoff} {root} {task_id} {sid}
             "runners": {
                 "claude": ["claude", "-p", "{prompt}"],

@@ -14,6 +14,6 @@ try:  # single source of truth: installed package metadata (pyproject)
     __version__ = _pkg_version("carrier-pigeon")  # distribution name (CLI stays `pigeon`)
 except Exception:  # not installed (e.g. vendored checkout)
     __version__ = "0.5.1"
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 
 __all__ = ["__version__", "SCHEMA_VERSION"]

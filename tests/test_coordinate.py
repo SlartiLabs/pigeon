@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from pigeon import SCHEMA_VERSION
 from pigeon import coordinate as co
 from pigeon import handoff as ho
 from pigeon.config import Config, load_config
@@ -772,9 +773,9 @@ def test_crew_lands_in_handoff_prompt_and_manifest(repo, capsys):
         {"id": "api", "runner": "py", "doing": "build it", "crew": _CREW}]))
     assert co.run_coordinate(tasks, cfg, dry_run=True) == 0
 
-    # handoff: schema-validated 1.1 with the crew object intact
+    # handoff: schema-validated at the current contract version, crew object intact
     h = ho.load_handoff(next(cfg.handoffs_dir.glob("co1-*.json")), cfg)
-    assert h["schema_version"] == "1.1"
+    assert h["schema_version"] == SCHEMA_VERSION
     assert h["crew"] == _CREW
 
     # prompt: marching orders rendered into the spawn command
