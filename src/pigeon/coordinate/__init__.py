@@ -960,6 +960,58 @@ def _fill(template: str, subs: dict[str, str]) -> str:
     return out
 
 
+def _upstream_derived_markdown(config: Config, sid: str, needs: list[str]) -> str:
+    """Render the ``state.derived`` residue emitted by this task's direct upstreams
+    as a visible markdown block for the receiver's prompt (Lever 2 — carry only the
+    irreducible reasoning; point at code for the rest).
+
+    Buried JSON is under-attended (the panel's correction): a constraint the
+    receiver must honor is surfaced as top-level markdown, not left for the agent
+    to dig out of the handoff. Reads the most recent handoff per upstream task that
+    carries a non-empty ``derived``. Returns ``""`` when there is nothing to carry.
+    """
+    if not needs:
+        return ""
+    want = set(needs)
+    latest: dict[str, dict[str, Any]] = {}
+    hdir = config.handoffs_dir
+    if not hdir.is_dir():
+        return ""
+    for path in sorted(hdir.glob(f"{sid}-*.json")):  # oldest -> newest index
+        try:
+            obj = ho.load_handoff(path, config)
+        except (ho.HandoffValidationError, json.JSONDecodeError, OSError):
+            continue
+        frm = obj.get("from")
+        derived = (obj.get("state") or {}).get("derived")
+        if frm in want and derived:
+            latest[frm] = derived  # later index wins
+    if not latest:
+        return ""
+
+    lines = ["", "", "## Carried reasoning (state.derived from upstream)",
+             "The upstream carrier recorded reasoning you CANNOT cheaply re-derive "
+             "from the code. Treat each as a hard rule; point at the code for "
+             "everything else."]
+    for frm in needs:
+        d = latest.get(frm)
+        if not d:
+            continue
+        lines.append(f"\n**from `{frm}`:**")
+        for c in (d.get("constraint_found") or []):
+            lines.append(f"- constraint: {c}")
+        for r in (d.get("ruled_out") or []):
+            if isinstance(r, dict):
+                lines.append(f"- ruled out `{r.get('path','')}`: {r.get('reason','')}")
+        if d.get("rationale"):
+            lines.append(f"- rationale: {d['rationale']}")
+        if d.get("next_action"):
+            lines.append(f"- next action: {d['next_action']}")
+        for q in (d.get("open_questions") or []):
+            lines.append(f"- open question: {q}")
+    return "\n".join(lines)
+
+
 def _build_command(
     task: dict[str, Any],
     config: Config,
@@ -980,6 +1032,8 @@ def _build_command(
     if task.get("crew"):
         playbooks_rel = str(config.memory_dir.relative_to(config.root) / "playbooks")
         prompt += " " + crew_instructions(task["crew"], playbooks_rel)
+    # Lever 2: inject any irreducible reasoning the direct upstreams carried.
+    prompt += _upstream_derived_markdown(config, sid, task.get("needs") or [])
     subs["prompt"] = prompt
     # {model} is substituted ONLY when a model resolved (direct `model:` or a
     # `model_pool:`). Absent that, it is never added to subs, so a template with

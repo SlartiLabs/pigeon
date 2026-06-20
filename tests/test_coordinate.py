@@ -222,6 +222,40 @@ def test_custom_log_dir(repo, tmp_path):
     assert (log_dir / "co1-a.log").is_file()
 
 
+# ------------------------------------------------------- derived injection (L2)
+def test_upstream_derived_injected_as_markdown(repo):
+    """An upstream's state.derived is surfaced to the receiver as a markdown block."""
+    cfg = _setup(repo)
+    up = ho.build_handoff(
+        sid="s9", frm="architect", to="Coordinator", done=["analyzed"], doing="hand off",
+        derived={"constraint_found": ["wire keys are acct/cents/ts, NOT the field names"],
+                 "rationale": "external consumer is strict"},
+    )
+    ho.write_handoff(up, cfg)
+
+    md = co._upstream_derived_markdown(cfg, "s9", ["architect"])
+    assert "Carried reasoning" in md
+    assert "acct/cents/ts" in md
+    assert "rationale: external consumer is strict" in md
+    # a task that doesn't depend on the architect gets nothing
+    assert co._upstream_derived_markdown(cfg, "s9", ["someone_else"]) == ""
+    # no needs -> nothing
+    assert co._upstream_derived_markdown(cfg, "s9", []) == ""
+
+
+def test_derived_injection_reaches_the_spawn_command(repo):
+    """End-to-end: the derived markdown lands in the built runner command."""
+    cfg = _setup(repo, runners={"pyp": [sys.executable, "-c", "print('ok')", "{prompt}"]})
+    up = ho.build_handoff(sid="s9", frm="plan", to="Coordinator", done=[], doing="x",
+                          derived={"constraint_found": ["MUST omit null note key"]})
+    ho.write_handoff(up, cfg)
+    task = {"id": "impl", "runner": "pyp", "doing": "do it", "needs": ["plan"]}
+    cmd = co._build_command(task, cfg, "h.json", "s9", skip_permissions=False)
+    joined = " ".join(cmd)
+    assert "MUST omit null note key" in joined
+    assert "Carried reasoning" in joined
+
+
 # -------------------------------------------------------------- scaffold meter
 def test_real_run_records_scaffold(repo):
     """A real spawn records the per-spawn wrapper prompt under the 'scaffold' kind."""
