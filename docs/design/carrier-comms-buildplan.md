@@ -450,5 +450,82 @@ Claude attribution.
 - **Continue.** Next: Phase 0 panel (optional, runnable now) or Phase 2 (instrumented WITH-arm run →
   G1: pack ≫ handoff).
 
-_(Remaining phases: mirror `adopt-buildplan.md §9` — per-phase outcome, gate verdicts, as-built
-deltas, the kill/continue call. Commits are the user's; no Claude attribution.)_
+### Phase 0 — multi-model panel (Gate G-panel) ✅ PROCEED (carried over from prior session)
+
+Already executed by the prior terminal and recorded in
+[`carrier-comms.md`](carrier-comms.md) §"Phase-0 panel synthesis": the free-model voices
+(`oc-mimo`, `oc-nemotron`) **timed out at 600 s** and `agy`'s **Google OAuth had expired** — an
+ops finding, not a critique. The substantive pass was the integrator's four lenses; verdict
+**PROCEED**, no premise falsified, four gate-level refinements applied. Re-running the panel this
+session was attempted but **blocked by the harness auto-mode** (spawning `--skip-permissions`
+sub-agents needs explicit operator authorization) — and would only have re-hit the same
+free-model wall. **Adopted refinements:** (#1) reconcile G0 against the raw `metrics.jsonl`, not
+the published JSON — which is exactly what `bench_join` does; (#3) **do not pre-commit the full
+pack sweep (Move 3); decide it after G1.**
+
+### Phase 4 — Lever 2 `derived` schema + machinery (4a/4b/4c) ✅ BUILT & GREEN
+
+Committed `45dc920`. As built: optional `state.derived` under the schema (caps bound residue to
+~900–1100 tok); `$id`→`handoff-1.2.json` + bundled template kept byte-identical; `SCHEMA_VERSION`
+1.1→1.2 with a no-op `_migrate_1_1_to_1_2` (1.2 is a pure superset — every 1.1 handoff still
+validates); `build_handoff` / MCP `handoff_write` / impl gained a `derived` arg; `tokens` flags
+`derived_over_budget` and `derived_budget_status()` backs a soft write-time warn (never rejects);
+new `coordinate.derived_token_budget` (400). Capture (i) self-emission guidance added to AGENTS.md
+("carry the residue, point at the rest"). 8 new tests in `test_derived.py`. **Schema verification
+(plan §7) holds:** a 1.1 and a 1.2 handoff both validate; 1.1→1.2 migrate is a no-op.
+**Not built:** capture (ii) `distill.extract_derived` — opt-in, used *only* by the Phase-5
+cross-model arm, which is a blocked live run; staged below rather than written speculatively.
+
+### Phase 2 — classify the over-send (Gate G1) ✅ PASS (from the recorded ledger)
+
+`bench_join` / `aggregate_metrics` over `benchmarks/results/raw/marshmallow/with.metrics.jsonl`:
+per spawn the **pack injects ~2992 tok vs the handoff doc's ~286 — pack is ~10.5× the handoff**
+(lumped pack 5985 vs handoff 3142 across the run). **Confirmed:** the over-send lives in the pack
++ scaffolding, not the handoff doc (locked decision #2 holds; Lever 1 is correctly aimed). Caveat:
+this is the single recorded run (n=1); G1 is a *classification of where tokens live*, not a
+win-claim, so n=1 is adequate to aim Lever 1 — but any *compression* claim still needs the N≥3
+discipline below.
+
+### Phase 3 — Lever 1 channel compression: instrument ready, compression STAGED
+
+`account_scaffold()` (the scaffold meter) is built and unit-tested (`test_derived.py`). Its
+**live-path wiring is deliberately deferred** (not forced): the prompt is rebuilt at three spawn
+sites (`__init__.py:1567/1581/1699` via `_spawn_prepare`), so threading the finalized text risks
+a double-count or dry-run pollution in the core path, and the meter's only payoff is the Move-1
+measurement — a blocked live run. Per panel refinement #3, **Move 3's pack sweep is not
+pre-committed.** Moves 1/2/4 are behavior-changing and, by the plan's own measure-before-compress
+rule, must not flip defaults without an N≥3 success run — so they are staged, not silently landed.
+
+### Phase 5 — cross-model (Gate G-Lever2): quality win REUSED; token-axis confirm STAGED
+
+Fork-A (`forkA-capability.json`, bridge 5/5 vs cold 0/5) stands as the demonstrated quality win;
+no re-run needed. The optional schema'd token-axis confirm is a blocked live run (and `agy` needs
+re-auth) — staged below.
+
+---
+
+## 11. Staged live runs (need operator authorization — `--skip-permissions` + real spend)
+
+The harness auto-mode blocks an agent from firing `pigeon coordinate --skip-permissions`
+autonomously, and these consume real API budget. Each is one command; lock the threshold before
+the first run (KILL-CRITERION discipline). **Do not push until a clean stopping point.**
+
+1. **Phase 0 panel re-run (optional, free models).** `pigeon coordinate
+   docs/To_do/comms-panel.tasks.yaml --skip-permissions --telemetry`. Needs `agy` re-auth; expect
+   the documented free-model timeouts. Low value — the verdict is already PROCEED.
+2. **Phase 2 confirm (1 sonnet run).** Re-run marshmallow `t1-slug` WITH-arm against `/tmp/bench`,
+   instrumented, to confirm G1 on a fresh ledger (the recorded-data verdict already passed).
+3. **Phase 3 Lever-1 (N≥3 sonnet).** Land Move 1 (say-once scaffolding) + wire `account_scaffold`,
+   re-run marshmallow plan→implement N≥3, apply the U-curve stop rule. **Decide Move 3 (pack
+   sweep) only if G1's margin says the pack is worth it** (it is — 10.5×). Threshold: accept C over
+   B iff `accept(C)=accept(B)=pass ∧ regressions(C)≤regressions(B) ∧ channel(B)−channel(C) >
+   agent(C)−agent(B)`.
+4. **Phase 4 G2a (N≥3 sonnet).** Re-run same-model with `state.derived` populated (capture i).
+   Threshold: `components.derived < 400` AND cost parity vs the no-derived run. Parity = working.
+5. **Phase 5 G-Lever2 (N≥3 cross-model).** Build capture (ii) `distill.extract_derived`, recast
+   Fork-A's contract as structured `state.derived`, run claude→opencode/mimo→agy with the token
+   axis. GO iff a replicated quality OR token win; KILL (publishable) iff both fail under the
+   schema'd form. Needs `agy` re-auth.
+
+_(Per-phase run outcomes for the staged runs get filled here as they execute. Commits are the
+user's; no Claude attribution.)_

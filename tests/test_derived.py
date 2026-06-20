@@ -92,3 +92,19 @@ def test_under_budget_does_not_flag(repo):
     ev = tk.account_handoff(repo, h, record_event=False)
     assert ev["derived_over_budget"] is False
     assert tk.derived_budget_status(repo, h) is None
+
+
+def test_account_scaffold_counts_and_records(repo):
+    """The scaffold kind counts re-emitted per-spawn prompt text (overhead, not a saving)."""
+    ev = tk.account_scaffold(
+        repo, prompt_text="You are sub-agent 'plan' in pigeon session 's1'. Do only the doing step.",
+        kind_detail="claude", sid="s1", record_event=False,
+    )
+    assert ev["kind"] == "scaffold"
+    assert ev["actual_tokens"] > 0
+    assert ev["baseline_tokens"] == 0 and ev["saved_tokens"] == 0  # overhead, never a saving
+    assert ev["detail"] == "claude"
+
+    # recorded events surface under the 'scaffold' kind in the summary
+    tk.account_scaffold(repo, prompt_text="hello world", kind_detail="agy", sid="s1")
+    assert "scaffold" in tk.summarize(repo)["by_kind"]
