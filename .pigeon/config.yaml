@@ -113,6 +113,11 @@ coordinate:
     sonnet:           [timeout, "-k", "30", "900", claude, -p, "{prompt}", --model, sonnet]
     opus:             [timeout, "-k", "30", "1800", claude, -p, "{prompt}", --model, opus]
     agy:              [timeout, "-k", "30", "900", agy, -p, "{prompt}"]
+    # --- OpenAI Codex CLI (metered; logged in via ChatGPT; reads AGENTS.md) ---
+    codex:            [timeout, "-k", "30", "900", codex, exec, "{prompt}"]
+    # --- Xiaomi MiMo-Code (opencode fork; absolute path — not on the non-login
+    #     PATH; works out of the box, no login needed) ---
+    mimo:             [timeout, "-k", "30", "900", /home/awcd/.mimocode/bin/mimo, run, "{prompt}"]
   skip_permissions_flags:
     oc-mimo: []
     oc-north: []
@@ -125,6 +130,8 @@ coordinate:
     sonnet: [--dangerously-skip-permissions]
     opus: [--dangerously-skip-permissions]
     agy: [--dangerously-skip-permissions]
+    codex: [--dangerously-bypass-approvals-and-sandbox]
+    mimo: [--dangerously-skip-permissions]
   # Appended under --telemetry so the child emits a usage report we mine for
   # MEASURED tokens/cost. sonnet/opus wrap `claude`, whose `--output-format
   # json` usage doc is verified — the flag is valid in any template position.
@@ -145,3 +152,9 @@ coordinate:
     sonnet: [--output-format, json]
     opus: [--output-format, json]
     agy: []
+    # codex --json emits a turn.completed {usage:{*_tokens}} event — VERIFIED to
+    # parse via the existing _claude_usage parser (tiny live exec, 2026-06-20).
+    codex: [--json]
+    # mimo --format json is opencode-shaped (tokens:{...}+cost) → _opencode_parser
+    # handles it; VERIFIED end-to-end (live mimo run measured 43100 tok, 2026-06-20).
+    mimo: [--format, json]
