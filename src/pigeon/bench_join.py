@@ -43,6 +43,12 @@ class ArmJoin:
     reduction_pct: float
     events: int
     has_ledger: bool                  # False for arms with no pigeon ledger (e.g. naive)
+    # Panel-correction axes (from the run manifest): the multi-turn tool tax and
+    # the ground-truth USD cost. A compression "win" that raises turns or USD is
+    # not a win — cost_usd is the real measured spend, so the USD-win rule reads
+    # it directly rather than re-weighting output tokens.
+    num_turns: int | None = None
+    cost_usd: float | None = None
 
 
 def _read_accept(path: Path) -> bool | None:
@@ -98,6 +104,38 @@ def _component(summary: dict[str, Any], kind: str, field: str = "actual_tokens")
     return int(summary["by_kind"].get(kind, {}).get(field, 0))
 
 
+def _manifest_totals(path: Path) -> tuple[int | None, float | None]:
+    """Sum ``num_turns`` and ``total_cost_usd`` over a coordinate run manifest.
+
+    The manifest (``<arm>.manifest.json``, a copy of
+    ``.pigeon/coordinate/runs/<run>.json``) carries per-task ``telemetry`` with
+    the measured turn count and USD — the multi-turn tool tax and the
+    ground-truth cost the panel flagged. Returns ``(None, None)`` when absent so a
+    naive/un-instrumented arm degrades cleanly.
+    """
+    if not path.is_file():
+        return (None, None)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return (None, None)
+    tasks = data.get("tasks")
+    if not isinstance(tasks, dict):
+        return (None, None)
+    turns = 0
+    cost = 0.0
+    saw_turns = saw_cost = False
+    for task in tasks.values():
+        tel = task.get("telemetry") or {}
+        if tel.get("num_turns") is not None:
+            turns += int(tel["num_turns"])
+            saw_turns = True
+        if tel.get("total_cost_usd") is not None:
+            cost += float(tel["total_cost_usd"])
+            saw_cost = True
+    return (turns if saw_turns else None, round(cost, 6) if saw_cost else None)
+
+
 def _sum_derived(jsonl_path: Path) -> int:
     """Sum ``components.derived`` across handoff events (the residue-bloat meter)."""
     if not jsonl_path.is_file():
@@ -127,6 +165,7 @@ def join_arm(raw_dir: Path, arm: str, *, ledger_arm: str | None = None) -> ArmJo
     ledger = raw_dir / f"{ledger_arm or arm}.metrics.jsonl"
     summary = aggregate_metrics(ledger)
     meta = _read_meta(raw_dir / f"{arm}.meta")
+    turns, cost = _manifest_totals(raw_dir / f"{arm}.manifest.json")
     return ArmJoin(
         arm=arm,
         accept_pass=_read_accept(raw_dir / f"{arm}.accept"),
@@ -139,6 +178,8 @@ def join_arm(raw_dir: Path, arm: str, *, ledger_arm: str | None = None) -> ArmJo
         reduction_pct=summary["overall"]["reduction_pct"],
         events=summary["overall"]["events"],
         has_ledger=ledger.is_file(),
+        num_turns=turns,
+        cost_usd=cost,
     )
 
 

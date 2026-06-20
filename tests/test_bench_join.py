@@ -77,6 +77,31 @@ def test_naive_arm_has_no_ledger_but_keeps_its_verdict():
     assert naive["channel_tokens"] == 0
 
 
+def test_manifest_totals_sum_turns_and_usd(tmp_path):
+    """join_arm surfaces num_turns + measured USD from a run manifest (panel axes)."""
+    (tmp_path / "with.metrics.jsonl").write_text(
+        '{"kind":"handoff","actual_tokens":10,"baseline_tokens":100,"saved_tokens":90}\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "with.accept").write_text("ACCEPT: PASS\n", encoding="utf-8")
+    (tmp_path / "with.meta").write_text("pytest_rc=0\n", encoding="utf-8")
+    (tmp_path / "with.manifest.json").write_text(json.dumps({
+        "tasks": {
+            "plan": {"telemetry": {"num_turns": 12, "total_cost_usd": 0.5}},
+            "implement": {"telemetry": {"num_turns": 19, "total_cost_usd": 0.4}},
+            "review": {"telemetry": {"num_turns": 16, "total_cost_usd": 0.3}},
+        }
+    }), encoding="utf-8")
+
+    arm = bench_join.join_arm(tmp_path, "with")
+    assert arm.num_turns == 47
+    assert arm.cost_usd == 1.2
+
+    # no manifest -> degrades cleanly to None (e.g. a naive arm)
+    (tmp_path / "with.manifest.json").unlink()
+    assert bench_join.join_arm(tmp_path, "with").num_turns is None
+
+
 def test_summarize_delegates_to_aggregate_metrics(repo):
     """The Config-taking wrapper and the path-taking engine return the same thing."""
     from pigeon import handoff as ho
