@@ -1,0 +1,22 @@
+{
+  "experiment": "Lever-2 multi-hop constraint survival (live validation of the transitive-injection fix)",
+  "date": "2026-06-20",
+  "substrate": "Fork-A ledger contract; same model (sonnet x3)",
+  "topology": "NATURAL chain architect -> to_wire -> from_wire, where from_wire directly needs ONLY to_wire (not architect). The hop-1 constraint must reach hop-3 transitively.",
+  "fix_under_test": "coordinate._transitive_ancestors + _build_command ancestors closure (commit 2691520): the residue is injected from the full needs-closure, not just direct needs.",
+  "N": 3,
+  "result": {
+    "success": "3/3",
+    "hop2_injection": "3/3",
+    "hop3_injection": "3/3",
+    "mean_turns": 27.0,
+    "mean_cost_usd": 0.559,
+    "trials": [
+      {"accept": true, "turns": 28, "cost_usd": 0.7488, "inject_hop2": 1, "inject_hop3": 1},
+      {"accept": true, "turns": 27, "cost_usd": 0.4662, "inject_hop2": 1, "inject_hop3": 1},
+      {"accept": true, "turns": 26, "cost_usd": 0.4629, "inject_hop2": 1, "inject_hop3": 1}
+    ]
+  },
+  "verdict": "H2 CONFIRMED (N=3, live): the transitive-injection fix carries a hop-1 constraint to hop-3 on a natural chain where hop-3 only directly needs hop-2. Before the fix, direct-needs-only injection would lose it at hop-3 (proven by unit test test_derived_survives_multiple_hops). The clean 8/8 single-effective-hop confirm (Exp. 4) now extends to a real 3-hop chain.",
+  "note": "Pre-fix, the Exp. 4 task made from_wire explicitly need architect so the constraint survived; this run uses the natural topology (needs:[to_wire] only) and relies on the fix."
+}

@@ -196,6 +196,26 @@ at lower mean cost. This holds through the real injection mechanism, not just th
 screen proxy. (Trials that hit a mid-run session rate-limit — turn-1 $0 no-ops — were
 discarded and re-run; the 8 reported per arm are all valid; see §9.)
 
+### 7a. Multi-hop survival (H2) — the constraint reaches hop 3
+
+The N=8 confirm was a single *effective* hop: its `from_wire` task directly `needs`ed the
+`architect`, so the residue had a one-step path. The tool's value, though, is **chains** —
+and a gap was found: a constraint discovered at hop 1 reached hop 3 **only** if hop 3
+directly needed hop 1, and `distill`/`graph` harvested `state.decisions` but never
+`state.derived` — so the residue died one hop short of where it was needed and never
+reached the durable board.
+
+**Fix (committed `2691520`):** `coordinate._transitive_ancestors` injects the residue from
+a task's **full `needs` closure** (so A→B→C reaches C even when C only needs B), and
+`distill` (`## Constraints discovered`) + `graph` (`discovered` edges) now harvest
+`constraint_found` into the durable board alongside decisions.
+
+**Live validation (N=3):** a **natural** chain — `from_wire` directly `needs` only
+`to_wire` — carried the hop-1 contract transitively to hop 3: **3/3 PASS, hop-3 injection
+3/3**, all valid real runs. So the clean single-hop result extends to a real 3-hop chain.
+Data: `results/lever2-3hop.json`. (The unit test `test_derived_survives_multiple_hops`
+shows the pre-fix direct-needs path **loses** the constraint at hop 3.)
+
 ---
 
 ## 8. Results summary
@@ -208,6 +228,8 @@ discarded and re-run; the 8 reported per arm are all valid; see §9.)
 | 2 | Fork-A cross-model capability | bridge 5/5 vs no-bridge 0/5 | 5 | **POSSIBILITY** proven |
 | 3 | Lever 1 — channel compression (pack sweep) | success holds 3/3 across tested [1k,4k]; knee below 1k untested | 3/config | **OVER-PROVISIONED** — compress to 1k free (firm); cost-win directional; knee not pursued |
 | 4 | Lever 2 — derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; residue cheaper ($0.417 vs $0.436) | 8 / 8 / 5 | **GO — CONFIRMED** |
+| 4a | Lever 2 — multi-hop survival (H2) on a natural A→B→C chain | **3/3 pass, hop-3 injection 3/3** (transitive fix); pre-fix loses it (unit test) | 3 | **SURVIVES** (fix load-bearing) |
+| 5 | Lever 2 — natural partially-recoverable substrate | pre-registered (`PREREG-lever2-natural.md`); not yet run | 8 (planned) | **PENDING** — external validity |
 
 ---
 
