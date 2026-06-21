@@ -13,7 +13,11 @@ handoff channel and the context pigeon injects — and whether two levers improv
 > a 3-hop chain (7a). **Exp. 5 bounds it:** when the constraint is *present and
 > recoverable* in the code, a capable receiver re-derives it **for free (8/8 pointers-only,
 > read-cue 8/8)** — so residue earns its tokens **iff the reasoning left no recoverable
-> trace**, not merely when it is non-obvious. **Exp. 3** finds the default pack
+> trace**, not merely when it is non-obvious. **Exp. 4b sharpens this to a step
+> function:** on a fixed-constraint ladder varying only cue salience, R\* is a **sharp
+> step on trace presence** — pointers-only **0/8 with no findable trace vs 8/8 with any
+> findable trace** (CIs separated), invariant to how non-salient or distant the trace is,
+> so the operative condition is "no **findable** trace." **Exp. 3** finds the default pack
 > **over-provisioned** (compress to pack=1k, success holds 3/3 across the tested 4× range;
 > knee below 1k, untested — not pursued, Lever 1 is maintenance).
 
@@ -247,10 +251,50 @@ sides**:
 So the rule the program opened with — *spend channel tokens only on what the receiver
 cannot cheaply regenerate* — is now **empirically pinned**: the `state.derived` residue
 earns its tokens **iff the reasoning left no recoverable trace in the code**, not merely
-when it is non-obvious. *Limitation:* one semi-synthetic substrate, and its in-code cue
-is fairly salient (a named sibling method + explicit comment); a subtler cue might land
-pointers-only in the partial regime (1–7/8) — that boundary is untested. Data:
-`results/lever2-natural.json`.
+when it is non-obvious. *Limitation (now discharged by Exp. 4b, §7c):* this was one
+semi-synthetic substrate with a fairly salient in-code cue (named sibling method +
+explicit comment); the open question was whether a *subtler* cue lands pointers-only in
+the partial regime (1–7/8). Exp. 4b tested it across three subtlety axes — it does not.
+Data: `results/lever2-natural.json`.
+
+### 7c. Experiment 4b — the boundary R\* is a **sharp step on trace presence** (CONFIRMED, N=8)
+
+Exp. 4 owns the R≈0 endpoint (Δ huge: 8/8 vs 0/8); Exp. 5 owns R≈1 (Δ≈0: pointers-only
+8/8). Exp. 4b interpolates between them to locate **R\***, the boundary at which the
+residue starts earning its tokens, on a controlled ladder where the constraint, task, and
+held-out grader are **held fixed** and only the in-code **cue salience** varies (so
+re-derivability R is the single manipulated variable; nothing is memorizable). Substrate +
+pre-registration: `exp4b-substrate/`, `docs/design/EXP4B-revised-design.md` (the prereg's
+4-type factorial was replaced after a red-team showed it biased toward a false KILL). The
+R≈1 rung is **byte-identical to Exp. 5**, so 4b reuses Exp. 5's 8/8 as its top anchor.
+
+**Result (pointers-only = the R meter, sonnet ×3, two-worktree, N=8 confirm on the
+bracketing points):**
+
+| Cue condition | pointers-only | exact CI95 | read-cue |
+|---|---|---|---|
+| **no findable trace** (R_low) | **0/8** | [0.000, 0.369] | 0/8 |
+| present, **non-salient** (R_mid: keys in `_dump`, no comment) | **8/8** | [0.631, 1.000] | 8/8 |
+| present, **distant** (R_mid2: in a sibling `sync_codec.py`) | recovered **4/4** | — | found 4/4 |
+| present, **salient** (R_high = Exp. 5) | 8/8 (Exp. 5) | [0.631, 1.000] | 8/8 |
+
+**The boundary is a sharp step on trace *presence*, not a gradient on cue subtlety.** The
+N=8 CIs are **separated** (0.369 < 0.631), the same rigor as Exp. 4/5; read-cue is 0/8
+where there is nothing to read and 8/8 where the cue exists (genuine re-derivation). A
+capable receiver re-derives the convention from a *non-salient* cue as reliably as a loud
+one (R_mid = R_high), so the salient comment is **not load-bearing**. Making the cue
+*distant* (R_mid2) did not break recovery either — all four trials grepped out
+`sync_codec.py` and used the convention; the 1/4 bare pass rate there was an
+implementation-fidelity artifact on a grader leniency sub-clause (hand-rolled `from_wire`
+vs delegating to the codec), **orthogonal to R**.
+
+**Verdict (Exp. 4b): the bounded headline hardens.** Residue is overhead the moment a
+**findable** trace exists — not merely when the trace is salient. The partial regime
+Exp. 5 hypothesized does not appear along the cue-subtlety axis; it would require a
+genuinely *ambiguous* cue (conflicting conventions), a separate study. *Limitation:* the
+sharp step is established on the controlled ledger substrate; like Exp. 5 it says nothing
+about the **base rate** of low-R handoffs in real traffic (§13 of the prereg). Data:
+`exp4b-substrate/CALIBRATION-RESULT.md`, `/tmp/bench/exp4b/results/`.
 
 ---
 
@@ -266,6 +310,7 @@ pointers-only in the partial regime (1–7/8) — that boundary is untested. Dat
 | 4 | Lever 2 — derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; residue cheaper ($0.417 vs $0.436) | 8 / 8 / 5 | **GO — CONFIRMED** |
 | 4a | Lever 2 — multi-hop survival (H2) on a natural A→B→C chain | **3/3 pass, hop-3 injection 3/3** (transitive fix); pre-fix loses it (unit test) | 3 | **SURVIVES** (fix load-bearing) |
 | 5 | Lever 2 — natural substrate (in-code recoverable constraint) | pointers-only **8/8** (read-cue 8/8) — re-derived for free | 8 | **H0** — residue unnecessary when recoverable; **bounds** the effect |
+| 4b | Lever 2 — boundary R\* on a fixed-constraint cue-salience ladder | R_low **0/8** [0,.369] vs R_mid **8/8** [.631,1], CIs separated; distant/salient cues also recovered | 8 / 8 | **SHARP STEP** on trace *presence* — residue overhead once any **findable** trace exists |
 
 ---
 

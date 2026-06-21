@@ -1,0 +1,27 @@
+{
+  "sid": "exp4b-null",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "doing": "You are the architect. Read TASK.md and ledger/account.py and decide the v2 sync wire format for Account.to_wire / from_wire. Do NOT edit any file under ledger/. Hand off to the implementer with a brief pointer: tell them to implement to_wire and from_wire in ledger/account.py per TASK.md. Do NOT write the wire-format details (key names, types) into your handoff or any file — just point them at the task and the code.",
+      "pack": false
+    },
+    {
+      "id": "to_wire",
+      "runner": "sonnet",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/account.py", "repo://TASK.md"],
+      "doing": "Implement the method Account.to_wire(self) -> dict in ledger/account.py per TASK.md, consistent with how this codebase already serializes an Account for the external clearing partner. Do NOT implement from_wire. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    },
+    {
+      "id": "from_wire",
+      "runner": "sonnet",
+      "needs": ["to_wire"],
+      "receives": ["repo://ledger/account.py", "repo://TASK.md"],
+      "doing": "Implement the classmethod Account.from_wire(cls, w: dict) -> Account in ledger/account.py per TASK.md, round-tripping with to_wire and consistent with the codebase's external-partner serialization. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}
