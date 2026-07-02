@@ -9,7 +9,7 @@ handoff channel and the context pigeon injects — and whether two levers improv
 > constraint the next carrier cannot re-derive. Exp. 2 shows this is *possible*
 > (5/5 vs 0/5); **Exp. 4 confirms the carried `state.derived` residue is *necessary***
 > when the constraint is **absent from the code** — same model, fully isolated, **8/8
-> with residue vs 0/8 without (N=8, CIs separated)**, at parity-or-better cost, surviving
+> with residue vs 0/8 without (N=8, CIs separated)**, at parity cost, surviving
 > a 3-hop chain (7a). **Exp. 5 bounds it:** when the constraint is *present and
 > recoverable* in the code, a capable receiver re-derives it **for free (8/8 pointers-only,
 > read-cue 8/8)** — so residue earns its tokens **iff the reasoning left no recoverable
@@ -187,14 +187,19 @@ constraint in JSON). Injection fired on **8/8** with-derived trials.
 **Figure 8.** *(a)* The anti-idiomatic constraint survives **only** when the residue is
 carried — the two CIs are **cleanly separated** (no overlap). A capable sonnet receiver
 does **not** re-derive it from pristine code (the panel's "re-derives cheaply" failure
-mode does **not** fire). *(b)* The residue arm is **cheaper**: the null agents explore
-more, then fail. A **quality win at parity-or-better cost**, not a quality/cost trade.
+mode does **not** fire). *(b)* Cost is at **parity**: derived **$0.417** vs pointers-only
+**$0.436** per run at N=8 (a 4.4 % difference, within noise). A **quality win at no cost
+penalty**, not a quality/cost trade.
 
 ![Figure 9 — USD-weighting vs raw tokens](figures/fig9_usd_weighting.png)
 
-**Figure 9.** The methodological lens the panel demanded: carrying the residue is a
-**+18 % raw-token cost** but a **−18 % net-USD outcome** — the two deltas point
-opposite ways. A raw-token accounting would have mis-scored this.
+**Figure 9.** The methodological lens the panel demanded, drawn on the **N=3 screen**
+(labelled as such in-figure): raw-token and net-USD deltas *can* point opposite ways, so
+the win rule is net USD, not raw tokens. **Caveat (N=8 confirm, §7):** the screen's
+−18 % USD gap did **not** replicate. At N=8 the USD delta is **−4.4 % ($0.417 vs $0.436),
+within noise**, so the confirmed cost claim is **parity**, not a USD win. The figure stands
+as a methodological lens; its −18 % magnitude is a screen artifact, not a result. (Regenerate
+at N=8 or drop before submission, see Phase 0 note.)
 
 **Verdict (Exp. 4): GO — CONFIRMED at N=8.** In the regime where the reasoning is
 genuinely irreducible (a constraint invisible in the final code), the `state.derived`
@@ -307,7 +312,7 @@ about the **base rate** of low-R handoffs in real traffic (§13 of the prereg). 
 | 1 | Cost benchmark (WITH vs WITHOUT, 2 public repos) | +46–59 % (small), +8.1 % (large); success ties | 1/arm/repo | **NULL** — token-savings NO-GO |
 | 2 | Fork-A cross-model capability | bridge 5/5 vs no-bridge 0/5 | 5 | **POSSIBILITY** proven |
 | 3 | Lever 1 — channel compression (pack sweep) | success holds 3/3 across tested [1k,4k]; knee below 1k untested | 3/config | **OVER-PROVISIONED** — compress to 1k free (firm); cost-win directional; knee not pursued |
-| 4 | Lever 2 — derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; residue cheaper ($0.417 vs $0.436) | 8 / 8 / 5 | **GO — CONFIRMED** |
+| 4 | Lever 2 — derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; cost at parity ($0.417 vs $0.436, 4.4 % = noise) | 8 / 8 / 5 | **GO — CONFIRMED** |
 | 4a | Lever 2 — multi-hop survival (H2) on a natural A→B→C chain | **3/3 pass, hop-3 injection 3/3** (transitive fix); pre-fix loses it (unit test) | 3 | **SURVIVES** (fix load-bearing) |
 | 5 | Lever 2 — natural substrate (in-code recoverable constraint) | pointers-only **8/8** (read-cue 8/8) — re-derived for free | 8 | **H0** — residue unnecessary when recoverable; **bounds** the effect |
 | 4b | Lever 2 — boundary R\* on a fixed-constraint cue-salience ladder | R_low **0/8** [0,.369] vs R_mid **8/8** [.631,1], CIs separated; distant/salient cues also recovered | 8 / 8 | **SHARP STEP** on trace *presence* — residue overhead once any **findable** trace exists |
@@ -355,6 +360,15 @@ python -m pigeon.bench_join benchmarks/results/raw/<label>
 Raw artifacts: `benchmarks/results/raw/` (marshmallow, marshmallow-phase2,
 cookiecutter); panel critiques: `docs/design/panel-reviews/`; the live Lever-2 screen
 ran from `/tmp/bench/forkA` (disposable public-clone substrate).
+
+**Per-trial ledger (reproducibility scope).** The Lever-2 and 4b runs executed in
+disposable `/tmp/bench/{forkA,exp4b}` worktrees; their per-trial transcripts and turn
+counts were **not** committed and are not recoverable. The committed tree reproduces the
+**setup** (substrate, held-out grader, runner config) and the **summary** (per-arm counts,
+exact Clopper-Pearson CIs, mean USD and turns in the result JSONs and
+`CALIBRATION-RESULT.md`), but **not** the per-trial ledger. The reported CIs are
+recomputable from the committed counts (0/8 → [0.000, 0.369], 8/8 → [0.631, 1.000]); any
+analysis needing the per-trial transcripts must re-execute the committed setup.
 
 ---
 
