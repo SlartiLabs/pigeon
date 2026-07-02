@@ -17,7 +17,12 @@ handoff channel and the context pigeon injects — and whether two levers improv
 > function:** on a fixed-constraint ladder varying only cue salience, R\* is a **sharp
 > step on trace presence** — pointers-only **0/8 with no findable trace vs 8/8 with any
 > findable trace** (CIs separated), invariant to how non-salient or distant the trace is,
-> so the operative condition is "no **findable** trace." **Exp. 3** finds the default pack
+> so the operative condition is "no **findable** trace." **Exp. 4c** extends the step from
+> that shallow key-naming constraint to a **deeper** dedup-before-aggregate constraint:
+> with the rationale docstring stripped, a capable receiver still re-derives it **8/8**
+> [.631,1] and carried residue adds nothing (H0), so recoverability, not documentation,
+> governs at depth (limitation: the code's structural trace stayed visible, deep-toy not
+> deep-real). **Exp. 3** finds the default pack
 > **over-provisioned** (compress to pack=1k, success holds 3/3 across the tested 4× range;
 > knee below 1k, untested — not pursued, Lever 1 is maintenance).
 
@@ -303,6 +308,54 @@ about the **base rate** of low-R handoffs in real traffic (§13 of the prereg). 
 
 ---
 
+### 7d. Experiment 4c — does the step survive DEPTH? (CONFIRMED: it generalizes)
+
+4b established the sharp step on a **shallow** constraint (a key-naming convention), where
+"a trace is present" and "the reasoning is recoverable" are the *same* question. 4c
+separates them on a **deep** constraint, `settle()` must dedup re-submitted transactions
+by `txn_id` before summing (gateway retries are not additive), where the code is fully
+present but the idiomatic single-pass refactor `sum(e.amount_cents for e in entries)`
+silently drops the dedup and passes the visible tests (which carry no duplicate ids).
+Difficulty is held constant **by construction**: the decisive cells **Dr** (rationale
+documented in the docstring) and **Du** (identical code and task, docstring stripped) are
+byte-identical modulo that docstring (`validate.py` diff-clean), so the only thing that
+varies is whether the rationale is recoverable. Pre-registration and substrate:
+`PREREG-exp4c-deep-constraint.md`, `exp4c-substrate/`.
+
+**Result (pointers-only = the R meter, sonnet, two-worktree; Stage-2 confirm N=8):**
+
+| Cell / arm | recovered | exact CI95 | note |
+|---|---|---|---|
+| **Du** (rationale **stripped**), pointers-only | **8/8** | [0.631, 1.000] | calibration corroborated 4/4 |
+| **Dr** (rationale **documented**), pointers-only | 4/4 | [0.398, 1.000] | difficulty control (calibration) |
+| **Du** with-derived (residue carried) | **8/8** | [0.631, 1.000] | injection verified in the refactor prompt |
+
+**The step generalizes: recoverability, not the docstring, governs.** Stripping the
+rationale did **not** reduce recovery, `PO_Du` = 8/8, identical to `PO_Dr`. A capable
+receiver reconstructs the deep constraint from the code: every reported trial engaged the
+constrained region (all refactored `settle` to the risky streaming pass) and preserved the
+dedup, and two Du trials **re-derived the rationale in their own docstrings** ("last write
+wins", "corrections / amendments"), genuine re-derivation, not untouched code. Carrying the
+residue added nothing above ceiling (with-derived 8/8 = pointers-only 8/8), an Exp-5-style
+**H0**, and the null is not vacuous: the architect emitted four concrete constraints and
+the `## Carried reasoning` block was confirmed in the refactor agent's prompt, yet the
+outcome was unchanged. Cost was at **parity** ($1.035 pointers-only vs $1.005 with-derived
+per run, within noise; not a saving). Difficulty was not the driver, the documented control
+Dr also recovered, so it was not escalated to N=8.
+
+**Verdict (Exp. 4c): the bounded headline holds at depth.** The residue is overhead
+whenever the code carries a **findable, recoverable** trace, now shown for a
+dedup-before-aggregate constraint, not only the shallow key-naming one. *Limitation (the
+honest boundary):* Du stripped the *rationale* but the dedup *structure*
+(`latest[txn_id]=amt`) stayed visible, so "trace present" remained strong; **true
+behavior-unrecoverability** (code present, behavior not inferable) was not achieved. This
+moves the result from shallow-toy to **deep-toy, not deep-real**, real analytical
+constraints are deeper still, and the residue-necessary regime (Exp. 4's 0/8) still
+requires the trace to be genuinely absent. Data: `results/lever2-deep-4c.json`,
+`/tmp/bench/exp4c/`.
+
+---
+
 ## 8. Results summary
 
 **Table 2 — Results summary.**
@@ -316,6 +369,7 @@ about the **base rate** of low-R handoffs in real traffic (§13 of the prereg). 
 | 4a | Lever 2 — multi-hop survival (H2) on a natural A→B→C chain | **3/3 pass, hop-3 injection 3/3** (transitive fix); pre-fix loses it (unit test) | 3 | **SURVIVES** (fix load-bearing) |
 | 5 | Lever 2 — natural substrate (in-code recoverable constraint) | pointers-only **8/8** (read-cue 8/8) — re-derived for free | 8 | **H0** — residue unnecessary when recoverable; **bounds** the effect |
 | 4b | Lever 2 — boundary R\* on a fixed-constraint cue-salience ladder | R_low **0/8** [0,.369] vs R_mid **8/8** [.631,1], CIs separated; distant/salient cues also recovered | 8 / 8 | **SHARP STEP** on trace *presence* — residue overhead once any **findable** trace exists |
+| 4c | Lever 2 — does the step survive DEPTH? (dedup-before-aggregate; Dr vs Du diff-clean) | Du (rationale stripped) pointers-only **8/8** [.631,1] = Dr; with-derived **8/8** (injection verified) | 8 / 8 | **GENERALIZES** — residue overhead at depth too when the trace is recoverable (H0); limitation: structural trace stayed visible (deep-toy, not deep-real) |
 
 ---
 

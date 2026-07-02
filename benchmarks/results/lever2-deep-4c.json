@@ -1,0 +1,24 @@
+{
+  "experiment": "4c — deep constraint (dedup-before-aggregate): depth vs recoverability",
+  "prereg": "benchmarks/PREREG-exp4c-deep-constraint.md",
+  "model": "claude/sonnet, two physically separate worktrees per cell",
+  "design": "Difficulty held constant by construction: Dr (deep, rationale documented) vs Du (identical code+task, docstring stripped) are byte-identical modulo the docstring (validate.py diff-clean). Recoverability meter = pointers-only pass rate. S anchors to Exp-4b R_mid (reused).",
+  "stage1_calibration": {
+    "Du_pointers_only": {"n": 4, "recovered": 4, "ci95": [0.398, 1.0], "mean_cost_usd": 1.1123, "mean_turns": 21.8},
+    "Dr_pointers_only": {"n": 4, "recovered": 4, "ci95": [0.398, 1.0], "mean_cost_usd": 1.0415, "mean_turns": 22.8}
+  },
+  "stage2_confirm": {
+    "Du_pointers_only": {"n": 8, "recovered": 8, "ci95": [0.631, 1.0], "mean_cost_usd": 1.0347, "mean_turns": 22.8},
+    "Du_with_derived": {"n": 8, "recovered": 8, "ci95": [0.631, 1.0], "mean_cost_usd": 1.0054, "mean_turns": 23.4}
+  },
+  "verdict": "GATE 2 — the sharp step GENERALIZES to depth. Du pointers-only 8/8 [0.631,1.0]: a capable receiver re-derives the deep dedup-before-aggregate constraint from the code even with the rationale docstring stripped. Du with-derived 8/8 [0.631,1.0]: carried residue adds nothing above ceiling (H0), residue UNNECESSARY. Extends Exp-4b's sharp step from a shallow key-naming constraint to a deeper dedup constraint.",
+  "mechanism_verified": {
+    "touch_probe": "All reported trials engaged the constrained region (every one refactored settle to a single streaming pass, the risky move). Genuine engagement, not untouched code.",
+    "re_derivation_evidence": "Du t2/t3 re-derived the rationale in their own docstrings ('last write wins', 'corrections / amendments') from the stripped code.",
+    "injection_verified": "with-derived: architect emitted 4 concrete constraint_found items; the '## Carried reasoning (state.derived from upstream)' block was confirmed present in the refactor agent's prompt. The null is not vacuous, residue was carried and still added nothing."
+  },
+  "difficulty_control": "Dr (deep, documented) recovered 4/4 at calibration; NOT escalated to N=8 because Du itself recovered (both cells recover), so the difficulty control's discriminating role did not bind.",
+  "limitation": "Du stripped the RATIONALE (docstring) but the dedup STRUCTURE (latest[txn_id]=amt) stayed visible in the code, so 'trace present' remained strong. True behavior-unrecoverability (code present, behavior NOT inferable) was not achieved. This moves the result from shallow-toy to deep-toy, not to deep-real; real analytical constraints are deeper still.",
+  "cost": "Parity. pointers-only $1.035 vs with-derived $1.005 per run (N=8), within noise. No cost penalty; do not read the ~3% as a saving (the Exp-4 'cheaper' error).",
+  "total_spend_usd": 24.94
+}

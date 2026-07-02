@@ -1,0 +1,17 @@
+cell,arm,trial,accept_rc,recovered,num_turns,cost_usd,wall_s,attempts
+Du,pointers-only,1,0,1,28,1.2309,182,1
+Du,pointers-only,2,0,1,18,0.9634,141,1
+Du,pointers-only,3,0,1,24,1.0142,139,1
+Du,pointers-only,4,0,1,26,1.2686,139,1
+Du,pointers-only,5,0,1,27,1.0731,185,1
+Du,pointers-only,6,0,1,22,1.0064,147,1
+Du,pointers-only,7,0,1,19,0.8034,127,1
+Du,pointers-only,8,0,1,18,0.9178,133,1
+Du,with-derived,1,0,1,21,0.9115,104,1
+Du,with-derived,2,0,1,25,1.0294,127,1
+Du,with-derived,3,0,1,26,1.0186,113,1
+Du,with-derived,4,0,1,20,0.9507,105,1
+Du,with-derived,5,0,1,25,0.967,124,1
+Du,with-derived,6,0,1,20,1.0855,92,1
+Du,with-derived,7,0,1,26,1.0437,149,1
+Du,with-derived,8,0,1,24,1.0367,137,1
