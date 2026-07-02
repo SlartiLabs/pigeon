@@ -1,0 +1,20 @@
+{
+  "sid": "exp4c-pointers-only",
+  "_note": "Pointers-only = the recoverability meter. Architect points downstream at the refactor with NO carried rationale; the refactorer sees only pristine code + TASK.md. The cell (Dr/Du) is set by the working directory. In Du the load-bearing dedup rationale is absent from the code (docstring stripped); in Dr it is present (docstring). PO_Du vs PO_Dr is the decisive contrast (prereg SS5).",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "doing": "You are the architect. Read TASK.md and ledger/reconcile.py and decide how to refactor settle() per TASK.md. Do NOT edit any file under ledger/. Hand off to the implementer with a brief pointer: tell them to refactor settle() in ledger/reconcile.py per TASK.md. Do NOT write any implementation detail, caveat, or constraint into your handoff or any file — just point them at the task and the code.",
+      "pack": false
+    },
+    {
+      "id": "refactor",
+      "runner": "sonnet",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/reconcile.py", "repo://TASK.md"],
+      "doing": "Refactor settle(entries) -> int in ledger/reconcile.py per TASK.md. Keep the public signature settle(entries) -> int. Do NOT run shell commands or tests — just edit ledger/reconcile.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}

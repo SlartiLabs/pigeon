@@ -1,0 +1,20 @@
+{
+  "sid": "exp4c-wd",
+  "_note": "with-derived: architect reads the code, recovers the load-bearing dedup rationale (documented in Dr; must be inferred in Du), and records it in state.derived.constraint_found -> injected as '## Carried reasoning' downstream. Tests whether carrying the rationale earns its tokens when the code alone does not recover it (Du). Schema 1.2, same emission mechanism as Exp-4b/5.",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "doing": "You are the architect. Read TASK.md and ledger/reconcile.py and decide how to refactor settle() per TASK.md. Do NOT edit any file under ledger/. While reading, note any NON-OBVIOUS constraint a refactorer could easily break (e.g. behaviour that looks like removable cleanup but is load-bearing for correctness on inputs the visible tests do not cover). Record what you find in state.derived.constraint_found, one item per constraint, by running: pigeon handoff --json-in - <<'EOF' {\"schema_version\":\"1.2\",\"sid\":\"exp4c-wd\",\"from\":\"architect\",\"to\":\"Coordinator\",\"state\":{\"done\":[\"scoped the settle() refactor\"],\"doing\":\"refactorer streamlines settle per the carried constraints\",\"derived\":{\"constraint_found\":[\"...your discovered constraints, concretely...\"]}}} EOF . Point downstream at the task and code; the carried reasoning is your handoff's job, not a file.",
+      "pack": false
+    },
+    {
+      "id": "refactor",
+      "runner": "sonnet",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/reconcile.py", "repo://TASK.md"],
+      "doing": "Refactor settle(entries) -> int in ledger/reconcile.py per TASK.md and the carried constraints in your prompt (see '## Carried reasoning'). Keep the public signature settle(entries) -> int. Do NOT run shell commands or tests — just edit ledger/reconcile.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}
