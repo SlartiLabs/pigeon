@@ -286,44 +286,148 @@ def fig8_three_arm():
 
 
 # =====================================================================
-# FIGURE 9 — USD-weighting vs raw tokens (methodological)
+# FIGURE 9 — USD delta: N=3 screen vs N=8 confirm (the −18% did not replicate)
 # =====================================================================
 def fig9_usd_weighting():
-    fig, ax = plt.subplots(figsize=(7.6, 4.6))
-    # The residue ADDS raw channel tokens but does NOT add net USD — because the
-    # receiver succeeds instead of flailing. The methodological point: raw-token
-    # deltas and USD deltas can move in OPPOSITE directions (output 3-5x + turn tax).
-    cats = ["raw channel tokens\n(residue carried)", "net cost\n(USD, measured)"]
-    # normalized deltas, derived arm relative to pointers-only baseline
-    deltas = [+0.18, -0.18]   # +18% more channel tokens; -18% USD (0.383 vs 0.465)
-    colors = [BASE if d > 0 else DERIVED for d in deltas]
-    bars = ax.bar(cats, deltas, width=0.5, color=colors, zorder=3)
+    # Real measured mean USD per arm — no fabricated/hardcoded deltas.
+    # Screen (N=3):  derived 0.383 vs pointers-only 0.465  (results/lever2-screen.json)
+    # Confirm (N=8): derived 0.417 vs pointers-only 0.436  (results/lever2-confirm.json)
+    screen_derived, screen_po = 0.383, 0.465
+    confirm_derived, confirm_po = 0.417, 0.436
+    screen_delta = (screen_derived - screen_po) / screen_po
+    confirm_delta = (confirm_derived - confirm_po) / confirm_po
+
+    fig, ax = plt.subplots(figsize=(7.6, 5.3))
+    cats = ["N=3 screen", "N=8 confirm"]
+    deltas = [screen_delta, confirm_delta]
+    colors = [MUTE, DERIVED]
+    bars = ax.bar(cats, deltas, width=0.45, color=colors, zorder=3)
     ax.axhline(0, color=INK, lw=1.1)
+    # noise band: a same-model N=8 delta this small is not distinguishable from 0
+    ax.axhspan(-0.10, 0.10, color=FAINT, alpha=0.6, zorder=1)
+    ax.text(-0.42, 0.085, "±10% noise band", ha="left", va="top", fontsize=7.8, color=MUTE)
     for b, d in zip(bars, deltas):
-        ax.text(b.get_x()+b.get_width()/2, d + (0.02 if d > 0 else -0.03),
-                f"{d:+.0%}", ha="center", va="bottom" if d > 0 else "top",
-                fontsize=11, fontweight="bold", color=colors_text(d))
-    ax.annotate("a raw-token COST…", (0, 0.18), (0.0, 0.30), ha="center",
-                fontsize=8.8, color=BASE, arrowprops=dict(arrowstyle="-", color=BASE, lw=0.9))
-    ax.annotate("…that is a USD WIN", (1, -0.18), (1.0, -0.31), ha="center",
-                fontsize=8.8, color=DERIVED, arrowprops=dict(arrowstyle="-", color=DERIVED, lw=0.9))
-    ax.set_ylabel("Δ vs pointers-only baseline")
-    ax.set_ylim(-0.42, 0.42); ax.set_yticks([-0.4, -0.2, 0, 0.2, 0.4])
-    ax.set_yticklabels(["-40%", "-20%", "0", "+20%", "+40%"])
-    ax.set_title("Figure 9 — USD-weighting vs raw tokens\n"
-                 "raw-token and USD deltas can point opposite ways (Lever-2 screen)",
+        ax.text(b.get_x()+b.get_width()/2, d + (0.012 if d > 0 else -0.018),
+                f"{d:+.1%}", ha="center", va="bottom" if d > 0 else "top",
+                fontsize=12, fontweight="bold", color=INK)
+    ax.annotate("did NOT replicate at N=8", (0, screen_delta), (0.5, -0.30),
+                ha="center", fontsize=9.2, color=INK, fontweight="bold",
+                arrowprops=dict(arrowstyle="-|>", color=MUTE, lw=1.1,
+                                 connectionstyle="arc3,rad=0.15"))
+    ax.set_ylabel("Δ net USD  (pointers+derived vs pointers-only)")
+    ax.set_ylim(-0.34, 0.10); ax.set_yticks([-0.30, -0.20, -0.10, 0, 0.10])
+    ax.set_yticklabels(["-30%", "-20%", "-10%", "0", "+10%"])
+    ax.set_title("Figure 9 — cost delta: screen vs confirm\n"
+                 "the screen's apparent −18% USD win is a screen artifact — N=8 shows parity",
                  fontsize=11.5, fontweight="bold")
-    ax.text(0.5, -0.40, "methodological — the Phase-3 sweep applies the same lens per config "
-            "(output ×3–5 + multi-turn tool tax)", ha="center", fontsize=8.0, color=MUTE,
-            transform=ax.transData)
+    ax.text(0.5, -0.325, "screen: $0.383 vs $0.465 (N=3, no CI overlap check run)   ·   "
+            "confirm: $0.417 vs $0.436 (N=8, within noise)", ha="center", fontsize=7.8,
+            color=MUTE, transform=ax.transData)
     _despine(ax)
     fig.tight_layout()
     fig.savefig(OUT / "fig9_usd_weighting.png", bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
 
-def colors_text(d):
-    return BASE if d > 0 else DERIVED
+# =====================================================================
+# FIGURE 10 — Exp. 4c: does the sharp step survive DEPTH?
+# =====================================================================
+def fig10_exp4c_depth():
+    # Exp.4 floor (trace genuinely absent) vs Exp.4c cells (deep constraint, trace
+    # present but rationale stripped/documented/carried-as-residue). All pointers-only
+    # unless noted. Data: results/lever2-confirm.json, results/lever2-deep-4c.json.
+    cats = ["Exp.4 floor\npointers-only\n(trace absent)",
+            "Exp.4c Du\npointers-only\n(rationale stripped)",
+            "Exp.4c Dr\npointers-only\n(rationale documented,\nn=4 control)",
+            "Exp.4c Du\nwith-derived\n(residue carried)"]
+    succ_n = [(0, 8), (8, 8), (4, 4), (8, 8)]
+    ci_lo = [0.0, 0.631, 0.398, 0.631]
+    ci_hi = [0.369, 1.0, 1.0, 1.0]
+    colors = [MUTE, BASE, BASE, DERIVED]
+
+    fig, ax = plt.subplots(figsize=(9.2, 6.0))
+    x = np.arange(len(cats))
+    rate = [s / n for s, n in succ_n]
+    ax.bar(x, rate, width=0.58, color=colors, zorder=3)
+    for i in range(len(cats)):
+        ax.plot([x[i], x[i]], [ci_lo[i], ci_hi[i]], color=INK, lw=1.6, zorder=5)
+        ax.plot([x[i]-0.07, x[i]+0.07], [ci_lo[i]]*2, color=INK, lw=1.6, zorder=5)
+        ax.plot([x[i]-0.07, x[i]+0.07], [ci_hi[i]]*2, color=INK, lw=1.6, zorder=5)
+        s, n = succ_n[i]
+        ax.text(x[i], 1.06, f"{s}/{n}", ha="center", fontsize=12,
+                fontweight="bold", color=colors[i])
+    ax.axvline(0.5, color=INK, ls=(0, (4, 3)), lw=1.1, zorder=2)
+    ax.text(0.5, 1.42, "R* — the step\n(trace absent → present)", ha="center",
+            fontsize=8.0, color=MUTE)
+    ax.annotate("stripping the docstring\ndid not reduce recovery\n(Du = Dr)", (1.5, 1.06),
+                (1.5, 1.30), ha="center", fontsize=8.0, color=INK,
+                arrowprops=dict(arrowstyle="-", color=MUTE, lw=0.9))
+    ax.annotate("residue adds nothing\nabove ceiling — H0\n(not TOST-confirmed, §8a)",
+                (3, 1.06), (3.35, 0.55), ha="left", fontsize=7.8, color=DERIVED,
+                arrowprops=dict(arrowstyle="-|>", color=DERIVED, lw=1.1))
+    ax.set_xticks(x); ax.set_xticklabels(cats, fontsize=8.4)
+    ax.set_ylabel("held-out recoverability (pointers-only unless noted)")
+    ax.set_ylim(-0.05, 1.58); ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.axhline(0, color=INK, lw=1.0)
+    ax.set_title("Figure 10 — Exp. 4c: the sharp step survives depth\n"
+                 "dedup-before-aggregate (code present, rationale stripped) recovers at ceiling, same as Exp.4's floor is 0/8",
+                 fontsize=11, fontweight="bold", pad=14)
+    _despine(ax)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig10_exp4c_depth.png", bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
+# =====================================================================
+# FIGURE 11 — the two-sided bounded law (all regimes, one figure)
+# =====================================================================
+def fig11_bounded_law():
+    # pointers-only recoverability across every tested recoverability regime,
+    # ordered absent -> present/salient. Sources: lever2-confirm.json (Exp.4),
+    # exp4b-substrate/CALIBRATION-RESULT.md (Exp.4b ladder), lever2-natural.json
+    # (Exp.5 = R_high), lever2-deep-4c.json (Exp.4c Du).
+    cats = ["absent\n(Exp.4\nFork-A)", "absent, findable\n(Exp.4b\nR_low)",
+            "present, deep\n+ stripped\n(Exp.4c Du)", "present, distant\n(Exp.4b R_mid2,\nn=4)",
+            "present,\nnon-salient\n(Exp.4b R_mid)", "present, salient\n(Exp.4b/5\nR_high)"]
+    succ_n = [(0, 8), (0, 8), (8, 8), (4, 4), (8, 8), (8, 8)]
+    ci_lo = [0.0, 0.0, 0.631, 0.398, 0.631, 0.631]
+    ci_hi = [0.369, 0.369, 1.0, 1.0, 1.0, 1.0]
+    # residue verdict per regime: necessary (trace absent) vs unnecessary (trace present)
+    necessary = [True, True, False, False, False, False]
+    colors = [DERIVED if nec else BASE for nec in necessary]
+
+    fig, ax = plt.subplots(figsize=(11.0, 6.6))
+    x = np.arange(len(cats))
+    rate = [s / n for s, n in succ_n]
+    ax.bar(x, rate, width=0.6, color=colors, zorder=3)
+    for i in range(len(cats)):
+        ax.plot([x[i], x[i]], [ci_lo[i], ci_hi[i]], color=INK, lw=1.6, zorder=5)
+        ax.plot([x[i]-0.07, x[i]+0.07], [ci_lo[i]]*2, color=INK, lw=1.6, zorder=5)
+        ax.plot([x[i]-0.07, x[i]+0.07], [ci_hi[i]]*2, color=INK, lw=1.6, zorder=5)
+        s, n = succ_n[i]
+        ax.text(x[i], 1.07, f"{s}/{n}", ha="center", fontsize=11.5,
+                fontweight="bold", color=colors[i])
+    ax.axvline(1.5, color=INK, ls=(0, (4, 3)), lw=1.3, zorder=2)
+    ax.text(1.5, 1.42, "R* — the sharp step\n(trace absent → present)", ha="center",
+            fontsize=9.2, fontweight="bold", color=INK)
+    ax.set_xticks(x); ax.set_xticklabels(cats, fontsize=8.2)
+    ax.set_ylabel("pointers-only held-out recoverability")
+    ax.set_ylim(-0.02, 1.58); ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.axhline(0, color=INK, lw=1.0)
+    ax.set_title("Figure 11 — the two-sided bounded law, one figure\n"
+                 "residue value is a sharp step on trace presence, not a gradient on salience or depth",
+                 fontsize=11.5, fontweight="bold", pad=14)
+    _despine(ax)
+    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.30)
+    fig.text(0.27, 0.045, "residue NECESSARY here (8/8 vs 0/8, Exp.4)", ha="center",
+              fontsize=8.6, color=DERIVED, fontweight="bold")
+    fig.text(0.68, 0.045,
+              "residue overhead here — re-derived for free\n"
+              "(H0 point estimates; not TOST-confirmed at N=4–8, §8a)",
+              ha="center", fontsize=8.2, color=BASE, fontweight="bold")
+    fig.savefig(OUT / "fig11_bounded_law.png", bbox_inches="tight", facecolor="white")
+    plt.close(fig)
 
 
 if __name__ == "__main__":
@@ -332,5 +436,7 @@ if __name__ == "__main__":
     fig7_frontier()
     fig8_three_arm()
     fig9_usd_weighting()
+    fig10_exp4c_depth()
+    fig11_bounded_law()
     print("wrote fig5_system_schematic, fig6_two_ceilings, fig7_lever1_frontier, "
-          "fig8_lever2_three_arm, fig9_usd_weighting")
+          "fig8_lever2_three_arm, fig9_usd_weighting, fig10_exp4c_depth, fig11_bounded_law")
