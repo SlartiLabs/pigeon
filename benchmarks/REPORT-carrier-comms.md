@@ -1,19 +1,19 @@
 <!-- REVIEWER VERDICT (adversarial final pass): PUBLISHABLE with the fixes below applied.
-     Verified every quantitative claim against results/*.json + stats-appendix.json — all
+     Verified every quantitative claim against results/*.json + stats-appendix.json, all
      reproduce exactly (Clopper-Pearson CIs, Fisher p=0.000155 / Barnard p=0.000031,
      TOST diff-CIs and min-margins). Fig 9 confirmed regenerated off real means
      (screen 0.383/0.465, confirm 0.417/0.436), no hardcoded ±18% deltas. Fig 10/11 present.
      Em-dashes: 0. No identity/opsec leak. Cost reads parity throughout.
-     FIXES APPLIED: (1) §7 Exp-4 verdict said residue is necessary "at lower mean cost" — a
+     FIXES APPLIED: (1) §7 Exp-4 verdict said residue is necessary "at lower mean cost", a
      surviving 'cheaper' claim; changed to explicit parity ($0.417 vs $0.436, within noise).
      (2) §8a referenced the mandatory `decoy` arm and Dr@N=8 as "already flagged" when they
      were flagged nowhere; rewrote into a plain disclosure of both undisclosed prereg
      deviations (decoy arm never run; Dr held at N=4, not escalated to N=8) alongside the
      GATE-2 TOST gap.
      STANDING FLAGS (not fixed, out of report-editing scope): Gate G1's pack~2992 vs
-     handoff~286 (10.5×, §6) has no backing artifact under results/ — §8a already flags it.
+     handoff~286 (10.5×, §6) has no backing artifact under results/, §8a already flags it.
      Substrate-selection search log (anti-cherry-pick, PREREG §2 for lever2-natural & exp4c)
-     does not exist for either substrate. Exp-1 cost deltas remain N=1/arm/repo, no CI —
+     does not exist for either substrate. Exp-1 cost deltas remain N=1/arm/repo, no CI , 
      honestly disclosed as such in Table 2 and framed NULL, not overclaimed. -->
 # Carrier-Comms Optimization (Benchmark Report)
 

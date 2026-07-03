@@ -1,8 +1,18 @@
 # Exp-4c substrate — does the sharp step survive DEPTH, net of difficulty?
 
 Pre-registration: [`../PREREG-exp4c-deep-constraint.md`](../PREREG-exp4c-deep-constraint.md).
-**Status: substrate built + mechanically validated. NO arms run** (the live run is a
-separate spend decision, per the prereg precondition).
+**Status: substrate built + mechanically validated, and RUN LIVE (N=8 confirm, $24.94).**
+Per-trial ledger: `RESULTS-stage1-calibration.csv`, `RESULTS-stage2-confirm.csv`; aggregate
+and verdict: `../results/lever2-deep-4c.json`.
+
+**Result (short):** Du (rationale stripped) pointers-only 8/8 and with-derived 8/8, both at
+ceiling, so a capable receiver re-derives the deep constraint from the code and the residue
+is unnecessary (Gate 2 by point estimate; consistent with H0 but NOT TOST-confirmed at
+N=4-8). Disclosed deviations from the prereg: the mandatory **decoy arm was not run**, **Dr
+was held at N=4** (not escalated to N=8), and the prereg's **TOST test for Gate 2 is
+inconclusive** at this sample size. The constraint was fixed a priori (no substrate search,
+so no cherry-pick). Honest limitation: the dedup *structure* stayed visible, so this is a
+deep-toy, not deep-real.
 
 ## What this tests
 
