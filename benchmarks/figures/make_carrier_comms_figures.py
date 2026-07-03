@@ -338,10 +338,10 @@ def fig10_exp4c_depth():
     # unless noted. Data: results/lever2-confirm.json, results/lever2-deep-4c.json.
     cats = ["Exp.4 floor\npointers-only\n(trace absent)",
             "Exp.4c Du\npointers-only\n(rationale stripped)",
-            "Exp.4c Dr\npointers-only\n(rationale documented,\nn=4 control)",
+            "Exp.4c Dr\npointers-only\n(rationale documented,\nn=12 control)",
             "Exp.4c Du\nwith-derived\n(residue carried)"]
-    succ_n = [(0, 8), (8, 8), (4, 4), (8, 8)]
-    ci_lo = [0.0, 0.631, 0.398, 0.631]
+    succ_n = [(0, 8), (12, 12), (12, 12), (12, 12)]
+    ci_lo = [0.0, 0.735, 0.735, 0.735]
     ci_hi = [0.369, 1.0, 1.0, 1.0]
     colors = [MUTE, BASE, BASE, DERIVED]
 
@@ -362,7 +362,7 @@ def fig10_exp4c_depth():
     ax.annotate("stripping the docstring\ndid not reduce recovery\n(Du = Dr)", (1.5, 1.06),
                 (1.5, 1.30), ha="center", fontsize=8.0, color=INK,
                 arrowprops=dict(arrowstyle="-", color=MUTE, lw=0.9))
-    ax.annotate("residue adds nothing\nabove ceiling — H0\n(not TOST-confirmed, §8a)",
+    ax.annotate("residue adds nothing\nabove ceiling, H0\n(TOST-confirmed ±0.20, N=12, §8a)",
                 (3, 1.06), (3.35, 0.55), ha="left", fontsize=7.8, color=DERIVED,
                 arrowprops=dict(arrowstyle="-|>", color=DERIVED, lw=1.1))
     ax.set_xticks(x); ax.set_xticklabels(cats, fontsize=8.4)
@@ -387,10 +387,10 @@ def fig11_bounded_law():
     # exp4b-substrate/CALIBRATION-RESULT.md (Exp.4b ladder), lever2-natural.json
     # (Exp.5 = R_high), lever2-deep-4c.json (Exp.4c Du).
     cats = ["absent\n(Exp.4\nFork-A)", "absent, findable\n(Exp.4b\nR_low)",
-            "present, deep\n+ stripped\n(Exp.4c Du)", "present, distant\n(Exp.4b R_mid2,\nn=4)",
+            "present, deep\n+ stripped\n(Exp.4c Du,\nn=12)", "present, distant\n(Exp.4b R_mid2,\nn=4)",
             "present,\nnon-salient\n(Exp.4b R_mid)", "present, salient\n(Exp.4b/5\nR_high)"]
-    succ_n = [(0, 8), (0, 8), (8, 8), (4, 4), (8, 8), (8, 8)]
-    ci_lo = [0.0, 0.0, 0.631, 0.398, 0.631, 0.631]
+    succ_n = [(0, 8), (0, 8), (12, 12), (4, 4), (8, 8), (8, 8)]
+    ci_lo = [0.0, 0.0, 0.735, 0.398, 0.631, 0.631]
     ci_hi = [0.369, 0.369, 1.0, 1.0, 1.0, 1.0]
     # residue verdict per regime: necessary (trace absent) vs unnecessary (trace present)
     necessary = [True, True, False, False, False, False]

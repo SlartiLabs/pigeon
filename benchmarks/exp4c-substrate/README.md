@@ -1,18 +1,19 @@
 # Exp-4c substrate — does the sharp step survive DEPTH, net of difficulty?
 
 Pre-registration: [`../PREREG-exp4c-deep-constraint.md`](../PREREG-exp4c-deep-constraint.md).
-**Status: substrate built + mechanically validated, and RUN LIVE (N=8 confirm, $24.94).**
-Per-trial ledger: `RESULTS-stage1-calibration.csv`, `RESULTS-stage2-confirm.csv`; aggregate
-and verdict: `../results/lever2-deep-4c.json`.
+**Status: substrate built + mechanically validated, and RUN LIVE (N=12 confirm, $55.38 total).**
+Per-trial ledger: `RESULTS-stage1-calibration.csv`, `RESULTS-stage2-confirm.csv` (44 trials);
+aggregate, TOST, and verdict: `../results/lever2-deep-4c.json`.
 
-**Result (short):** Du (rationale stripped) pointers-only 8/8 and with-derived 8/8, both at
-ceiling, so a capable receiver re-derives the deep constraint from the code and the residue
-is unnecessary (Gate 2 by point estimate; consistent with H0 but NOT TOST-confirmed at
-N=4-8). Disclosed deviations from the prereg: the mandatory **decoy arm was not run**, **Dr
-was held at N=4** (not escalated to N=8), and the prereg's **TOST test for Gate 2 is
-inconclusive** at this sample size. The constraint was fixed a priori (no substrate search,
-so no cherry-pick). Honest limitation: the dedup *structure* stayed visible, so this is a
-deep-toy, not deep-real.
+**Result (short):** Du (rationale stripped) pointers-only **12/12**, Dr (documented) **12/12**,
+with-derived **12/12**, all at ceiling. A capable receiver re-derives the deep constraint from
+the code, and the residue is unnecessary. Gate 2 (PO_Du = PO_Dr) and the residue-null
+(with-derived = pointers-only) are **TOST-confirmed equivalent at a ±0.20 margin** (Newcombe
+diff-CI [-0.184, 0.184]); the N=8 gap was closed by raising both ceiling arms to N=12, not by
+loosening the margin. The mandatory **decoy arm ran (8/8) but is INVALID**: the model refused
+the decoy manipulation and carried the true constraint (incidental model-behaviour finding).
+Constraint fixed a priori (no substrate search, no cherry-pick). Honest limitation: the dedup
+*structure* stayed visible, so this is a deep-toy, not deep-real.
 
 ## What this tests
 

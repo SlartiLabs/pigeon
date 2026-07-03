@@ -190,9 +190,9 @@ def main() -> dict:
 
     # ---- Exp. 4c (lever2-deep-4c.json) ---------------------------------
     deep = load("lever2-deep-4c.json")
-    du_po = deep["stage2_confirm"]["Du_pointers_only"]
-    du_wd = deep["stage2_confirm"]["Du_with_derived"]
-    dr_po = deep["stage1_calibration"]["Dr_pointers_only"]
+    du_po = deep["confirm_N12"]["Du_pointers_only"]
+    du_wd = deep["confirm_N12"]["Du_with_derived"]
+    dr_po = deep["confirm_N12"]["Dr_pointers_only"]
     out["clopper_pearson_cis"].append(
         check_ci("Exp.4c Du pointers-only", du_po["recovered"], du_po["n"], du_po["ci95"])
     )
@@ -200,7 +200,7 @@ def main() -> dict:
         check_ci("Exp.4c Du with-derived", du_wd["recovered"], du_wd["n"], du_wd["ci95"])
     )
     out["clopper_pearson_cis"].append(
-        check_ci("Exp.4c Dr pointers-only (difficulty control)", dr_po["recovered"], dr_po["n"], dr_po["ci95"])
+        check_ci("Exp.4c Dr pointers-only (difficulty control, N=12)", dr_po["recovered"], dr_po["n"], dr_po["ci95"])
     )
 
     # ---- Exp. 3 (lever1-sweep.json) — 3/3 at every config, for completeness
@@ -222,11 +222,11 @@ def main() -> dict:
     # Exp.4c GATE 2 (locked, PREREG-exp4c-deep-constraint.md Sec5): PO_Du
     # equivalent to PO_Dr despite the docstring strip.
     out["tost_equivalence"].append(
-        tost_two_arm("Exp.4c GATE 2: PO_Du (8/8) vs PO_Dr (4/4)", 8, 8, 4, 4)
+        tost_two_arm("Exp.4c GATE 2: PO_Du (12/12) vs PO_Dr (12/12)", 12, 12, 12, 12)
     )
     # Exp.4c residue-null: with-derived adds nothing above pointers-only ceiling.
     out["tost_equivalence"].append(
-        tost_two_arm("Exp.4c residue-null: Du with-derived (8/8) vs Du pointers-only (8/8)", 8, 8, 8, 8)
+        tost_two_arm("Exp.4c residue-null: Du with-derived (12/12) vs Du pointers-only (12/12)", 12, 12, 12, 12)
     )
     # Exp.5 — supplementary one-arm proxy; true locked two-arm TOST unmet.
     out["tost_equivalence"].append(

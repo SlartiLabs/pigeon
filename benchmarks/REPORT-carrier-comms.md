@@ -14,7 +14,11 @@
      handoff~286 (10.5×, §6) has no backing artifact under results/, §8a already flags it.
      Substrate-selection search log (anti-cherry-pick, PREREG §2 for lever2-natural & exp4c)
      does not exist for either substrate. Exp-1 cost deltas remain N=1/arm/repo, no CI , 
-     honestly disclosed as such in Table 2 and framed NULL, not overclaimed. -->
+     honestly disclosed as such in Table 2 and framed NULL, not overclaimed.
+     UPDATE (post-review, N=12): the GATE-2 and residue-null TOST gaps are now CLOSED,
+     both 12/12 vs 12/12, equivalent at ±0.20 (Newcombe diff-CI [-0.184, 0.184]); the Dr
+     control was rerun at N=12; the decoy arm ran but is INVALID (the model refused the
+     decoy manipulation and carried the true constraint). See §7d and §8a. -->
 # Carrier-Comms Optimization (Benchmark Report)
 
 **Status:** living document · **Date:** 2026-06-19 · **Branch:** `feat/carrier-comms`
@@ -36,8 +40,8 @@ handoff channel and the context pigeon injects) and whether two levers improve i
 > findable trace** (CIs separated), invariant to how non-salient or distant the trace is,
 > so the operative condition is "no **findable** trace." **Exp. 4c** extends the step from
 > that shallow key-naming constraint to a **deeper** dedup-before-aggregate constraint:
-> with the rationale docstring stripped, a capable receiver still re-derives it **8/8**
-> [.631,1] and carried residue adds nothing (H0 at ceiling, not TOST-confirmed at this N,
+> with the rationale docstring stripped, a capable receiver still re-derives it **12/12**
+> [.735,1] and carried residue adds nothing (TOST-confirmed equivalent at ±0.20, N=12,
 > §8a), so recoverability, not documentation,
 > governs at depth (limitation: the code's structural trace stayed visible, deep-toy not
 > deep-real). **Exp. 3** finds the default pack
@@ -326,7 +330,7 @@ about the **base rate** of low-R handoffs in real traffic (§13 of the prereg). 
 
 ---
 
-### 7d. Experiment 4c, does the step survive DEPTH? (consistent with H0 at ceiling, not TOST-confirmed at N=4–8; see §8a)
+### 7d. Experiment 4c, does the step survive DEPTH? (yes; TOST-confirmed equivalent at N=12, margin 0.20; see §8a)
 
 4b established the sharp step on a **shallow** constraint (a key-naming convention), where
 "a trace is present" and "the reasoning is recoverable" are the *same* question. 4c
@@ -340,38 +344,50 @@ byte-identical modulo that docstring (`validate.py` diff-clean), so the only thi
 varies is whether the rationale is recoverable. Pre-registration and substrate:
 `PREREG-exp4c-deep-constraint.md`, `exp4c-substrate/`.
 
-**Result (pointers-only = the R meter, sonnet, two-worktree; Stage-2 confirm N=8):**
+**Result (pointers-only = the R meter, sonnet, two-worktree; confirm N=12):**
 
 | Cell / arm | recovered | exact CI95 | note |
 |---|---|---|---|
-| **Du** (rationale **stripped**), pointers-only | **8/8** | [0.631, 1.000] | calibration corroborated 4/4 |
-| **Dr** (rationale **documented**), pointers-only | 4/4 | [0.398, 1.000] | difficulty control (calibration) |
-| **Du** with-derived (residue carried) | **8/8** | [0.631, 1.000] | injection verified in the refactor prompt |
+| **Du** (rationale **stripped**), pointers-only | **12/12** | [0.735, 1.000] | the recoverability meter |
+| **Dr** (rationale **documented**), pointers-only | **12/12** | [0.735, 1.000] | difficulty control |
+| **Du** with-derived (residue carried) | **12/12** | [0.735, 1.000] | injection verified in the refactor prompt |
+| **Du** decoy (irrelevant residue) | 8/8 | [0.631, 1.000] | *invalid control, see below* |
 
 ![Figure 10, Exp. 4c: the sharp step survives depth](figures/fig10_exp4c_depth.png)
 
-**Figure 10.** Exp. 4's floor (trace genuinely absent, 0/8) against the three Exp. 4c
-cells: `PO_Du` and `PO_Dr` both recover at ceiling regardless of whether the rationale
-docstring is stripped, and carrying the residue (`with-derived`) adds nothing above that
-same ceiling. **Caveat in-figure:** the `with-derived` = `pointers-only` H0 is a point
-estimate, not a TOST-confirmed equivalence at this N (§8a), the bar makes the same claim
-the report does, no stronger.
+**Figure 10.** Exp. 4's floor (trace genuinely absent, 0/8) against the Exp. 4c cells:
+`PO_Du` and `PO_Dr` both recover at ceiling regardless of whether the rationale docstring
+is stripped, and carrying the residue (`with-derived`) adds nothing above that same
+ceiling. At N=12 the `with-derived` = `pointers-only` and `PO_Du` = `PO_Dr` equivalences
+are **TOST-confirmed at a ±0.20 margin** (Newcombe diff-CI [−0.184, +0.184], §8a).
 
 **The step generalizes: recoverability, not the docstring, governs.** Stripping the
-rationale did **not** reduce recovery, `PO_Du` = 8/8, identical to `PO_Dr`. A capable
-receiver reconstructs the deep constraint from the code: every reported trial engaged the
-constrained region (all refactored `settle` to the risky streaming pass) and preserved the
-dedup, and two Du trials **re-derived the rationale in their own docstrings** ("last write
-wins", "corrections / amendments"), genuine re-derivation, not untouched code. Carrying the
-residue added nothing above ceiling (with-derived 8/8 = pointers-only 8/8), an Exp-5-style
-**H0**, and the null is not vacuous: the architect emitted four concrete constraints and
-the `## Carried reasoning` block was confirmed in the refactor agent's prompt, yet the
-outcome was unchanged. Cost was at **parity** ($1.035 pointers-only vs $1.005 with-derived
-per run, within noise; not a saving). Difficulty was not the driver, the documented control
-Dr also recovered, so it was not escalated to N=8.
+rationale did **not** reduce recovery, `PO_Du` = 12/12, statistically **equivalent** to
+`PO_Dr` = 12/12 (TOST at ±0.20). A capable receiver reconstructs the deep constraint from
+the code: every reported trial engaged the constrained region (all refactored `settle` to
+the risky streaming pass) and preserved the dedup, and Du trials **re-derived the rationale
+in their own docstrings** ("last write wins", "corrections / amendments"), genuine
+re-derivation, not untouched code. Carrying the residue added nothing above ceiling
+(with-derived 12/12, TOST-equivalent to pointers-only 12/12), an Exp-5-style **H0**, and the
+null is not vacuous: the architect emitted concrete constraints and the `## Carried
+reasoning` block was confirmed in the refactor agent's prompt, yet the outcome was
+unchanged. Cost was at **parity** across all ceiling arms ($1.02 to $1.05 per run, within
+noise; not a saving). The difficulty control Dr, run at the full N=12, also recovered 12/12,
+so difficulty is not the driver.
 
-**Verdict (Exp. 4c): the bounded headline holds at depth (point estimates at ceiling, not
-a TOST-confirmed equivalence at N=4–8, §8a).** The residue is overhead
+**The decoy arm could not be realized (an incidental model-behaviour finding).** The
+prereg's mandatory decoy arm (carry *irrelevant* residue, to isolate carried content from
+generic prose) ran and came back 8/8, but the raw shows it is **not a valid control**: the
+sonnet architect recognized the decoy instruction as an attempt to plant a bug-inducing
+rationale and **refused it**, writing (verbatim) that the task "told me to omit
+dedup/retries/double-counting and substitute unrelated cover reasons to steer a refactor
+into the bug", then carrying the *true* constraint anyway (five constraint terms reached the
+downstream prompt). So the content-versus-prose isolation is **unavailable for this model**,
+and it is moot regardless, since with-derived does not exceed pointers-only (both at
+ceiling). Reported, not hidden: this model will not carry sabotaging residue.
+
+**Verdict (Exp. 4c): the bounded headline holds at depth, TOST-confirmed equivalent at N=12
+(±0.20 margin, §8a).** The residue is overhead
 whenever the code carries a **findable, recoverable** trace, now shown for a
 dedup-before-aggregate constraint, not only the shallow key-naming one. *Limitation (the
 honest boundary):* Du stripped the *rationale* but the dedup *structure*
@@ -390,8 +406,8 @@ panel: `absent` (Fork-A, Exp. 4b `R_low`) sits at **0/8** on the left of `R*`; e
 salient, sits at ceiling on the right, independent of how obvious the cue is or how deep
 the constraint is. This is the single figure the bounded headline reduces to: residue
 value is a **step on trace presence**, not a gradient on salience (4b) or depth (4c).
-*Same caveat as Figure 10:* the right-hand ceiling readings are point estimates; the
-formal TOST equivalence bar is not cleared at N = 4–8 (§8a).
+The Exp. 4c `Du` ceiling reading (N=12) clears the formal TOST equivalence bar at ±0.20
+(§8a); the Exp. 4b R_mid2/R_mid points remain smaller-N descriptive anchors.
 
 ---
 
@@ -408,7 +424,7 @@ formal TOST equivalence bar is not cleared at N = 4–8 (§8a).
 | 4a | Lever 2, multi-hop survival (H2) on a natural A→B→C chain | **3/3 pass, hop-3 injection 3/3** (transitive fix); pre-fix loses it (unit test) | 3 | **SURVIVES** (fix load-bearing) |
 | 5 | Lever 2, natural substrate (in-code recoverable constraint) | pointers-only **8/8** (read-cue 8/8), re-derived for free | 8 | **H0 (point estimate, not TOST-confirmed, §8a)**, residue unnecessary when recoverable; **bounds** the effect |
 | 4b | Lever 2, boundary R\* on a fixed-constraint cue-salience ladder | R_low **0/8** [0,.369] vs R_mid **8/8** [.631,1], CIs separated; distant/salient cues also recovered | 8 / 8 | **SHARP STEP** on trace *presence* (residue overhead once any **findable** trace exists) |
-| 4c | Lever 2, does the step survive DEPTH? (dedup-before-aggregate; Dr vs Du diff-clean) | Du (rationale stripped) pointers-only **8/8** [.631,1] = Dr; with-derived **8/8** (injection verified) | 8 / 8 | **CONSISTENT WITH GENERALIZING (H0 at ceiling, not TOST-confirmed, §8a)**, residue overhead at depth too when the trace is recoverable; limitation: structural trace stayed visible (deep-toy, not deep-real) |
+| 4c | Lever 2, does the step survive DEPTH? (dedup-before-aggregate; Dr vs Du diff-clean) | Du (rationale stripped) pointers-only **12/12** [.735,1] = Dr 12/12; with-derived **12/12** (injection verified) | 12 | **GENERALIZES, TOST-confirmed ±0.20 (§8a)**, residue overhead at depth too when the trace is recoverable; limitation: structural trace stayed visible (deep-toy, not deep-real); decoy arm invalid (model refused) |
 
 ---
 
@@ -446,50 +462,48 @@ points** and reports the full CI so a reader can substitute their own margin.
 
 | Claim | Arms | 90% CI on Δ | Equivalent at ±20pt? | Min. margin that *would* pass |
 |---|---|---|---|---|
-| Exp. 4c GATE 2 (locked): PO_Du ≈ PO_Dr | 8/8 vs 4/4 | [−25.3pt, +40.3pt] | **No** | ±40.3pt |
-| Exp. 4c residue-null: with-derived ≈ pointers-only | 8/8 vs 8/8 | [−25.3pt, +25.3pt] | **No** | ±25.3pt |
+| Exp. 4c GATE 2 (locked): PO_Du ≈ PO_Dr | 12/12 vs 12/12 | [−18.4pt, +18.4pt] | **Yes** | ±18.4pt |
+| Exp. 4c residue-null: with-derived ≈ pointers-only | 12/12 vs 12/12 | [−18.4pt, +18.4pt] | **Yes** | ±18.4pt |
 | Exp. 5 pointers-only vs ceiling (supplementary, one-sample, **not** the locked two-arm test, see below) | 8/8 vs p₀=1.0 | [74.7%, 100%] | **No** | ±25.3pt |
 
-**Reading: this is a real correction, not a formality.** At N = 4–8 per arm, a TOST
-against any margin tighter than ~25–40 points **cannot** distinguish "the two arms are
-equivalent" from "the two arms could differ by up to a quarter to two-fifths of the whole
-scale and this sample wouldn't know." Both point estimates landing on the same ceiling
-(8/8 = 8/8, or 8/8 = 4/4) is consistent with H0 but does **not**, at these sample sizes,
-formally *confirm* it by the pre-registered TOST standard. Concretely:
+**Reading: the 4c equivalence gap was real, and was closed by adding data, not by loosening
+the margin.** At N = 8 (with the Dr control at only N = 4), a TOST against any margin
+tighter than ~25 to 40 points could not distinguish "the two arms are equivalent" from
+"they could differ by up to a quarter to two-fifths of the whole scale and this sample
+wouldn't know." Both point estimates on the same ceiling was *consistent with* H0 but did
+not *confirm* it by the pre-registered TOST standard. Rather than widen the margin to fit
+N = 8 (margin-shopping, which is off-limits), both ceiling arms were raised to **N = 12**,
+which drops the Newcombe floor to ±18.4 points and clears the a-priori ±20-point margin.
 
 - **Exp. 4c GATE 2** ("PO_Du equivalent to PO_Dr by TOST", locked in
-  PREREG-exp4c-deep-constraint.md §5) is **not met** by this data: the prereg locked that
-  a TOST be run, and now that it has been, it does not clear even a generous margin. This
-  is the **third** unmet item from that prereg; for full disclosure the other two are
-  named plainly here, since Exp. 4c leans on the prereg for its credibility: (a)
-  PREREG-exp4c-deep-constraint.md §3 makes a **`decoy` arm mandatory** and it was **never
-  run** (zero decoy trials in `results/lever2-deep-4c.json`); (b) the same §3 requires the
-  **Dr control at N=8** and it was **held at N=4** calibration, not escalated (§7d's "Dr
-  also recovered, so it was not escalated" is the operator's stated reason, but it is still
-  a deviation from the locked design). None of the three changes a superiority call; all
-  three are undisclosed-elsewhere deviations that a reader relying on the prereg should
-  know.
-- **Exp. 4c's "residue adds nothing" H0** and **Exp. 5's "residue unnecessary"** claims are
-  both **underpowered for formal equivalence**, not falsified: the honest framing is "the
-  data are consistent with H0 and inconsistent with a large residue effect, but do not meet
-  a pre-registered equivalence bar." The GO/CONFIRMED calls for Exp. 4 and Exp. 4b are
-  unaffected (those are *superiority* claims, Table 2a's p < 0.001, not equivalence
-  claims, and small-N does not weaken a rejection the way it weakens a
-  failure-to-reject-and-therefore-equivalent).
-- **Exp. 5's supplementary check is not a substitute for its own pre-registered primary
-  test.** PREREG-lever2-natural.md's primary test is `+derived` vs `pointers-only`, N = 8
-  each; the `+derived` arm was never run (routed away at the manipulation check, per prereg
-  §4's "no headroom" rule), so no two-arm TOST is possible from existing data. The row above
-  is a one-sample proxy (does the pointers-only CI leave room for a margin-sized
-  improvement) computed to quantify "no headroom"; it is **not** the locked test, and
-  running the real `+derived` arm is the only way to close this gap.
+  PREREG-exp4c-deep-constraint.md §5) is now **met**: PO_Du 12/12 and PO_Dr 12/12, Newcombe
+  diff-CI [−18.4pt, +18.4pt], equivalent at ±20pt. The Dr control, the source of the earlier
+  ±40-point margin, was run at the full **N = 12** (it was N = 4 at first pass).
+- **Exp. 4c residue-null** (with-derived equivalent to pointers-only) is likewise now
+  **met**: 12/12 vs 12/12, diff-CI [−18.4pt, +18.4pt].
+- **The mandatory `decoy` arm was run but is invalid.** PREREG §3 requires a decoy (carry
+  irrelevant residue, to isolate carried content from generic prose). It ran (8/8), but the
+  raw shows the model **refused the decoy manipulation** and carried the true constraint
+  (see §7d). So the decoy control is unavailable for this model, and moot regardless, since
+  with-derived does not exceed pointers-only. Disclosed as run-but-invalidated, not a clean
+  control pass.
+- **Exp. 5's "residue unnecessary" H0 is a different substrate and remains underpowered**,
+  not closed by the 4c work. Its own pre-registered primary test is `+derived` vs
+  `pointers-only`, N = 8 each; the `+derived` arm was never run (routed away at the
+  manipulation check per prereg §4's "no headroom" rule), so no two-arm TOST is possible
+  from existing data. The row above is a one-sample proxy; running the real `+derived` arm
+  is the only way to close that gap. Exp. 5's claim stays "consistent with H0, not formally
+  TOST-confirmed."
+- The GO/CONFIRMED calls for Exp. 4 and Exp. 4b are **superiority** claims (the exact tests,
+  p < 0.001), unaffected by any of this; small-N does not weaken a rejection the way it
+  weakens a failure-to-reject.
 
-**Framing note.** "CONFIRMED" (§7d) and "H0" (§7b, Table 2 row 5, GATE 2 in §7d's own
-framing) are stated throughout as "consistent with H0 at ceiling, not formally confirmed
-by TOST at N=4–8" rather than as a settled equivalence: the point estimates and the
-mechanism evidence (read-cue, touch-probe, re-derived rationale in Du transcripts) are
-real and reported correctly elsewhere; only the *equivalence-test* rigor GATE 2 implies
-was overstated before this hedge.
+**Framing note.** Exp. 4c's GATE 2 and residue-null equivalences are now stated as
+**TOST-confirmed at ±0.20 (N = 12)**. Exp. 5's "residue unnecessary" is still stated as
+"consistent with H0 at ceiling, not formally TOST-confirmed at N = 8" pending its `+derived`
+arm. The superiority calls (Exp. 4, 4b) were never in question. The point estimates and the
+mechanism evidence (read-cue, touch-probe, re-derived rationale in Du transcripts) are real
+and reported correctly throughout.
 
 ---
 
