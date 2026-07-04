@@ -94,6 +94,35 @@ def test_apply_mutates_spec_runners():
     assert router.tier_of(runners["gate"]) == "mid"   # cost-aware verifier stays mid
 
 
+def test_prompted_prompt_lists_tasks_and_runners():
+    tasks = [{"id": "architect", "doing": "design"}, {"id": "impl", "doing": "implement"}]
+    p = router.prompted_prompt(tasks, AVAIL)
+    assert "architect" in p and "impl" in p
+    assert "opus" in p and "free arm" in p
+    assert "JSON" in p
+
+
+def test_prompted_prompt_includes_history_when_given():
+    p = router.prompted_prompt([{"id": "a", "doing": "x"}], AVAIL,
+                               history_summary="impl: oc-mimo 2/5 pass; sonnet 5/5 pass")
+    assert "routing history" in p and "oc-mimo 2/5" in p
+
+
+def test_parse_routing_keeps_only_known_task_and_runner():
+    text = '{"architect": "opus", "impl": "oc-mimo", "ghost": "sonnet", "impl2": "no-such"}'
+    got = router.parse_routing(text, ["architect", "impl", "impl2"], AVAIL)
+    assert got == {"architect": "opus", "impl": "oc-mimo"}  # ghost task + bad runner dropped
+
+
+def test_parse_routing_from_noisy_prose():
+    text = 'Sure! Here is my routing:\n{"a": "sonnet"}\nHope that helps.'
+    assert router.parse_routing(text, ["a"], AVAIL) == {"a": "sonnet"}
+
+
+def test_parse_routing_empty_on_garbage():
+    assert router.parse_routing("no json here", ["a"], AVAIL) == {}
+
+
 def test_explain_reports_from_to():
     tasks = [{"id": "impl", "runner": "sonnet", "doing": "implement"}]
     rows = router.explain(tasks, "cost-aware", AVAIL)

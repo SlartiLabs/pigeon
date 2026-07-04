@@ -142,6 +142,67 @@ def apply(spec: dict[str, Any], policy: str, available: Iterable[str],
     return spec
 
 
+def describe_runners(available: Iterable[str], tiers: dict[str, str] | None = None) -> str:
+    lines = []
+    for r in sorted(available, key=_rank):
+        t = tier_of(r, tiers)
+        note = {"strong": "most capable, most expensive",
+                "mid": "reliable, metered",
+                "cheap": "free arm, abundant/near-zero cost, capable for MECHANICAL work "
+                         "but may fail hard reasoning"}[t]
+        lines.append(f"- {r} [{t}]: {note}")
+    return "\n".join(lines)
+
+
+def prompted_prompt(tasks: list[dict[str, Any]], available: Iterable[str],
+                    tiers: dict[str, str] | None = None,
+                    history_summary: str | None = None) -> str:
+    """Build the routing prompt for the B3 prompted coordinator.
+
+    The LLM is asked to assign a runner to each task to maximize held-out success while
+    minimizing cost, given the runner roster and (optionally) B1's logged history of what
+    each runner did on each role. This is the 'learned' signal without training: the model
+    reasons over the routing log rather than a fitted policy.
+    """
+    task_lines = "\n".join(
+        f"- {t['id']} (role={classify_role(t)}): {str(t.get('doing',''))[:200]}"
+        for t in tasks)
+    hist = f"\n\nObserved routing history (runner -> outcomes on prior runs):\n{history_summary}" \
+        if history_summary else ""
+    return (
+        "You are the COORDINATOR. Assign exactly one runner to each task below to maximize "
+        "held-out success while minimizing cost. Send mechanical/boilerplate work to the "
+        "cheap free arm, but keep genuinely hard reasoning on a reliable mid/strong runner "
+        "(the free arm fails hard tasks). Return ONLY a JSON object mapping task id to runner "
+        "name, nothing else.\n\n"
+        f"RUNNERS:\n{describe_runners(available, tiers)}\n\n"
+        f"TASKS:\n{task_lines}{hist}\n\n"
+        'JSON (e.g. {"architect": "sonnet", "impl": "oc-mimo"}):'
+    )
+
+
+def parse_routing(text: str, task_ids: Iterable[str],
+                  available: Iterable[str]) -> dict[str, str]:
+    """Extract + validate {task: runner} from the coordinator's reply.
+
+    Only assignments to a known runner and a known task are kept; anything else is dropped
+    (the caller keeps the task's declared runner for a dropped id).
+    """
+    import json
+    import re
+    ids, avail = set(task_ids), set(available)
+    obj: dict[str, Any] = {}
+    for m in re.finditer(r"\{[^{}]*\}", text, re.DOTALL):
+        try:
+            cand = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(cand, dict):
+            obj.update(cand)
+    return {k: v for k, v in obj.items()
+            if k in ids and isinstance(v, str) and v in avail}
+
+
 def explain(tasks: list[dict[str, Any]], policy: str, available: Iterable[str],
             tiers: dict[str, str] | None = None) -> list[dict[str, str]]:
     """Human/JSON view: per task, the inferred role and the (from -> to) runner change."""
