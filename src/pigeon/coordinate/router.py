@@ -44,9 +44,15 @@ DEFAULT_TIERS: dict[str, str] = {
 }
 
 # Which tier each role prefers, per policy. `static` keeps the declared runner.
+#   cost-aware   : minimize $ without losing success — reasoning stays at reliable *mid*
+#                  (sonnet), only the mechanical worker tasks go to the free arm. This is
+#                  the arm most likely to beat a static all-sonnet DAG *net of cost*.
+#   quality-first: maximize success, cost secondary — strong on planner + verifier.
+#   strong-verify: middle ground — only the verifier is upgraded to strong.
 POLICIES: dict[str, dict[str, str] | None] = {
     "static": None,
-    "cost-aware": {"planner": "strong", "worker": "cheap", "verifier": "strong", "other": "mid"},
+    "cost-aware": {"planner": "mid", "worker": "cheap", "verifier": "mid", "other": "cheap"},
+    "quality-first": {"planner": "strong", "worker": "mid", "verifier": "strong", "other": "mid"},
     "strong-verify": {"planner": "mid", "worker": "mid", "verifier": "strong", "other": "mid"},
 }
 
@@ -55,6 +61,17 @@ _DEGRADE = {
     "mid": ("mid", "strong", "cheap"),
     "cheap": ("cheap", "mid", "strong"),
 }
+
+# Within-tier preference (lower index = preferred). Keeps mid-reasoning on the reliable
+# sonnet (not agy, which is pure-edit-only under coordinate) and rotates the free arm.
+# Runners not listed here sort after, by name.
+_PREFER = ["opus", "sonnet", "codex", "mimo",
+           "oc-mimo", "oc-north", "oc-nemotron", "oc-nex",
+           "nv-nano", "nv-minimax", "nv-mixtral", "nv-mistral-large", "agy"]
+
+
+def _rank(runner: str) -> tuple[int, str]:
+    return (_PREFER.index(runner) if runner in _PREFER else len(_PREFER), runner)
 
 
 def classify_role(task: dict[str, Any]) -> str:
@@ -79,7 +96,7 @@ def _by_tier(available: Iterable[str], tiers: dict[str, str] | None) -> dict[str
     for r in available:
         out.setdefault(tier_of(r, tiers), []).append(r)
     for lst in out.values():
-        lst.sort()
+        lst.sort(key=_rank)
     return out
 
 

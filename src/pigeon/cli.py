@@ -854,7 +854,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("spec", help="Tasks spec (JSON or YAML).")
     p.add_argument("--policy", default="cost-aware",
-                   choices=["static", "cost-aware", "strong-verify"],
+                   choices=["static", "cost-aware", "quality-first", "strong-verify"],
                    help="Routing policy (default: cost-aware).")
     p.add_argument("--json", action="store_true",
                    help="Emit the per-task role/routing decisions as JSON.")

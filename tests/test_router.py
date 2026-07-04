@@ -49,16 +49,26 @@ def test_static_policy_keeps_declared_runner():
     assert router.route(tasks, "static", AVAIL) == {"a": "sonnet", "b": "opus"}
 
 
-def test_cost_aware_routes_by_role():
+def test_cost_aware_keeps_reasoning_mid_offloads_workers():
     tasks = [
         {"id": "architect", "runner": "sonnet", "doing": "design the api"},
         {"id": "impl", "runner": "sonnet", "doing": "implement it"},
         {"id": "review", "runner": "sonnet", "doing": "verify correctness"},
     ]
     got = router.route(tasks, "cost-aware", AVAIL)
-    assert got["architect"] == "opus"      # planner -> strong
-    assert router.tier_of(got["impl"]) == "cheap"   # worker -> cheap
-    assert got["review"] == "opus"         # verifier -> strong
+    # cost-aware must NOT upgrade reasoning to strong (that would cost more than static)
+    assert router.tier_of(got["architect"]) == "mid"   # planner stays mid (sonnet)
+    assert router.tier_of(got["impl"]) == "cheap"       # worker -> free arm
+    assert router.tier_of(got["review"]) == "mid"       # verifier stays mid
+
+
+def test_quality_first_upgrades_reasoning_to_strong():
+    tasks = [
+        {"id": "architect", "runner": "sonnet", "doing": "design the api"},
+        {"id": "review", "runner": "sonnet", "doing": "verify correctness"},
+    ]
+    got = router.route(tasks, "quality-first", AVAIL)
+    assert got["architect"] == "opus" and got["review"] == "opus"
 
 
 def test_route_degrades_when_tier_absent():
@@ -81,7 +91,7 @@ def test_apply_mutates_spec_runners():
     router.apply(spec, "cost-aware", AVAIL)
     runners = {t["id"]: t["runner"] for t in spec["tasks"]}
     assert router.tier_of(runners["impl"]) == "cheap"
-    assert runners["gate"] == "opus"
+    assert router.tier_of(runners["gate"]) == "mid"   # cost-aware verifier stays mid
 
 
 def test_explain_reports_from_to():
