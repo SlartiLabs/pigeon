@@ -354,31 +354,55 @@ ln -sf ../../scripts/refresh-context.sh .git/hooks/pre-commit
   (Config is YAML only because it is human-edited.)
 - **Pointers need a resolver**, so one ships — pointers are never an assumption.
 - **Measure, don't assume.** Every handoff and retrieval is token-accounted
-  against a naive baseline; `pigeon metrics` and `pigeon demo` print the
-  saving on your actual repo.
+  against a naive baseline; `pigeon metrics` and `pigeon demo` print the numbers
+  on your actual repo (the channel counterfactual, not net savings; see below).
 
-## What it saves (measured, with caveats)
+## What it costs, and what it is for (measured)
 
-`pigeon demo` runs a 3-agent handoff chain (Planner → Executor → Tester)
-over the current repo's real files and prints exact token totals (tiktoken)
-for the agentctx path versus a naive baseline. Two honest disclosures:
+**pigeon does not save you tokens.** We measured it on real held-out tasks, and adding
+pigeon is token-neutral to mildly negative (roughly +8% to +59% USD, with success
+unchanged). The arithmetic is why: total cost is `work + N * overhead`, the overhead term
+cannot go negative, so cost approaches parity from above and never crosses into savings. If
+you came for a "saves X%" headline, this is not it, and the benchmark below will tell you so
+in numbers you can reproduce.
 
-1. **The baseline is a constructed counterfactual**, not an A/B against real
-   agent transcripts: the same information re-transmitted as prose with every
-   pointer's content inlined (handoffs), and whole files instead of ranked
-   slices (retrieval). That is what agents actually do when nothing stops
-   them, but it is the tool's own model of the alternative — judge it in
-   `tokens.py`, which is short and deliberately legible.
-2. **Savings are repo-content-dependent.** On this repository's own codebase
-   (6,302 source LOC) the demo's 3-hop chain uses ~3,087 tokens versus ~43,117
-   for the constructed counterfactual above — a ~92.8% reduction. The figure
-   tracks how much real file content the handoffs and retrievals touch, so it
-   will differ on your repo; the reduction is largest exactly where context
-   exhaustion actually hurts — repos with substantial files. (We do not quote a
-   near-empty-repo number: that two-point comparison was never measured.)
+What pigeon *is* for is the thing tokens cannot buy back: **carrying reasoning the next
+agent cannot re-derive.** Two results bound this precisely, both pre-registered and
+reproducible:
 
-Run it on your own repo; `pigeon metrics` reports cumulative numbers from
-real usage rather than the demo's synthetic chain.
+- **Cross-model capability.** A constraint given only to the first agent and never written
+  into the code survives a heterogeneous chain (Claude, then a free model, then Antigravity)
+  only when pigeon carries it: 5/5 held-out passes with the bridge, 0/5 without.
+- **A two-sided bounded law.** The carried `state.derived` residue is necessary *if and only
+  if* the reasoning left no recoverable trace in the artifacts. Confirmed as a superiority
+  result where it is needed (8/8 with residue vs 0/8 without, Fisher exact p < 0.001) and as
+  equivalence tests where it is not (residue is redundant when the constraint is recoverable
+  from the code, whether shallow or deep, TOST-confirmed at a 0.20 margin).
+
+So the value proposition is a rule, not a discount: **spend channel tokens only on what the
+receiver cannot cheaply regenerate, and point at everything else.**
+
+The channel itself *is* efficient (pointers, not payloads). `pigeon demo` prints exact token
+totals for pigeon's 3-hop handoff versus a constructed counterfactual that re-transmits every
+pointer's content as prose and sends whole files instead of ranked slices (about 3,087 vs
+43,117 tokens on this repo). That is a channel-level comparison, not a real-world A/B: the
+channel efficiency is real, but it does *not* net out to savings once coordination overhead
+is counted, which is exactly what the real-task benchmark above measures. `pigeon metrics`
+reports your own cumulative numbers from real usage.
+
+### Reproduce the benchmark
+
+The claims above are committed, not marketing. Substrates, held-out graders, per-trial
+ledgers, exact statistics, and 11 figures live under [`benchmarks/`](benchmarks/):
+
+- Report: [`benchmarks/REPORT-carrier-comms.md`](benchmarks/REPORT-carrier-comms.md); draft
+  manuscript: [`benchmarks/manuscript/`](benchmarks/manuscript/).
+- Recompute every statistic (exact Clopper-Pearson CIs, Fisher/Barnard, Newcombe TOST) from
+  the committed result JSONs: `python3 benchmarks/figures/stats_appendix.py`.
+- Validate a substrate's held-out grader with no agents and no spend:
+  `python3 benchmarks/exp4c-substrate/validate.py`.
+
+Run them yourself; the numbers reproduce.
 
 ## Future (Phase 2 — deferred, not built)
 
