@@ -1,0 +1,6 @@
+trial,accept_rc,recovered,num_turns,cost_usd,wall_s,attempts,per_task_runners
+1,0,1,15,0.7112,199,1,architect=sonnet;from_wire=oc-mimo;to_wire=mimo
+2,0,1,8,0.5185,238,1,architect=sonnet;from_wire=oc-mimo;to_wire=mimo
+3,0,1,5,0.3885,258,1,architect=sonnet;from_wire=oc-mimo;to_wire=mimo
+4,0,1,12,0.4758,270,1,architect=sonnet;from_wire=oc-mimo;to_wire=mimo
+5,0,1,8,0.5085,213,1,architect=sonnet;from_wire=oc-mimo;to_wire=mimo
