@@ -495,6 +495,33 @@ def cmd_routing(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_route(args: argparse.Namespace) -> int:
+    cfg = _cfg(args)
+    from pigeon.coordinate import router
+    text = Path(args.spec).read_text("utf-8")
+    if args.spec.endswith((".yaml", ".yml")):
+        import yaml
+        spec = yaml.safe_load(text)
+    else:
+        spec = json.loads(text)
+    available = sorted(cfg.coordinate_cfg.get("runners", {}).keys())
+    tiers = cfg.coordinate_cfg.get("router_tiers")
+    tasks = spec.get("tasks", [])
+    rows = router.explain(tasks, args.policy, available, tiers)
+    if args.json:
+        print(json.dumps(rows, indent=2, ensure_ascii=False))
+    else:
+        for r in rows:
+            change = "" if r["from"] == r["to"] else f"   ({r['from']} -> {r['to']})"
+            print(f"  [{r['task']}] {r['role']:9s} {r['to']}{change}")
+    if args.out:
+        router.apply(spec, args.policy, available, tiers)
+        Path(args.out).write_text(
+            json.dumps(spec, indent=2, ensure_ascii=False) + "\n", "utf-8")
+        print(f"wrote routed spec ({args.policy}) -> {args.out}")
+    return 0
+
+
 def cmd_plan(args: argparse.Namespace) -> int:
     cfg = _cfg(args)
     try:
@@ -820,6 +847,19 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Rebuild the log from existing run manifests before summarizing.")
     p.add_argument("--json", action="store_true", help="Emit the probe summary as JSON.")
     p.set_defaults(func=cmd_routing)
+
+    p = sub.add_parser(
+        "route",
+        help="Apply a heuristic model-per-role routing policy to a spec (Track B, B2 baseline).",
+    )
+    p.add_argument("spec", help="Tasks spec (JSON or YAML).")
+    p.add_argument("--policy", default="cost-aware",
+                   choices=["static", "cost-aware", "strong-verify"],
+                   help="Routing policy (default: cost-aware).")
+    p.add_argument("--json", action="store_true",
+                   help="Emit the per-task role/routing decisions as JSON.")
+    p.add_argument("-o", "--out", help="Write the routed spec to this path.")
+    p.set_defaults(func=cmd_route)
 
     p = sub.add_parser(
         "adopt",
