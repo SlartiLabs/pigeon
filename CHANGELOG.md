@@ -7,6 +7,16 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.5.2] — 2026-07-04
+
+### Added
+- `routing-log`: `pigeon routing-log` records, per task in every coordination run, the routing decision (runner/model, DAG depth, whether it carried `state.derived` residue) joined to the outcome (status, turns, cost, tokens) in `.pigeon/routing_log.jsonl`, and prints a probe: *do routings vary in ways that change outcomes?* (`--backfill` rebuilds from existing run manifests; `--json` for machine use). Observation-only, written best-effort at run finish; it never changes routing or breaks a run.
+
+### Docs
+- `benchmarks/`: the carrier-comms study (the two-sided bounded law for carried reasoning residue) with a manuscript-grade report, a recomputable statistics appendix (Clopper-Pearson, Fisher/Barnard, Newcombe TOST), 11 figures, committed per-trial ledgers, and a draft manuscript under `benchmarks/manuscript/`.
+
+---
+
 ## [0.5.1] — 2026-06-18
 
 ### Added
@@ -120,6 +130,7 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+[0.5.2]: https://github.com/SlartiLabs/pigeon/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/SlartiLabs/pigeon/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/SlartiLabs/pigeon/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SlartiLabs/pigeon/compare/v0.3.0...v0.4.0
