@@ -26,10 +26,21 @@ ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
 }
 _ROLE_ORDER = ("verifier", "planner", "worker")
 
-# Default reliability/strength tier per known runner. oc-*/nv-* (opencode-routed free
-# models) default to "cheap". Override via the config's coordinate.router_tiers.
+# Strength/cost tier per configured runner (the full roster). The "cheap" tier is the
+# free arm (opencode Zen / openrouter / nvidia connectors + standalone MiMo): near-free and
+# effectively unbeatable on tokens-per-dollar, so it is the default worker tier, not a
+# last resort. Rate limits are handled by SPREADING load across it (route() round-robins
+# within a tier), not by avoiding it. Any unlisted oc-*/nv-* runner also falls to "cheap".
+# Override the whole map via the config's coordinate.router_tiers.
 DEFAULT_TIERS: dict[str, str] = {
-    "opus": "strong", "sonnet": "mid", "codex": "mid", "agy": "mid", "mimo": "cheap",
+    # strong: authority / hardest reasoning / final verdict
+    "opus": "strong",
+    # mid: reliable, metered
+    "sonnet": "mid", "codex": "mid", "agy": "mid",
+    # cheap: the free arm (abundant tokens; round-robined to spread provider rate limits)
+    "mimo": "cheap",
+    "oc-mimo": "cheap", "oc-north": "cheap", "oc-nemotron": "cheap", "oc-nex": "cheap",
+    "nv-nano": "cheap", "nv-minimax": "cheap", "nv-mixtral": "cheap", "nv-mistral-large": "cheap",
 }
 
 # Which tier each role prefers, per policy. `static` keeps the declared runner.
@@ -86,13 +97,17 @@ def route(tasks: list[dict[str, Any]], policy: str, available: Iterable[str],
     if pref is None:
         return {t["id"]: t.get("runner") for t in tasks}
     by_tier = _by_tier(available, tiers)
+    rr: dict[str, int] = {}  # per-tier round-robin cursor: spread the free arm across tasks
     out: dict[str, str] = {}
     for t in tasks:
         want = pref.get(classify_role(t), pref.get("other", "mid"))
         chosen = t.get("runner")
         for candidate_tier in _DEGRADE[want]:
-            if by_tier.get(candidate_tier):
-                chosen = by_tier[candidate_tier][0]
+            pool = by_tier.get(candidate_tier)
+            if pool:
+                i = rr.get(candidate_tier, 0)
+                chosen = pool[i % len(pool)]
+                rr[candidate_tier] = i + 1
                 break
         out[t["id"]] = chosen
     return out

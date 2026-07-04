@@ -26,6 +26,24 @@ def test_tier_of_defaults():
     assert router.tier_of("some-unknown") == "mid"
 
 
+def test_full_roster_is_tiered_explicitly():
+    assert router.tier_of("opus") == "strong"
+    for r in ("sonnet", "codex", "agy"):
+        assert router.tier_of(r) == "mid"
+    for r in ("mimo", "oc-mimo", "oc-north", "oc-nemotron", "oc-nex",
+              "nv-nano", "nv-minimax", "nv-mixtral", "nv-mistral-large"):
+        assert router.tier_of(r) == "cheap", r
+
+
+def test_cheap_tier_round_robins_across_free_arm():
+    tasks = [{"id": f"w{i}", "runner": "sonnet", "doing": "implement it"} for i in range(3)]
+    free = ["oc-mimo", "oc-north", "nv-nano"]  # three cheap runners
+    got = router.route(tasks, "cost-aware", free)
+    # three worker tasks spread across three distinct free runners (load spreading)
+    assert len(set(got.values())) == 3
+    assert all(router.tier_of(v) == "cheap" for v in got.values())
+
+
 def test_static_policy_keeps_declared_runner():
     tasks = [{"id": "a", "runner": "sonnet"}, {"id": "b", "runner": "opus"}]
     assert router.route(tasks, "static", AVAIL) == {"a": "sonnet", "b": "opus"}
