@@ -472,6 +472,29 @@ def cmd_runs(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_routing(args: argparse.Namespace) -> int:
+    cfg = _cfg(args)
+    from pigeon.coordinate import routing
+    log_path = cfg.coordinate_routing_log
+    if args.backfill:
+        recs: list[dict] = []
+        for man in sorted(cfg.coordinate_runs_dir.glob("*.json")):
+            try:
+                recs += routing.records_from_manifest(json.loads(man.read_text("utf-8")))
+            except Exception:
+                continue
+        # rebuild is idempotent: overwrite the log from the manifests on disk
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("", encoding="utf-8")
+        routing.append_log(log_path, recs)
+    records = routing.load_log(log_path)
+    if args.json:
+        print(json.dumps(routing.summarize(records), indent=2, ensure_ascii=False))
+        return 0
+    print(routing.format_summary(routing.summarize(records)))
+    return 0
+
+
 def cmd_plan(args: argparse.Namespace) -> int:
     cfg = _cfg(args)
     try:
@@ -788,6 +811,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--critical-path", action="store_true",
                    help="Duration-weighted longest dependency chain.")
     p.set_defaults(func=cmd_runs)
+
+    p = sub.add_parser(
+        "routing-log",
+        help="Routing-decision -> outcome log + the 'do routings vary?' probe (Track B, B1).",
+    )
+    p.add_argument("--backfill", action="store_true",
+                   help="Rebuild the log from existing run manifests before summarizing.")
+    p.add_argument("--json", action="store_true", help="Emit the probe summary as JSON.")
+    p.set_defaults(func=cmd_routing)
 
     p = sub.add_parser(
         "adopt",

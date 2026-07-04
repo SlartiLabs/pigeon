@@ -449,6 +449,11 @@ class Config:
         return self._p(self.data["coordinate"]["events_dir"])
 
     @property
+    def coordinate_routing_log(self) -> Path:
+        """Durable per-task routing-decision -> outcome log (Track B, rung B1)."""
+        return self.contract_dir / "routing_log.jsonl"
+
+    @property
     def adopt_dir(self) -> Path:
         return self.contract_dir / "adopt"
 

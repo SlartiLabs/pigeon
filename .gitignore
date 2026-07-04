@@ -12,6 +12,7 @@ venv/
 # agentctx runtime artifacts (generated; the schema + config are tracked)
 .pigeon/manifest.json
 .pigeon/metrics.jsonl
+.pigeon/routing_log.jsonl
 .pigeon/handoffs/*.json
 .pigeon/coordinate/
 .pigeon/context/
