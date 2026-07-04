@@ -21,6 +21,7 @@ import math
 import os
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from . import resolve as _resolve
@@ -152,6 +153,8 @@ def account_handoff(
     encoding = config.tokens_cfg.get("encoding", "cl100k_base")
     actual = count_tokens(serialize_handoff(handoff), encoding)
     baseline = count_tokens(_prose_baseline_for_handoff(handoff, config), encoding)
+    components = _handoff_components(handoff, encoding)
+    budget = int(config.coordinate_cfg.get("derived_token_budget", 400))
     event = {
         "kind": "handoff",
         "sid": handoff.get("sid"),
@@ -161,9 +164,56 @@ def account_handoff(
         "actual_tokens": actual,
         "baseline_tokens": baseline,
         "saved_tokens": baseline - actual,
+        "components": components,
+        "derived_over_budget": components["derived"] > budget,
         "exact": using_tiktoken(encoding),
     }
     return record(config, event) if record_event else event
+
+
+def derived_budget_status(config: Config, handoff: dict[str, Any]) -> tuple[int, int] | None:
+    """Return ``(derived_tokens, budget)`` when a handoff's ``state.derived`` residue
+    exceeds ``coordinate.derived_token_budget``, else ``None``.
+
+    The soft check behind the write-time warning: it never rejects (residue bloat
+    is a quality signal to surface, not a contract violation), it only reports.
+    """
+    encoding = config.tokens_cfg.get("encoding", "cl100k_base")
+    derived = (handoff.get("state") or {}).get("derived")
+    if not derived:
+        return None
+    budget = int(config.coordinate_cfg.get("derived_token_budget", 400))
+    tokens = count_tokens(json.dumps(derived, ensure_ascii=False, sort_keys=True), encoding)
+    return (tokens, budget) if tokens > budget else None
+
+
+def _handoff_components(handoff: dict[str, Any], encoding: str) -> dict[str, int]:
+    """Per-slice token breakdown of a handoff (diagnostic; additive to the event).
+
+    Each slice is counted independently by serializing just that part, so the
+    parts don't sum to ``actual_tokens`` (which includes envelope keys) — they
+    locate *where* a handoff's tokens go. ``derived`` is the residue-bloat meter
+    (0 until the polymath schema is populated). ``summarize`` ignores this field,
+    so it is purely additive: no migration, no test breakage.
+    """
+    state = handoff.get("state") or {}
+    pointers = list(state.get("artifacts") or [])
+    if handoff.get("context_ref"):
+        pointers.append(handoff["context_ref"])
+
+    def _count(obj: Any) -> int:
+        if not obj:
+            return 0
+        return count_tokens(json.dumps(obj, ensure_ascii=False, sort_keys=True), encoding)
+
+    return {
+        "pointers": _count(pointers),
+        "decisions": _count(state.get("decisions")),
+        "constraints": _count(handoff.get("constraints")),
+        "derived": _count(state.get("derived")),
+        "crew": _count(handoff.get("crew")),
+        "rag": _count(handoff.get("rag")),
+    }
 
 
 def account_retrieval(
@@ -198,9 +248,47 @@ def account_retrieval(
     return record(config, event) if record_event else event
 
 
-def summarize(config: Config) -> dict[str, Any]:
-    """Aggregate metrics.jsonl into totals overall and per kind."""
-    path = config.metrics
+def account_scaffold(
+    config: Config,
+    *,
+    prompt_text: str,
+    kind_detail: str,
+    sid: str | None = None,
+    record_event: bool = True,
+) -> dict[str, Any]:
+    """Count per-spawn scaffolding (the wrapper prompt + crew block) re-emitted to a
+    runner — tokens that land in the receiver's window every spawn but the ledger
+    never counted. baseline/saved are 0 (this is overhead, not a pointer saving);
+    ``summarize`` renders the new ``scaffold`` kind for free.
+
+    NOTE: the call-site wiring (recording the finalized prompt at real spawn time)
+    is added in Phase 3, where the scaffold-drop is measured; the prompt is not
+    cleanly available at the spawn chokepoint (it is embedded in argv, runner-
+    dependent), so it needs a small thread-through that G0 does not require.
+    """
+    encoding = config.tokens_cfg.get("encoding", "cl100k_base")
+    actual = count_tokens(prompt_text, encoding)
+    event = {
+        "kind": "scaffold",
+        "detail": kind_detail,
+        "sid": sid,
+        "actual_tokens": actual,
+        "baseline_tokens": 0,
+        "saved_tokens": 0,
+        "exact": using_tiktoken(encoding),
+    }
+    return record(config, event) if record_event else event
+
+
+def aggregate_metrics(path: Path) -> dict[str, Any]:
+    """Aggregate a ``metrics.jsonl`` file into totals overall and per kind.
+
+    The pure join engine behind :func:`summarize`: it takes a path rather than a
+    :class:`Config`, so off-ledger files (e.g. a benchmark arm's recorded
+    ``with.metrics.jsonl``) aggregate through the *same* code that powers
+    ``pigeon metrics`` — which is what lets ``bench_join`` reproduce a published
+    result instead of re-deriving it.
+    """
     overall: dict[str, Any] = {"events": 0, "actual_tokens": 0,
                                "baseline_tokens": 0, "saved_tokens": 0}
     by_kind: dict[str, dict[str, int]] = {}
@@ -229,6 +317,11 @@ def summarize(config: Config) -> dict[str, Any]:
     base = overall["baseline_tokens"]
     overall["reduction_pct"] = round(100.0 * saved / base, 1) if base else 0.0
     return {"overall": overall, "by_kind": by_kind}
+
+
+def summarize(config: Config) -> dict[str, Any]:
+    """Aggregate the configured ``metrics.jsonl`` into totals overall and per kind."""
+    return aggregate_metrics(config.metrics)
 
 
 def format_summary(summary: dict[str, Any], *, exact: bool) -> str:

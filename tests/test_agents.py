@@ -21,8 +21,10 @@ def test_detect_marks_found_versions_and_configured(repo, monkeypatch):
     assert by["opencode"]["configured"] is True
     # an absent CLI is never marked configured
     assert by["aider"]["configured"] is False
-    # runner-ready CLIs carry a template; unknown-invocation ones do not
-    assert by["claude"]["runner_template"] and by["codex"]["runner_template"] is None
+    # runner-ready CLIs carry a template (claude, codex via `codex exec`);
+    # unknown-invocation ones do not (aider)
+    assert by["claude"]["runner_template"] and by["codex"]["runner_template"]
+    assert by["aider"]["runner_template"] is None
 
 
 def test_configured_detects_binary_even_when_wrapped(repo, monkeypatch):

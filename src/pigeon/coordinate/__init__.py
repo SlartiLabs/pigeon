@@ -153,6 +153,23 @@ DEFAULT_PROMPT = (
     "(from '{task_id}' to '" + COORDINATOR + "')."
 )
 
+# Lever-1 Move 1 ("say-once scaffolding"): the irreducible per-spawn delta only —
+# identity, where to start, do-the-step-and-hand-back. The protocol prose
+# (constraints are hard rules, the handoff contract) lives in the auto-loaded
+# AGENTS.md, so it is not re-emitted every spawn. Opt-in via
+# ``coordinate.terse_scaffold``; the ``scaffold`` kind measures the drop.
+TERSE_PROMPT = (
+    "You are sub-agent '{task_id}' in pigeon session '{sid}'. "
+    "Read your handoff at {handoff}, then follow AGENTS.md. "
+    "Do only the 'doing' step; hand back with `pigeon handoff` "
+    "(from '{task_id}' to '" + COORDINATOR + "')."
+)
+
+
+def _scaffold_prompt(config: Config) -> str:
+    """The per-spawn wrapper prompt template (terse when configured)."""
+    return TERSE_PROMPT if config.coordinate_cfg.get("terse_scaffold") else DEFAULT_PROMPT
+
 def crew_instructions(crew: dict[str, Any],
                       playbooks_rel: str = "the memory playbooks dir") -> str:
     """Render a crew block as marching orders for the receiving agent.
@@ -960,6 +977,75 @@ def _fill(template: str, subs: dict[str, str]) -> str:
     return out
 
 
+def _transitive_ancestors(tasks: list[dict[str, Any]]) -> dict[str, set[str]]:
+    """``task_id`` → the full set of transitive upstream task ids (its ``needs``
+    closure). A constraint discovered by any ancestor must reach a downstream
+    carrier, even when the chain is A→B→C and C only directly ``needs`` B —
+    otherwise the residue dies one hop short of where it is needed."""
+    direct = {t["id"]: set(t.get("needs") or []) for t in tasks}
+
+    def walk(tid: str, seen: set[str]) -> set[str]:
+        for up in direct.get(tid, ()):
+            if up not in seen:
+                seen.add(up)
+                walk(up, seen)
+        return seen
+
+    return {tid: walk(tid, set()) for tid in direct}
+
+
+def _upstream_derived_markdown(config: Config, sid: str, needs: list[str]) -> str:
+    """Render the ``state.derived`` residue emitted by this task's direct upstreams
+    as a visible markdown block for the receiver's prompt (Lever 2 — carry only the
+    irreducible reasoning; point at code for the rest).
+
+    Buried JSON is under-attended (the panel's correction): a constraint the
+    receiver must honor is surfaced as top-level markdown, not left for the agent
+    to dig out of the handoff. Reads the most recent handoff per upstream task that
+    carries a non-empty ``derived``. Returns ``""`` when there is nothing to carry.
+    """
+    if not needs:
+        return ""
+    want = set(needs)
+    latest: dict[str, dict[str, Any]] = {}
+    hdir = config.handoffs_dir
+    if not hdir.is_dir():
+        return ""
+    for path in sorted(hdir.glob(f"{sid}-*.json")):  # oldest -> newest index
+        try:
+            obj = ho.load_handoff(path, config)
+        except (ho.HandoffValidationError, json.JSONDecodeError, OSError):
+            continue
+        frm = obj.get("from")
+        derived = (obj.get("state") or {}).get("derived")
+        if frm in want and derived:
+            latest[frm] = derived  # later index wins
+    if not latest:
+        return ""
+
+    lines = ["", "", "## Carried reasoning (state.derived from upstream)",
+             "The upstream carrier recorded reasoning you CANNOT cheaply re-derive "
+             "from the code. Treat each as a hard rule; point at the code for "
+             "everything else."]
+    for frm in needs:
+        d = latest.get(frm)
+        if not d:
+            continue
+        lines.append(f"\n**from `{frm}`:**")
+        for c in (d.get("constraint_found") or []):
+            lines.append(f"- constraint: {c}")
+        for r in (d.get("ruled_out") or []):
+            if isinstance(r, dict):
+                lines.append(f"- ruled out `{r.get('path','')}`: {r.get('reason','')}")
+        if d.get("rationale"):
+            lines.append(f"- rationale: {d['rationale']}")
+        if d.get("next_action"):
+            lines.append(f"- next action: {d['next_action']}")
+        for q in (d.get("open_questions") or []):
+            lines.append(f"- open question: {q}")
+    return "\n".join(lines)
+
+
 def _build_command(
     task: dict[str, Any],
     config: Config,
@@ -968,6 +1054,7 @@ def _build_command(
     *,
     skip_permissions: bool,
     telemetry: bool = False,
+    ancestors: set[str] | None = None,
 ) -> list[str]:
     ccfg = config.coordinate_cfg
     subs = {
@@ -976,10 +1063,16 @@ def _build_command(
         "task_id": task["id"],
         "sid": sid,
     }
-    prompt = _fill(task.get("prompt") or DEFAULT_PROMPT, subs)
+    prompt = _fill(task.get("prompt") or _scaffold_prompt(config), subs)
     if task.get("crew"):
         playbooks_rel = str(config.memory_dir.relative_to(config.root) / "playbooks")
         prompt += " " + crew_instructions(task["crew"], playbooks_rel)
+    # Lever 2: inject the irreducible reasoning any TRANSITIVE upstream carried —
+    # the full needs closure, so a constraint from hop 1 reaches hop 3 even when
+    # the receiver only directly needs hop 2. Falls back to direct needs when the
+    # closure isn't supplied (e.g. a unit-test or single-task call).
+    upstreams = sorted(ancestors) if ancestors is not None else (task.get("needs") or [])
+    prompt += _upstream_derived_markdown(config, sid, upstreams)
     subs["prompt"] = prompt
     # {model} is substituted ONLY when a model resolved (direct `model:` or a
     # `model_pool:`). Absent that, it is never added to subs, so a template with
@@ -993,6 +1086,19 @@ def _build_command(
     if task.get("telemetry", telemetry):
         cmd += ccfg.get("telemetry_flags", {}).get(task["runner"], [])
     return cmd
+
+
+def _prompt_from_cmd(cmd: list[str], runner_template: list[str]) -> str | None:
+    """Recover the finalized prompt arg from a built command.
+
+    The runner template marks the prompt slot with a ``{prompt}`` placeholder;
+    the same positional arg in the filled ``cmd`` is the exact wrapper-prompt +
+    crew string re-emitted to the runner. Returns ``None`` if the template has no
+    ``{prompt}`` slot (so a custom template never mis-attributes scaffolding)."""
+    for i, arg in enumerate(runner_template):
+        if "{prompt}" in arg:
+            return cmd[i] if i < len(cmd) else None
+    return None
 
 
 # ------------------------------------------------------------------ worktrees
@@ -1235,6 +1341,10 @@ def _run_task(
             env.update(_opencode_permission_env(cmd, config))
             proc = subprocess.Popen(
                 cmd, cwd=cwd or config.root,
+                stdin=subprocess.DEVNULL,  # headless batch: never inherit pigeon's
+                                           # stdin. Some agent CLIs (e.g. agy) block
+                                           # reading stdin for a "next message" and
+                                           # never exit; DEVNULL gives immediate EOF.
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 bufsize=0,          # unbuffered BINARY: select() and readline()
                 env=env,            # see the same bytes (a buffered text wrapper
@@ -1441,8 +1551,10 @@ def run_coordinate(
         artifacts = list(task.get("artifacts") or [])
         if do_pack and task.get("pack"):
             from .. import pack as pack_mod  # lazy: avoids a module cycle
-            bundle = pack_mod.pack(config, task["doing"],
-                                   max_tokens=int(task.get("pack_max_tokens", 4000)))
+            ccfg = config.coordinate_cfg
+            max_tokens = int(task.get("pack_max_tokens", ccfg.get("pack_max_tokens", 4000)))
+            top_k = int(task.get("pack_top_k", ccfg.get("pack_top_k", 5)))
+            bundle = pack_mod.pack(config, task["doing"], max_tokens=max_tokens, top_k=top_k)
             artifacts.append(f"repo://{bundle['path']}")
             print(f"[{task['id']}] packed context: {bundle['path']} "
                   f"({bundle['tokens']['actual_tokens']} tokens)")
@@ -1464,6 +1576,11 @@ def run_coordinate(
             salvaged_upstream=salvaged_upstream or None,
         )
 
+    # Transitive needs closure per task — drives Lever-2 multi-hop survival: the
+    # residue from any ancestor reaches a downstream carrier, not just its direct
+    # upstream. Computed once; the spawn closures below capture it.
+    ancestors_of = _transitive_ancestors(tasks)
+
     def _write_handoff_cmd(task: dict[str, Any],
                            injected: list[str],
                            salvaged_upstream: list[str] | None = None,
@@ -1479,7 +1596,8 @@ def run_coordinate(
         # are gitignored, so a fresh worktree does not contain them.
         handoff_ref = str(path) if task.get("isolation") == "worktree" else rel
         cmd = _build_command(task, config, handoff_ref, sid,
-                             skip_permissions=skip_permissions, telemetry=telemetry)
+                             skip_permissions=skip_permissions, telemetry=telemetry,
+                             ancestors=ancestors_of.get(task["id"]))
         return cmd, rel
 
     def _log_paths(task: dict[str, Any]) -> tuple[Path, str]:
@@ -1512,7 +1630,8 @@ def run_coordinate(
                 path="(speculative)")
             disp_cmd = _build_command(
                 task, config, "<handoff resolved at spawn>", sid,
-                skip_permissions=skip_permissions, telemetry=telemetry)
+                skip_permissions=skip_permissions, telemetry=telemetry,
+                ancestors=ancestors_of.get(task["id"]))
             recorder.task(task["id"], command=disp_cmd, log=log_rel)
             deferred.add(task["id"])
             commands.append((task, disp_cmd, log_path))
@@ -1559,6 +1678,13 @@ def run_coordinate(
 
     def _execute(task: dict[str, Any], cmd: list[str], log_path: Path) -> int:
         tid = task["id"]
+        # Account the per-spawn scaffolding (wrapper prompt + crew) the runner
+        # receives every launch — tokens the ledger never counted. Recorded here,
+        # the single real-spawn chokepoint (never on dry-run), once per launch.
+        prompt_text = _prompt_from_cmd(cmd, ccfg["runners"].get(task["runner"], []))
+        if prompt_text is not None:
+            tokens.account_scaffold(config, prompt_text=prompt_text,
+                                    kind_detail=f"{task['runner']}:{tid}", sid=sid)
         if task.get("isolation") != "worktree":
             rc, _kill_reason = _run_task(tid, cmd, config, log_path, recorder,
                                          sid=sid, runner=task["runner"],

@@ -161,6 +161,15 @@ def cmd_handoff(args: argparse.Namespace) -> int:
         f"tokens: actual={ev['actual_tokens']} baseline={ev['baseline_tokens']} "
         f"saved={ev['saved_tokens']}"
     )
+    over = tokens.derived_budget_status(cfg, handoff)
+    if over is not None:
+        tok, budget = over
+        print(
+            f"warning: state.derived is {tok} tokens (> budget {budget}); "
+            "the reasoning residue may be reinventing the overhead it should save "
+            "— tighten it or point at code for re-derivable parts.",
+            file=sys.stderr,
+        )
     return 0
 
 

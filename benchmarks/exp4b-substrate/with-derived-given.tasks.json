@@ -1,0 +1,28 @@
+{
+  "sid": "exp4b-wd",
+  "_note": "with-derived for R_low: there is NO in-code cue, so the architect is GIVEN the convention out-of-band IN ITS PROMPT (never written to disk) and records it in state.derived. This is the Exp-4 / Fork-A structure. Downstream still receives only pristine code + TASK.md, so the residue is the only path.",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "doing": "You are the architect. The external clearing partner's v2 sync wire contract for an Account is FIXED and is given to you here (it is NOT in the code): keys are exactly 'acct' (the name), 'cents' (the balance_cents int), 'ts' (created as epoch SECONDS, int, UTC); the 'note' key is included only when note is not None; from_wire must be lenient (accept cents as int or numeric string, ts as int or float, missing note -> None) and round-trip with to_wire. Do NOT edit any file, and do NOT write these details into any file. Record them in state.derived.constraint_found by running: pigeon handoff --json-in - <<'EOF' {\"schema_version\":\"1.2\",\"sid\":\"exp4b-wd\",\"from\":\"architect\",\"to\":\"Coordinator\",\"state\":{\"done\":[\"received the v2 wire contract\"],\"doing\":\"implementer adds to_wire/from_wire per the carried constraints\",\"derived\":{\"constraint_found\":[\"...the wire contract above, concretely...\"]}}} EOF . Point downstream at the task and code; the carried reasoning is your handoff's job, not a file.",
+      "pack": false
+    },
+    {
+      "id": "to_wire",
+      "runner": "sonnet",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/account.py", "repo://TASK.md"],
+      "doing": "Implement the method Account.to_wire(self) -> dict in ledger/account.py per TASK.md and the carried constraints in your prompt (see '## Carried reasoning'). Do NOT implement from_wire. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    },
+    {
+      "id": "from_wire",
+      "runner": "sonnet",
+      "needs": ["to_wire"],
+      "receives": ["repo://ledger/account.py", "repo://TASK.md"],
+      "doing": "Implement the classmethod Account.from_wire(cls, w: dict) -> Account in ledger/account.py per TASK.md and the carried constraints in your prompt (see '## Carried reasoning'); round-trip with to_wire. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}

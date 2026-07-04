@@ -45,10 +45,10 @@ KNOWN_AGENTS: list[AgentCLI] = [
              "unknown", True, "Generic -p agent runner."),
     AgentCLI("gemini", "gemini", ["gemini", "-p", "{prompt}"],
              "free-tier", False, "Google Gemini CLI; loads GEMINI.md."),
-    AgentCLI("codex", "codex", None,
+    AgentCLI("codex", "codex", ["codex", "exec", "{prompt}"],
              "metered", True,
-             "OpenAI Codex CLI; reads AGENTS.md. Configure a runner for its "
-             "non-interactive mode."),
+             "OpenAI Codex CLI (`codex exec`); reads AGENTS.md. Skip approvals with "
+             "--dangerously-bypass-approvals-and-sandbox; machine usage via --json."),
     AgentCLI("crush", "crush", None,
              "free-models", True, "Charm Crush; multi-provider, reads AGENTS.md."),
     AgentCLI("copilot", "copilot", None,
@@ -57,6 +57,11 @@ KNOWN_AGENTS: list[AgentCLI] = [
              "metered", True, "Cursor CLI agent."),
     AgentCLI("qwen", "qwen", ["qwen", "-p", "{prompt}"],
              "free-tier", True, "Qwen Code CLI (gemini-cli fork); reads AGENTS.md."),
+    AgentCLI("mimo", "mimo", ["mimo", "run", "{prompt}"],
+             "free-models", True,
+             "Xiaomi MiMo-Code (opencode fork; `mimo run`). -m provider/model; skip "
+             "with --dangerously-skip-permissions; usage via --format json (opencode "
+             "shape). Works out of the box, no login needed."),
     AgentCLI("aider", "aider", None,
              "byo-key", False, "Aider; bring-your-own-key pair programmer."),
 ]

@@ -108,6 +108,18 @@ def _render_session(sid: str, runs: list[dict[str, Any]],
             lines.append(f"- `{key}` = {json.dumps(val, ensure_ascii=False)}  ({rel})")
         lines.append("")
 
+    # Reasoning residue (Lever 2): the irreducible constraints a carrier discovered.
+    # Harvested into the durable board alongside decisions so a constraint found at
+    # hop 1 is queryable by any later hop / session, not stranded in one handoff.
+    constraints = [(frm, c, rel) for rel, h in handoffs
+                   for frm in [h.get("from")]
+                   for c in ((h.get("state") or {}).get("derived") or {}).get("constraint_found", [])]
+    if constraints:
+        lines += ["## Constraints discovered"]
+        for frm, c, rel in constraints:
+            lines.append(f"- {c}  (from **{frm}**, {rel})")
+        lines.append("")
+
     handbacks = [(h["from"], (h.get("state") or {}).get("doing", ""), rel)
                  for rel, h in handoffs if h.get("to") == coordinate.COORDINATOR]
     if handbacks:

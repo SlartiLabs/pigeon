@@ -39,13 +39,14 @@ def test_parse_schema_version():
 
 
 def test_is_compatible_policy():
-    # current is 1.1 here, but pin it explicitly so the test states the policy.
-    assert ho.is_compatible("1.0", current="1.1")   # same major, older minor
-    assert ho.is_compatible("1.1", current="1.1")   # exact
-    assert not ho.is_compatible("1.2", current="1.1")  # newer minor -> reject
-    assert not ho.is_compatible("2.0", current="1.1")  # newer major -> reject
-    assert not ho.is_compatible("0.9", current="1.1")  # older major -> reject
-    assert not ho.is_compatible("garbage", current="1.1")
+    # pin current explicitly so the test states the policy independent of the bump.
+    assert ho.is_compatible("1.0", current="1.2")   # same major, older minor
+    assert ho.is_compatible("1.1", current="1.2")   # same major, older minor
+    assert ho.is_compatible("1.2", current="1.2")   # exact
+    assert not ho.is_compatible("1.3", current="1.2")  # newer minor -> reject
+    assert not ho.is_compatible("2.0", current="1.2")  # newer major -> reject
+    assert not ho.is_compatible("0.9", current="1.2")  # older major -> reject
+    assert not ho.is_compatible("garbage", current="1.2")
     # the shipped constant is what production actually gates on
     assert ho.is_compatible(SCHEMA_VERSION)
 
@@ -58,11 +59,11 @@ def test_compatible_older_minor_is_accepted(repo):
 
 
 def test_newer_minor_rejected_with_clear_error(repo):
-    h = _valid(schema_version="1.2")
+    h = _valid(schema_version="1.3")  # a minor newer than the current reader
     with pytest.raises(ho.HandoffCompatibilityError) as exc:
         ho.validate_handoff(h, repo)
     msg = str(exc.value)
-    assert "1.2" in msg and "upgrade pigeon" in msg
+    assert "1.3" in msg and "upgrade pigeon" in msg
 
 
 def test_newer_major_rejected_as_upgrade_pigeon(repo):
@@ -153,7 +154,7 @@ def test_cli_migrate_to_stdout(repo, tmp_path, capsys):
     out = capsys.readouterr()
     emitted = json.loads(out.out)
     assert emitted["schema_version"] == SCHEMA_VERSION
-    assert "1.0 -> 1.1" in out.err
+    assert f"1.0 -> {SCHEMA_VERSION}" in out.err
 
 
 def test_cli_migrate_in_place(repo, tmp_path, capsys):
@@ -179,7 +180,7 @@ def test_cli_migrate_rejects_then_accepts_roundtrip(repo, tmp_path, capsys):
     older_major = _valid(schema_version="0.9")
     with pytest.raises(ho.HandoffCompatibilityError):
         ho.validate_handoff(older_major, repo)
-    # ...and a real 1.0 -> 1.1 carry-forward produces a gate-passing handoff
+    # ...and a real 1.0 -> current carry-forward produces a gate-passing handoff
     src = _write_handoff(tmp_path, incompatible)
     assert main(["--root", str(repo.root), "migrate", str(src),
                  "--output", str(tmp_path / "fixed.json")]) == 0
@@ -214,7 +215,7 @@ def test_schema_id_is_a_pigeon_url():
     assert "agentctx.dev" not in schema["$id"]
     assert "pigeon" in schema["$id"]
     # the version suffix init.py greps for must survive the rename
-    assert "handoff-1.1.json" in schema["$id"]
+    assert f"handoff-{SCHEMA_VERSION}.json" in schema["$id"]
 
 
 def test_upgrade_handoff_rejects_non_dict_input():

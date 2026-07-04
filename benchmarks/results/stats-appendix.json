@@ -1,0 +1,209 @@
+{
+  "clopper_pearson_cis": [
+    {
+      "label": "Exp.4 pointers+derived",
+      "x": 8,
+      "n": 8,
+      "ci95_clopper_pearson": [
+        0.631,
+        1.0
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.4 pointers-only",
+      "x": 0,
+      "n": 8,
+      "ci95_clopper_pearson": [
+        0.0,
+        0.369
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.2 Fork-A bridge",
+      "x": 5,
+      "n": 5,
+      "ci95_clopper_pearson": [
+        0.478,
+        1.0
+      ]
+    },
+    {
+      "label": "Exp.2 Fork-A no-bridge (Exp.4 'cold')",
+      "x": 0,
+      "n": 5,
+      "ci95_clopper_pearson": [
+        0.0,
+        0.522
+      ]
+    },
+    {
+      "label": "Exp.5 pointers-only (N=12)",
+      "x": 12,
+      "n": 12,
+      "ci95_clopper_pearson": [
+        0.735,
+        1.0
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.5 with-derived (N=12)",
+      "x": 12,
+      "n": 12,
+      "ci95_clopper_pearson": [
+        0.735,
+        1.0
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.4b R_low",
+      "x": 0,
+      "n": 8,
+      "ci95_clopper_pearson": [
+        0.0,
+        0.369
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.4b R_mid",
+      "x": 8,
+      "n": 8,
+      "ci95_clopper_pearson": [
+        0.631,
+        1.0
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.4c Du pointers-only",
+      "x": 12,
+      "n": 12,
+      "ci95_clopper_pearson": [
+        0.735,
+        1.0
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.4c Du with-derived",
+      "x": 12,
+      "n": 12,
+      "ci95_clopper_pearson": [
+        0.735,
+        1.0
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.4c Dr pointers-only (difficulty control, N=12)",
+      "x": 12,
+      "n": 12,
+      "ci95_clopper_pearson": [
+        0.735,
+        1.0
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.3 pack_4000",
+      "x": 3,
+      "n": 3,
+      "ci95_clopper_pearson": [
+        0.292,
+        1.0
+      ]
+    },
+    {
+      "label": "Exp.3 pack_2000",
+      "x": 3,
+      "n": 3,
+      "ci95_clopper_pearson": [
+        0.292,
+        1.0
+      ]
+    },
+    {
+      "label": "Exp.3 pack_1000",
+      "x": 3,
+      "n": 3,
+      "ci95_clopper_pearson": [
+        0.292,
+        1.0
+      ]
+    }
+  ],
+  "exact_2x2_tests": [
+    {
+      "label": "Exp.4: pointers+derived (8/8) vs pointers-only (0/8)",
+      "table": {
+        "arm1": "8/8",
+        "arm2": "0/8"
+      },
+      "fisher_exact_two_sided_p": 0.000155,
+      "barnard_exact_two_sided_p": 3.1e-05
+    },
+    {
+      "label": "Exp.4b: R_mid (8/8) vs R_low (0/8)",
+      "table": {
+        "arm1": "8/8",
+        "arm2": "0/8"
+      },
+      "fisher_exact_two_sided_p": 0.000155,
+      "barnard_exact_two_sided_p": 3.1e-05
+    }
+  ],
+  "tost_equivalence": [
+    {
+      "label": "Exp.4c GATE 2: PO_Du (12/12) vs PO_Dr (12/12)",
+      "arms": {
+        "arm1": "12/12",
+        "arm2": "12/12"
+      },
+      "method": "Newcombe hybrid Wilson-score CI on risk difference",
+      "conf_level": 0.9,
+      "diff_ci": [
+        -0.184,
+        0.184
+      ],
+      "margin": 0.2,
+      "equivalent_at_margin": true,
+      "min_margin_for_equivalence": 0.184
+    },
+    {
+      "label": "Exp.4c residue-null: Du with-derived (12/12) vs Du pointers-only (12/12)",
+      "arms": {
+        "arm1": "12/12",
+        "arm2": "12/12"
+      },
+      "method": "Newcombe hybrid Wilson-score CI on risk difference",
+      "conf_level": 0.9,
+      "diff_ci": [
+        -0.184,
+        0.184
+      ],
+      "margin": 0.2,
+      "equivalent_at_margin": true,
+      "min_margin_for_equivalence": 0.184
+    },
+    {
+      "label": "Exp.5 (natural): +derived (12/12) vs pointers-only (12/12)",
+      "arms": {
+        "arm1": "12/12",
+        "arm2": "12/12"
+      },
+      "method": "Newcombe hybrid Wilson-score CI on risk difference",
+      "conf_level": 0.9,
+      "diff_ci": [
+        -0.184,
+        0.184
+      ],
+      "margin": 0.2,
+      "equivalent_at_margin": true,
+      "min_margin_for_equivalence": 0.184
+    }
+  ]
+}

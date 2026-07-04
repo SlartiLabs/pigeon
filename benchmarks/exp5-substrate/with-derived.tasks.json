@@ -1,0 +1,27 @@
+{
+  "sid": "exp5-wd",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "doing": "You are the architect. Read TASK.md and ledger/account.py and decide the v2 sync wire format for Account.to_wire / from_wire. Do NOT edit any file under ledger/. While reading the code, note any NON-OBVIOUS constraint a downstream implementer could easily get wrong (e.g. wire-key conventions an external partner depends on, where the idiomatic default differs). Record what you discover in state.derived.constraint_found, one item per constraint, by running: pigeon handoff --json-in - <<'EOF' {\"schema_version\":\"1.2\",\"sid\":\"exp5-wd\",\"from\":\"architect\",\"to\":\"Coordinator\",\"state\":{\"done\":[\"chose the v2 wire format\"],\"doing\":\"implementer adds to_wire/from_wire per the carried constraints\",\"derived\":{\"constraint_found\":[\"...your discovered constraints, concretely...\"]}}} EOF . Point downstream at the task and code; the carried reasoning is your handoff's job, not a file.",
+      "pack": false
+    },
+    {
+      "id": "to_wire",
+      "runner": "sonnet",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/account.py", "repo://TASK.md"],
+      "doing": "Implement the method Account.to_wire(self) -> dict in ledger/account.py per TASK.md and the carried constraints in your prompt (see '## Carried reasoning'). Do NOT implement from_wire. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    },
+    {
+      "id": "from_wire",
+      "runner": "sonnet",
+      "needs": ["to_wire"],
+      "receives": ["repo://ledger/account.py", "repo://TASK.md"],
+      "doing": "Implement the classmethod Account.from_wire(cls, w: dict) -> Account in ledger/account.py per TASK.md and the carried constraints in your prompt (see '## Carried reasoning'); round-trip with to_wire. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}

@@ -126,11 +126,19 @@ def _migrate_1_0_to_1_1(handoff: dict[str, Any]) -> dict[str, Any]:
     return dict(handoff)
 
 
+def _migrate_1_1_to_1_2(handoff: dict[str, Any]) -> dict[str, Any]:
+    """1.1 -> 1.2: the optional ``state.derived`` reasoning-residue field was
+    added. It is a pure superset — every 1.1 handoff is already a valid 1.2 — so
+    the data carries forward untouched (the caller bumps the recorded version)."""
+    return dict(handoff)
+
+
 # Ordered, stepwise migrations: source version -> (next version, transform).
 # Each step carries a handoff across exactly one version boundary; the chain is
 # walked until the target is reached, so a future bump only adds one entry here.
 _MIGRATIONS: dict[str, tuple[str, Callable[[dict[str, Any]], dict[str, Any]]]] = {
     "1.0": ("1.1", _migrate_1_0_to_1_1),
+    "1.1": ("1.2", _migrate_1_1_to_1_2),
 }
 
 
@@ -182,6 +190,7 @@ def build_handoff(
     doing: str,
     artifacts: list[str] | None = None,
     decisions: dict[str, Any] | None = None,
+    derived: dict[str, Any] | None = None,
     rag: dict[str, Any] | None = None,
     constraints: dict[str, Any] | None = None,
     crew: dict[str, Any] | None = None,
@@ -195,6 +204,8 @@ def build_handoff(
         state["artifacts"] = list(artifacts)
     if decisions:
         state["decisions"] = dict(decisions)
+    if derived:
+        state["derived"] = dict(derived)
     if salvaged_upstream:
         state["salvaged_upstream"] = list(salvaged_upstream)
     handoff: dict[str, Any] = {

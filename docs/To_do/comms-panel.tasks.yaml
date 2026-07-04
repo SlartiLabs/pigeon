@@ -1,0 +1,49 @@
+sid: comms-panel
+# Phase-0 multi-model panel: diverse critique of the carrier-comms plan, and a
+# live dogfood of the cross-model channel (validates the stdin=DEVNULL fix end to
+# end). Each critic is READONLY + SHARED so its findings file persists under
+# .pigeon/ (a worktree's writes would be discarded). agy is pure-edit (no shell).
+tasks:
+  - id: critique-mimo
+    runner: oc-mimo
+    readonly: true
+    isolation: shared
+    receives:
+      - "repo://docs/design/carrier-comms.md"
+    doing: >-
+      Read docs/design/carrier-comms.md (your receives pointer) — the two-lever
+      carrier-comms optimization plan. Critique it adversarially: where is it
+      wrong, what's missing, where will it fail, and what must be measured that
+      isn't? A well-argued "this premise is false / this gate isn't falsifiable /
+      the honest answer here is no" is the most valuable result. Write your
+      findings to .pigeon/coordinate/reviews/comms/mimo.md (create the directory if
+      needed). Do NOT edit any repo source. Do NOT run shell commands or tests —
+      only read the doc and write your findings file, then hand back.
+  - id: critique-nemotron
+    runner: oc-nemotron
+    readonly: true
+    isolation: shared
+    receives:
+      - "repo://docs/design/carrier-comms.md"
+    doing: >-
+      Read docs/design/carrier-comms.md (your receives pointer) — the two-lever
+      carrier-comms optimization plan. Critique it adversarially and independently:
+      where is it wrong, what's missing, where will it fail, what must be measured?
+      Be specific. Write your findings to
+      .pigeon/coordinate/reviews/comms/nemotron.md (create the directory if
+      needed). Do NOT edit any repo source. Do NOT run shell commands or tests —
+      only read the doc and write your findings file, then hand back.
+  - id: critique-agy
+    runner: agy
+    readonly: true
+    isolation: shared
+    receives:
+      - "repo://docs/design/carrier-comms.md"
+    doing: >-
+      Read docs/design/carrier-comms.md (your receives pointer) — the two-lever
+      carrier-comms optimization plan. Critique it adversarially and independently:
+      where is it wrong, what's missing, where will it fail, what must be measured?
+      Be specific. Using only your file-editing tools, write your findings to
+      .pigeon/coordinate/reviews/comms/agy.md (create the directory if needed). Do
+      NOT edit any repo source. Do NOT run any shell commands or tests — only read
+      the doc and write your findings file, then hand back.

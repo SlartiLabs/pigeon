@@ -73,6 +73,9 @@ def build_graph(config: Config) -> dict[str, Any]:
                 e = {"src": s, "rel": "decided", "dst": d, "provenance": rel_path,
                      "value": val}
                 edges.append(e)
+            for con in (state.get("derived") or {}).get("constraint_found") or []:
+                c = node(f"constraint:{con}", "constraint", con)
+                edge(s, "discovered", c, rel_path)
             for artifact in state.get("artifacts") or []:
                 edge(s, "references",
                      node(f"artifact:{artifact}", "artifact", artifact), rel_path)

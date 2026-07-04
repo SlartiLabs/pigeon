@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from pigeon import SCHEMA_VERSION
 from pigeon import coordinate as co
 from pigeon import handoff as ho
 from pigeon.config import Config, load_config
@@ -221,6 +222,149 @@ def test_custom_log_dir(repo, tmp_path):
     assert (log_dir / "co1-a.log").is_file()
 
 
+# --------------------------------------------------------- Lever-1 knobs (L1)
+def test_terse_scaffold_drops_protocol_prose(repo):
+    """terse_scaffold yields the say-once wrapper; default stays verbose (byte-identical)."""
+    cfg = _setup(repo, runners={"pyp": [sys.executable, "-c", "print('ok')", "{prompt}"]})
+    assert co._scaffold_prompt(cfg) is co.DEFAULT_PROMPT          # default unchanged
+    cfg.coordinate_cfg["terse_scaffold"] = True
+    terse = co._scaffold_prompt(cfg)
+    assert terse is co.TERSE_PROMPT
+    # the terse variant is strictly shorter and drops the constraints prose
+    assert len(terse) < len(co.DEFAULT_PROMPT)
+    assert "hard rule" not in terse and "hard rule" in co.DEFAULT_PROMPT
+    # the per-spawn command reflects the selected template
+    task = {"id": "a", "runner": "pyp", "doing": "x"}
+    cfg.coordinate_cfg["terse_scaffold"] = True
+    terse_cmd = " ".join(co._build_command(task, cfg, "h.json", "s", skip_permissions=False))
+    cfg.coordinate_cfg["terse_scaffold"] = False
+    full_cmd = " ".join(co._build_command(task, cfg, "h.json", "s", skip_permissions=False))
+    assert "Treat every entry" in full_cmd and "Treat every entry" not in terse_cmd
+    assert len(terse_cmd) < len(full_cmd)
+
+
+def test_pack_knobs_read_from_config(repo, monkeypatch):
+    """pack_max_tokens / pack_top_k come from coordinate config."""
+    import pigeon.pack as pack_mod
+    seen = {}
+    def fake_pack(config, task, *, max_tokens=4000, top_k=5, since=None):
+        seen["max_tokens"] = max_tokens
+        seen["top_k"] = top_k
+        return {"path": ".pigeon/context/x.md", "tokens": {"actual_tokens": 1}}
+    monkeypatch.setattr(pack_mod, "pack", fake_pack)
+
+    cfg = _setup(repo, runners={"py": _PY_OK})
+    cfg.coordinate_cfg["pack_max_tokens"] = 1500
+    cfg.coordinate_cfg["pack_top_k"] = 3
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "a", "runner": "py", "doing": "do it", "pack": True}]))
+    co.run_coordinate(tasks, cfg, dry_run=True)
+    assert seen == {"max_tokens": 1500, "top_k": 3}
+
+
+# ------------------------------------------------------- derived injection (L2)
+def test_upstream_derived_injected_as_markdown(repo):
+    """An upstream's state.derived is surfaced to the receiver as a markdown block."""
+    cfg = _setup(repo)
+    up = ho.build_handoff(
+        sid="s9", frm="architect", to="Coordinator", done=["analyzed"], doing="hand off",
+        derived={"constraint_found": ["wire keys are acct/cents/ts, NOT the field names"],
+                 "rationale": "external consumer is strict"},
+    )
+    ho.write_handoff(up, cfg)
+
+    md = co._upstream_derived_markdown(cfg, "s9", ["architect"])
+    assert "Carried reasoning" in md
+    assert "acct/cents/ts" in md
+    assert "rationale: external consumer is strict" in md
+    # a task that doesn't depend on the architect gets nothing
+    assert co._upstream_derived_markdown(cfg, "s9", ["someone_else"]) == ""
+    # no needs -> nothing
+    assert co._upstream_derived_markdown(cfg, "s9", []) == ""
+
+
+def test_derived_injection_reaches_the_spawn_command(repo):
+    """End-to-end: the derived markdown lands in the built runner command."""
+    cfg = _setup(repo, runners={"pyp": [sys.executable, "-c", "print('ok')", "{prompt}"]})
+    up = ho.build_handoff(sid="s9", frm="plan", to="Coordinator", done=[], doing="x",
+                          derived={"constraint_found": ["MUST omit null note key"]})
+    ho.write_handoff(up, cfg)
+    task = {"id": "impl", "runner": "pyp", "doing": "do it", "needs": ["plan"]}
+    cmd = co._build_command(task, cfg, "h.json", "s9", skip_permissions=False)
+    joined = " ".join(cmd)
+    assert "MUST omit null note key" in joined
+    assert "Carried reasoning" in joined
+
+
+def test_transitive_ancestors_closure():
+    """A→B→C: C's ancestor set is {A, B} even though C only directly needs B."""
+    tasks = [{"id": "A"}, {"id": "B", "needs": ["A"]}, {"id": "C", "needs": ["B"]}]
+    anc = co._transitive_ancestors(tasks)
+    assert anc["A"] == set()
+    assert anc["B"] == {"A"}
+    assert anc["C"] == {"A", "B"}
+
+
+def test_derived_survives_multiple_hops(repo):
+    """A constraint discovered at hop 1 reaches hop 3 via the transitive closure,
+    even though hop 3 only directly `needs` hop 2 (the multi-hop survival fix)."""
+    cfg = _setup(repo, runners={"pyp": [sys.executable, "-c", "print('ok')", "{prompt}"]})
+    # hop 1 (architect) discovers the constraint; hop 2 carries nothing new
+    ho.write_handoff(ho.build_handoff(
+        sid="s9", frm="architect", to="Coordinator", done=[], doing="x",
+        derived={"constraint_found": ["wire keys are acct/cents/ts"]}), cfg)
+    ho.write_handoff(ho.build_handoff(
+        sid="s9", frm="midhop", to="Coordinator", done=[], doing="y"), cfg)
+    # hop 3 only directly needs midhop, NOT architect
+    task = {"id": "final", "runner": "pyp", "doing": "z", "needs": ["midhop"]}
+    # without the closure (direct needs only): architect's constraint is LOST
+    direct = " ".join(co._build_command(task, cfg, "h.json", "s9", skip_permissions=False))
+    assert "acct/cents/ts" not in direct
+    # with the transitive closure: it survives to hop 3
+    closure = {"midhop", "architect"}
+    withanc = " ".join(co._build_command(task, cfg, "h.json", "s9",
+                                         skip_permissions=False, ancestors=closure))
+    assert "acct/cents/ts" in withanc
+
+
+def test_distill_harvests_derived_constraints(repo):
+    """distill writes a 'Constraints discovered' section from state.derived."""
+    from pigeon import distill
+    ho.write_handoff(ho.build_handoff(
+        sid="cdsess", frm="architect", to="impl", done=["spec"], doing="implement",
+        derived={"constraint_found": ["ts must be an int epoch, not ISO"]}), repo)
+    res = distill.distill_session(repo, "cdsess")
+    text = (repo.root / res["session"]).read_text(encoding="utf-8")
+    assert "Constraints discovered" in text
+    assert "ts must be an int epoch" in text
+
+
+# -------------------------------------------------------------- scaffold meter
+def test_real_run_records_scaffold(repo):
+    """A real spawn records the per-spawn wrapper prompt under the 'scaffold' kind."""
+    from pigeon import tokens as tk
+    # a runner template WITH a {prompt} slot (the script ignores the arg, exits 0)
+    cfg = _setup(repo, runners={"pyp": [sys.executable, "-c", "print('ok')", "{prompt}"]})
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "solo", "runner": "pyp", "doing": "do the thing"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+
+    sc = tk.summarize(cfg)["by_kind"].get("scaffold")
+    assert sc is not None, "expected a scaffold event from the real spawn"
+    assert sc["events"] == 1
+    assert sc["actual_tokens"] > 0
+    assert sc["baseline_tokens"] == 0  # overhead, never a transmitted saving
+
+
+def test_runner_without_prompt_slot_records_no_scaffold(repo):
+    """A custom template with no {prompt} placeholder never mis-attributes scaffolding."""
+    from pigeon import tokens as tk
+    cfg = _setup(repo)  # default {"py": _PY_OK}, which has no {prompt} slot
+    tasks = _write_tasks(repo.root, _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    assert "scaffold" not in tk.summarize(cfg)["by_kind"]
+
+
 # -------------------------------------------------------------- depth/budget
 def test_depth_guard_refuses_nested_coordination(repo, monkeypatch, capsys):
     cfg = _setup(repo)
@@ -276,6 +420,25 @@ def test_no_budget_means_no_ceiling(repo):
     assert capped.exhausted() is None
     capped.add(0, 0.002)
     assert "cost budget exhausted" in capped.exhausted()
+
+
+def test_runner_spawn_closes_stdin(repo, monkeypatch):
+    """Runners are headless batch processes: coordinate must spawn them with
+    stdin=DEVNULL. Without it the child inherits pigeon's stdin and a CLI that
+    reads stdin for a 'next message' (e.g. agy) blocks forever instead of getting
+    immediate EOF. Regression for that hang."""
+    cfg = _setup(repo)  # default {"py": _PY_OK}
+    seen: dict = {}
+    real_popen = co.subprocess.Popen
+
+    def spy(*args, **kwargs):
+        seen["stdin"] = kwargs.get("stdin", "INHERITED")
+        return real_popen(*args, **kwargs)
+
+    monkeypatch.setattr(co.subprocess, "Popen", spy)
+    tasks = _write_tasks(repo.root, _spec(tasks=[{"id": "a", "runner": "py", "doing": "x"}]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    assert seen["stdin"] == co.subprocess.DEVNULL
 
 
 # ----------------------------------------------------------------- worktrees
@@ -753,9 +916,9 @@ def test_crew_lands_in_handoff_prompt_and_manifest(repo, capsys):
         {"id": "api", "runner": "py", "doing": "build it", "crew": _CREW}]))
     assert co.run_coordinate(tasks, cfg, dry_run=True) == 0
 
-    # handoff: schema-validated 1.1 with the crew object intact
+    # handoff: schema-validated at the current contract version, crew object intact
     h = ho.load_handoff(next(cfg.handoffs_dir.glob("co1-*.json")), cfg)
-    assert h["schema_version"] == "1.1"
+    assert h["schema_version"] == SCHEMA_VERSION
     assert h["crew"] == _CREW
 
     # prompt: marching orders rendered into the spawn command
