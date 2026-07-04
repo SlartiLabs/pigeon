@@ -1,0 +1,5 @@
+trial,accept_rc,recovered,num_turns,cost_usd,wall_s,attempts,runners
+1,0,1,7,0.4849,260,1,architect=sonnet;refactor=mimo
+2,1,0,11,0.5117,101,1,architect=sonnet;refactor=mimo
+3,0,1,9,0.457,97,1,architect=sonnet;refactor=mimo
+4,0,1,10,0.3352,262,1,architect=sonnet;refactor=mimo
