@@ -39,11 +39,21 @@
       ]
     },
     {
-      "label": "Exp.5 pointers-only (manipulation check)",
-      "x": 8,
-      "n": 8,
+      "label": "Exp.5 pointers-only (N=12)",
+      "x": 12,
+      "n": 12,
       "ci95_clopper_pearson": [
-        0.631,
+        0.735,
+        1.0
+      ],
+      "cross_checked_against_source": true
+    },
+    {
+      "label": "Exp.5 with-derived (N=12)",
+      "x": 12,
+      "n": 12,
+      "ci95_clopper_pearson": [
+        0.735,
         1.0
       ],
       "cross_checked_against_source": true
@@ -180,18 +190,20 @@
       "min_margin_for_equivalence": 0.184
     },
     {
-      "label": "Exp.5 pointers-only re-derivation (8/8) vs ceiling",
-      "arm": "8/8",
-      "method": "one-sample Wilson-score CI vs reference ceiling p0=1.0",
+      "label": "Exp.5 (natural): +derived (12/12) vs pointers-only (12/12)",
+      "arms": {
+        "arm1": "12/12",
+        "arm2": "12/12"
+      },
+      "method": "Newcombe hybrid Wilson-score CI on risk difference",
       "conf_level": 0.9,
-      "ci": [
-        0.7473,
-        1.0
+      "diff_ci": [
+        -0.184,
+        0.184
       ],
       "margin": 0.2,
-      "equivalent_to_ceiling_at_margin": false,
-      "min_margin_for_equivalence": 0.2527,
-      "caveat": "This is a proxy for 'no headroom', not the two-arm TOST (+derived vs pointers-only, N=8 each) that PREREG-lever2-natural.md's primary test specifies. That arm was never run (routed away at the manipulation check per prereg Sec4), so the locked primary test remains unmet by this data."
+      "equivalent_at_margin": true,
+      "min_margin_for_equivalence": 0.184
     }
   ]
 }

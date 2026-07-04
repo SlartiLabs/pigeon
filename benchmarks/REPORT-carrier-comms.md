@@ -32,8 +32,8 @@ handoff channel and the context pigeon injects) and whether two levers improve i
 > when the constraint is **absent from the code**, same model, fully isolated, **8/8
 > with residue vs 0/8 without (N=8, CIs separated)**, at parity cost, surviving
 > a 3-hop chain (7a). **Exp. 5 bounds it:** when the constraint is *present and
-> recoverable* in the code, a capable receiver re-derives it **for free (8/8 pointers-only,
-> read-cue 8/8)**, so residue earns its tokens **iff the reasoning left no recoverable
+> recoverable* in the code, a capable receiver re-derives it **for free (12/12 pointers-only,
+> = 12/12 +derived, TOST-equivalent; read-cue 8/8)**, so residue earns its tokens **iff the reasoning left no recoverable
 > trace**, not merely when it is non-obvious. **Exp. 4b sharpens this to a step
 > function:** on a fixed-constraint ladder varying only cue salience, R\* is a **sharp
 > step on trace presence**, pointers-only **0/8 with no findable trace vs 8/8 with any
@@ -265,12 +265,17 @@ recoverable** in the code, just non-salient? Substrate (fallback, semi-synthetic
 boundary with a comment that external clients depend on the keys; the task neutrally asks
 for a v2 `to_wire`/`from_wire` "consistent with the codebase."
 
-**Manipulation check (prereg §4), pointers-only, N=8: 8/8 PASS, read-cue 8/8.** A
-capable sonnet receiver re-derives the convention **for free**, and `read-cue 8/8` is
-the mechanism: every trial read `to_legacy` and matched it, so this is genuine
-re-derivation, not luck. Per the pre-registered routing, `8/8` **is the H0 outcome**
-(a routing decision, not a TOST-confirmed equivalence, see §8a); the `+derived` arm was
-**not run** (no headroom, there is nothing above 8/8 for a success win to occupy).
+**Manipulation check (prereg §4), pointers-only: 12/12 PASS, read-cue 8/8.** A capable
+sonnet receiver re-derives the convention **for free**; `read-cue` is the mechanism: every
+trial read `to_legacy` and matched it, so this is genuine re-derivation, not luck.
+**Pre-registered primary two-arm test, run at N=12 (2026-07-04):** `+derived` **12/12** vs
+`pointers-only` **12/12**, TOST-**equivalent at ±0.20** (Newcombe diff-CI [−0.184, +0.184],
+§8a). The residue was genuinely carried (architect emitted five `state.derived` items,
+`## Carried reasoning` confirmed in the downstream prompt) and added nothing above the
+ceiling: **H0, formally confirmed by the locked two-arm test**, not just the earlier
+one-sample proxy. (Seven of the `+derived` trials first hit a session rate-limit, turn-1/$0
+no-ops, and were discarded and rerun per the program's no-op rule; all 12 reported are valid
+real runs.)
 
 **This is the more valuable result.** Paired with Fork-A it **bounds Lever 2 from both
 sides**:
@@ -278,7 +283,7 @@ sides**:
 | Constraint trace in the artifacts | Residue | Evidence |
 |---|---|---|
 | **absent** (Fork-A: idiomatic default is the opposite) | **necessary** | 8/8 vs 0/8 (Exp. 4) |
-| **present & recoverable** (Exp. 5: in-code cue) | **unnecessary** (re-derived 8/8) | 8/8 pointers-only (Exp. 5) |
+| **present & recoverable** (Exp. 5: in-code cue) | **unnecessary** (re-derived 12/12; +derived TOST-equal) | 12/12 pointers-only (Exp. 5) |
 
 So the rule the program opened with (*spend channel tokens only on what the receiver
 cannot cheaply regenerate*) is now **empirically pinned**: the `state.derived` residue
@@ -422,7 +427,7 @@ The Exp. 4c `Du` ceiling reading (N=12) clears the formal TOST equivalence bar a
 | 3 | Lever 1, channel compression (pack sweep) | success holds 3/3 across tested [1k,4k]; knee below 1k untested | 3/config | **OVER-PROVISIONED** (compress to 1k free, firm; cost-win directional; knee not pursued) |
 | 4 | Lever 2, derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; cost at parity ($0.417 vs $0.436, 4.4 % = noise) | 8 / 8 / 5 | **GO, CONFIRMED** |
 | 4a | Lever 2, multi-hop survival (H2) on a natural A→B→C chain | **3/3 pass, hop-3 injection 3/3** (transitive fix); pre-fix loses it (unit test) | 3 | **SURVIVES** (fix load-bearing) |
-| 5 | Lever 2, natural substrate (in-code recoverable constraint) | pointers-only **8/8** (read-cue 8/8), re-derived for free | 8 | **H0 (point estimate, not TOST-confirmed, §8a)**, residue unnecessary when recoverable; **bounds** the effect |
+| 5 | Lever 2, natural substrate (in-code recoverable constraint) | pointers-only **12/12** = +derived **12/12** (two-arm test; read-cue 8/8), re-derived for free | 12 | **H0 TOST-confirmed ±0.20 (§8a)**, residue unnecessary when recoverable; **bounds** the effect |
 | 4b | Lever 2, boundary R\* on a fixed-constraint cue-salience ladder | R_low **0/8** [0,.369] vs R_mid **8/8** [.631,1], CIs separated; distant/salient cues also recovered | 8 / 8 | **SHARP STEP** on trace *presence* (residue overhead once any **findable** trace exists) |
 | 4c | Lever 2, does the step survive DEPTH? (dedup-before-aggregate; Dr vs Du diff-clean) | Du (rationale stripped) pointers-only **12/12** [.735,1] = Dr 12/12; with-derived **12/12** (injection verified) | 12 | **GENERALIZES, TOST-confirmed ±0.20 (§8a)**, residue overhead at depth too when the trace is recoverable; limitation: structural trace stayed visible (deep-toy, not deep-real); decoy arm invalid (model refused) |
 
@@ -464,7 +469,7 @@ points** and reports the full CI so a reader can substitute their own margin.
 |---|---|---|---|---|
 | Exp. 4c GATE 2 (locked): PO_Du ≈ PO_Dr | 12/12 vs 12/12 | [−18.4pt, +18.4pt] | **Yes** | ±18.4pt |
 | Exp. 4c residue-null: with-derived ≈ pointers-only | 12/12 vs 12/12 | [−18.4pt, +18.4pt] | **Yes** | ±18.4pt |
-| Exp. 5 pointers-only vs ceiling (supplementary, one-sample, **not** the locked two-arm test, see below) | 8/8 vs p₀=1.0 | [74.7%, 100%] | **No** | ±25.3pt |
+| Exp. 5 (natural): +derived ≈ pointers-only (the locked two-arm test, N=12) | 12/12 vs 12/12 | [−18.4pt, +18.4pt] | **Yes** | ±18.4pt |
 
 **Reading: the 4c equivalence gap was real, and was closed by adding data, not by loosening
 the margin.** At N = 8 (with the Dr control at only N = 4), a TOST against any margin
@@ -487,23 +492,25 @@ which drops the Newcombe floor to ±18.4 points and clears the a-priori ±20-poi
   (see §7d). So the decoy control is unavailable for this model, and moot regardless, since
   with-derived does not exceed pointers-only. Disclosed as run-but-invalidated, not a clean
   control pass.
-- **Exp. 5's "residue unnecessary" H0 is a different substrate and remains underpowered**,
-  not closed by the 4c work. Its own pre-registered primary test is `+derived` vs
-  `pointers-only`, N = 8 each; the `+derived` arm was never run (routed away at the
-  manipulation check per prereg §4's "no headroom" rule), so no two-arm TOST is possible
-  from existing data. The row above is a one-sample proxy; running the real `+derived` arm
-  is the only way to close that gap. Exp. 5's claim stays "consistent with H0, not formally
-  TOST-confirmed."
+- **Exp. 5's "residue unnecessary" H0 is now also closed** by running its pre-registered
+  primary two-arm test at N = 12 (2026-07-04): `+derived` 12/12 vs `pointers-only` 12/12,
+  Newcombe diff-CI [−18.4pt, +18.4pt], **equivalent at ±20pt**. The residue was genuinely
+  carried (injection verified in the downstream prompt) and added nothing above ceiling.
+  Seven `+derived` trials first hit a session rate-limit (turn-1/$0 no-ops) and were
+  discarded and rerun, so all 12 are valid real runs. This replaces the earlier one-sample
+  proxy; the locked two-arm test is now met.
 - The GO/CONFIRMED calls for Exp. 4 and Exp. 4b are **superiority** claims (the exact tests,
   p < 0.001), unaffected by any of this; small-N does not weaken a rejection the way it
   weakens a failure-to-reject.
 
-**Framing note.** Exp. 4c's GATE 2 and residue-null equivalences are now stated as
-**TOST-confirmed at ±0.20 (N = 12)**. Exp. 5's "residue unnecessary" is still stated as
-"consistent with H0 at ceiling, not formally TOST-confirmed at N = 8" pending its `+derived`
-arm. The superiority calls (Exp. 4, 4b) were never in question. The point estimates and the
-mechanism evidence (read-cue, touch-probe, re-derived rationale in Du transcripts) are real
-and reported correctly throughout.
+**Framing note.** All three equivalence claims are now **TOST-confirmed at ±0.20 (N = 12)**:
+Exp. 4c's GATE 2 and residue-null, and Exp. 5's "residue unnecessary" (its locked two-arm
+`+derived` vs `pointers-only` test, run 2026-07-04). The superiority calls (Exp. 4, 4b) were
+never in question. So the two-sided bounded law now rests on a confirmed *superiority* test
+where residue is necessary (Exp. 4, Fisher p < 0.001) and confirmed *equivalence* tests
+where it is not (Exp. 4c, Exp. 5). The point estimates and mechanism evidence (read-cue,
+touch-probe, re-derived rationale in Du transcripts) are real and reported correctly
+throughout.
 
 ---
 

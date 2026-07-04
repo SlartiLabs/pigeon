@@ -172,12 +172,14 @@ def main() -> dict:
         check_ci("Exp.2 Fork-A no-bridge (Exp.4 'cold')", forkA["nobridge_pass"], forkA["N"], None)
     )
 
-    # ---- Exp. 5 (lever2-natural.json) ----------------------------------
-    natural = load("lever2-natural.json")["manipulation_check"]
-    natural_x = int(natural["pass"].split("/")[0])
+    # ---- Exp. 5 (lever2-natural.json) — two-arm confirm at N=12 ---------
+    nat = load("lever2-natural.json")["two_arm_confirm_N12"]
+    nat_po, nat_wd = nat["pointers_only"], nat["with_derived"]
     out["clopper_pearson_cis"].append(
-        check_ci("Exp.5 pointers-only (manipulation check)", natural_x, natural["N"],
-                 natural["ci95_clopper_pearson"])
+        check_ci("Exp.5 pointers-only (N=12)", nat_po["recovered"], nat_po["n"], nat_po["ci95"])
+    )
+    out["clopper_pearson_cis"].append(
+        check_ci("Exp.5 with-derived (N=12)", nat_wd["recovered"], nat_wd["n"], nat_wd["ci95"])
     )
 
     # ---- Exp. 4b (exp4b-substrate/CALIBRATION-RESULT.md, N=8 round) ---
@@ -228,9 +230,9 @@ def main() -> dict:
     out["tost_equivalence"].append(
         tost_two_arm("Exp.4c residue-null: Du with-derived (12/12) vs Du pointers-only (12/12)", 12, 12, 12, 12)
     )
-    # Exp.5 — supplementary one-arm proxy; true locked two-arm TOST unmet.
+    # Exp.5 — the pre-registered TWO-ARM primary test, run at N=12 (2026-07-04).
     out["tost_equivalence"].append(
-        tost_one_arm_to_ceiling("Exp.5 pointers-only re-derivation (8/8) vs ceiling", 8, 8)
+        tost_two_arm("Exp.5 (natural): +derived (12/12) vs pointers-only (12/12)", 12, 12, 12, 12)
     )
 
     return out

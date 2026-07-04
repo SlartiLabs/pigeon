@@ -1,4 +1,15 @@
-# Experiment 5 substrate — built & validated (no arms run)
+# Experiment 5 substrate — built, validated, RUN (two-arm, N=12, TOST-confirmed)
+
+**Status (2026-07-04):** the pre-registered primary two-arm test ran at N=12 each.
+pointers-only **12/12**, +derived **12/12** (injection verified), TOST-equivalent at ±0.20
+(Newcombe diff-CI [-0.184, 0.184]) = H0 confirmed (residue unnecessary when the constraint
+is recoverable). Seven +derived trials first hit a session rate-limit (turn-1/$0 no-ops),
+discarded and rerun; all 12 reported are valid. Per-trial ledger: `RESULTS-confirm-N12.csv`;
+aggregate + TOST + verdict: `../results/lever2-natural.json`; stats: `../results/stats-appendix.json`.
+
+---
+
+_(original build note follows)_
 
 Substrate + held-out grader for the pre-registered Exp. 5
 ([`../PREREG-lever2-natural.md`](../PREREG-lever2-natural.md)): Lever-2 on a
