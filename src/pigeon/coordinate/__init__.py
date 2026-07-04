@@ -904,6 +904,8 @@ class RunRecorder:
         self.events_path = config.coordinate_events_dir / f"{sid}-{highest + 1}.jsonl"
         self.events_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        self._config = config
+        self._tasks = tasks
         self.data: dict[str, Any] = {
             "schema_version": SCHEMA_VERSION,
             "run_id": self.path.stem,
@@ -966,6 +968,29 @@ class RunRecorder:
             self.data["finished_at"] = _utcnow()
             self._flush()
         self._emit(f"run.{status}", summary=fields.get("summary"))
+        self._record_routing()
+
+    def _record_routing(self) -> None:
+        """Append this run's per-task routing decision->outcome records (B1).
+
+        Best-effort: a routing log is a passive observation surface and must never break
+        a coordination run, so any failure here is swallowed.
+        """
+        try:
+            from . import routing
+            depth = {tid: len(anc)
+                     for tid, anc in _transitive_ancestors(self._tasks).items()}
+            sid = self.data["sid"]
+            carried: dict[str, bool] = {}
+            for t in self._tasks:
+                needs = list(t.get("needs") or [])
+                carried[t["id"]] = bool(needs) and bool(
+                    _upstream_derived_markdown(self._config, sid, needs))
+            recs = routing.build_records(
+                self.data["run_id"], sid, self.data["tasks"], depth, carried)
+            routing.append_log(self._config.coordinate_routing_log, recs)
+        except Exception:
+            pass
 
 
 # ------------------------------------------------------------------ execution
