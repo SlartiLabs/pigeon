@@ -1457,18 +1457,22 @@ def _run_task(
         if procs is not None:
             procs.pop(task_id, None)
         log.write(f"# exit {rc}\n")
+    # Stage 0 (limitations-closing plan): a pointer to the raw transcript teed to
+    # log_path (prompt on the first line, completion below), recorded for EVERY
+    # hop — telemetered or not. Untelemetered runners (e.g. agy/Gemini, which
+    # emits no usage report) still leave a transcript, and a later single-
+    # tokenizer recount needs exactly that text; keying the pointer off telemetry
+    # would silently drop the cross-model hops the recount exists to compare.
+    try:
+        transcript_ref = str(log_path.relative_to(config.root))
+    except ValueError:
+        transcript_ref = str(log_path)
     telemetry = _extract_telemetry("\n".join(tail))
     if telemetry:
-        # Stage 0 (limitations-closing plan): every trial archives the token/cache
-        # split in the same four canonical fields regardless of vendor, and a
-        # pointer to the raw transcript teed to log_path (prompt on the first
-        # line, completion below) — so a later single-tokenizer recount has the
-        # text it needs and is not left inheriting the old "not retained" gap.
+        # Also archive the token/cache split in the same four canonical fields
+        # regardless of vendor, so within-run comparisons are vendor-uniform.
         telemetry["usage_canonical"] = normalize_usage(telemetry["usage"])
-        try:
-            telemetry["transcript"] = str(log_path.relative_to(config.root))
-        except ValueError:
-            telemetry["transcript"] = str(log_path)
+        telemetry["transcript"] = transcript_ref
     if telemetry and budget:
         budget.add(telemetry["total_tokens"], telemetry.get("total_cost_usd", 0.0))
     if telemetry:
@@ -1498,6 +1502,7 @@ def _run_task(
         )
         if kill_reason:
             fields["kill_reason"] = kill_reason
+        fields["transcript"] = transcript_ref   # every hop, even untelemetered
         if telemetry:
             fields["telemetry"] = telemetry
         recorder.task(task_id, **fields)

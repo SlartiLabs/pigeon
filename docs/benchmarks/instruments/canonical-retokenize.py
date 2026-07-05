@@ -78,7 +78,10 @@ def recount_run(manifest: Path, root: Path) -> list[dict]:
     rows: list[dict] = []
     for task_id, t in (data.get("tasks") or {}).items():
         telem = t.get("telemetry") or {}
-        pointer = telem.get("transcript")
+        # Prefer the task-level transcript pointer (recorded for EVERY hop,
+        # including untelemetered ones like agy/Gemini); fall back to the one
+        # nested under telemetry for older manifests.
+        pointer = t.get("transcript") or telem.get("transcript")
         if not pointer:
             continue
         tpath = (root / pointer) if not Path(pointer).is_absolute() else Path(pointer)

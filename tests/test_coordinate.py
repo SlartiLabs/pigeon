@@ -725,6 +725,11 @@ def test_telemetry_recorded_in_manifest_and_metrics(repo):
 
     run = co.list_runs(cfg, sid="co1")[0]
     assert "telemetry" not in run["tasks"]["cheap"]
+    # Stage 0: the transcript pointer is recorded for EVERY hop, even the
+    # untelemetered one (agy/Gemini emit no usage report; their text must still
+    # be archived for the cross-model recount).
+    assert run["tasks"]["cheap"]["transcript"].endswith("cheap.log")
+    assert (cfg.root / run["tasks"]["cheap"]["transcript"]).is_file()
     telem = run["tasks"]["spender"]["telemetry"]
     assert telem["total_tokens"] == 180
     assert telem["usage"]["input_tokens"] == 100

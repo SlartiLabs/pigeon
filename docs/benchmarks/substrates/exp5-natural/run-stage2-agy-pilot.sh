@@ -88,6 +88,12 @@ for i in $(seq 1 "$N"); do
   PYTHONPATH="$REPO" python "$WORK/accept.py" > "$rdir/accept" 2>&1; arc=$?
   man="$(ls -t "$REPO"/.pigeon/coordinate/runs/*.json 2>/dev/null | head -1)"
   cp "$man" "$rdir/manifest.json" 2>/dev/null
+  # Preserve the RAW transcripts at their manifest-relative path so the canonical
+  # cross-model recount can run later (agy hops carry no telemetry but DO leave a
+  # transcript; the manifest's per-hop `transcript` pointers resolve under $rdir):
+  #   python docs/benchmarks/instruments/canonical-retokenize.py "$rdir/manifest.json" --root "$rdir"
+  mkdir -p "$rdir/.pigeon/coordinate"
+  cp -r "$REPO/.pigeon/coordinate/logs" "$rdir/.pigeon/coordinate/logs" 2>/dev/null
   turns=$(python - "$man" <<'PY' 2>/dev/null || echo NA
 import json,sys
 d=json.load(open(sys.argv[1]))
@@ -109,8 +115,17 @@ PY
   echo "[t$i] accept_rc=$arc turns=$turns cost=\$$cost ${wall}s agy_fired=$agy_fired injected=$injected read_cue=$read_cue"
 done
 
+# Persist results (CSV + per-trial run/accept/manifest + raw logs) to a durable
+# location so they outlive /tmp cleanup: set STAGE2_OUT=/path to keep them.
+if [ -n "${STAGE2_OUT:-}" ]; then
+  mkdir -p "$STAGE2_OUT"; cp -r "$OUT/." "$STAGE2_OUT/"
+  echo "persisted results -> $STAGE2_OUT"
+fi
+
 echo "=== STAGE 2 PILOT ($ARM, N=$N) ==="
 echo "PASS (accept_rc==0): $(awk -F, 'NR>1 && $3==0' "$RES" | wc -l)/$N"
-echo "artifacts: $WORK   (results.csv, per-trial run/accept/manifest)"
-echo "NOTE: agy telemetry is unmeasured (telemetry_flags.agy=[]), so cost_usd reflects the sonnet architect hop only — the receiver-side USD asymmetry is itself a Stage 2 finding to record."
+echo "artifacts: ${STAGE2_OUT:-$OUT}   (results.csv, per-trial run/accept/manifest, raw logs)"
+echo "canonical recount (cross-model token metric), per trial:"
+echo "  python docs/benchmarks/instruments/canonical-retokenize.py <trialdir>/manifest.json --root <trialdir>"
+echo "NOTE: agy telemetry is unmeasured (telemetry_flags.agy=[]), so cost_usd reflects the measured (claude) hops only — the receiver-side USD asymmetry is itself a Stage 2 finding, and why the canonical token recount is the fair cross-model metric here."
 cat "$RES"
