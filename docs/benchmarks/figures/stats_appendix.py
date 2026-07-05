@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Statistics appendix for REPORT-carrier-comms.md.
+"""Statistics appendix for report.md.
 
 Recomputes every reported success-rate statistic straight from the committed
 result JSONs / CALIBRATION-RESULT.md counts — nothing below is hand-entered.
@@ -30,10 +30,10 @@ from statsmodels.stats.proportion import proportion_confint
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "results"
-EXP4B_CAL = ROOT / "exp4b-substrate" / "CALIBRATION-RESULT.md"
+EXP4B_CAL = ROOT / "substrates" / "exp4b-trace-presence" / "CALIBRATION-RESULT.md"
 
 # Equivalence margin for the TOST calls below. Neither PREREG-exp4c-deep-
-# constraint.md Sec5 nor PREREG-lever2-natural.md locks a numeric delta for
+# constraint.md Sec5 nor preregistrations/exp5-natural-substrate.md locks a numeric delta for
 # the success-rate TOST (Sec5 locks *that* TOST must be run, not its
 # margin) — this is itself a pre-registration gap, flagged in the report.
 # 0.20 (20 points) is used as a standard, stated default; the full CI is
@@ -137,7 +137,7 @@ def tost_one_arm_to_ceiling(label: str, x: int, n: int,
         "min_margin_for_equivalence": min_margin,
         "caveat": (
             "This is a proxy for 'no headroom', not the two-arm TOST "
-            "(+derived vs pointers-only, N=8 each) that PREREG-lever2-natural.md's "
+            "(+derived vs pointers-only, N=8 each) that preregistrations/exp5-natural-substrate.md's "
             "primary test specifies. That arm was never run (routed away at the "
             "manipulation check per prereg Sec4), so the locked primary test "
             "remains unmet by this data."
@@ -182,7 +182,7 @@ def main() -> dict:
         check_ci("Exp.5 with-derived (N=12)", nat_wd["recovered"], nat_wd["n"], nat_wd["ci95"])
     )
 
-    # ---- Exp. 4b (exp4b-substrate/CALIBRATION-RESULT.md, N=8 round) ---
+    # ---- Exp. 4b (substrates/exp4b-trace-presence/CALIBRATION-RESULT.md, N=8 round) ---
     # No JSON is committed for 4b (see report Sec.9 "per-trial ledger" note);
     # the counts below are the locked N=8 confirmation table in
     # CALIBRATION-RESULT.md Round 3 ("R_low 0/8 ... R_mid 8/8").
@@ -221,7 +221,7 @@ def main() -> dict:
     )
 
     # ================= TOST equivalence (H0 claims) ======================
-    # Exp.4c GATE 2 (locked, PREREG-exp4c-deep-constraint.md Sec5): PO_Du
+    # Exp.4c GATE 2 (locked, preregistrations/exp4c-deep-constraint.md Sec5): PO_Du
     # equivalent to PO_Dr despite the docstring strip.
     out["tost_equivalence"].append(
         tost_two_arm("Exp.4c GATE 2: PO_Du (12/12) vs PO_Dr (12/12)", 12, 12, 12, 12)

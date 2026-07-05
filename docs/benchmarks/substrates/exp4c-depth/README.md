@@ -1,6 +1,6 @@
 # Exp-4c substrate — does the sharp step survive DEPTH, net of difficulty?
 
-Pre-registration: [`../PREREG-exp4c-deep-constraint.md`](../PREREG-exp4c-deep-constraint.md).
+Pre-registration: [`../../preregistrations/exp4c-deep-constraint.md`](../../preregistrations/exp4c-deep-constraint.md).
 **Status: substrate built + mechanically validated, and RUN LIVE (N=12 confirm, $55.38 total).**
 Per-trial ledger: `RESULTS-stage1-calibration.csv`, `RESULTS-stage2-confirm.csv` (44 trials);
 aggregate, TOST, and verdict: `../results/lever2-deep-4c.json`.
@@ -59,7 +59,7 @@ recoverability meter); `S` anchors the ladder to the confirmed 4b step.
 ## Validate (no agents, local only)
 
 ```
-python3 docs/benchmarks/exp4c-substrate/validate.py
+python3 docs/benchmarks/substrates/exp4c-depth/validate.py
 ```
 
 Asserts, for both Dr and Du: [1] grader passes pristine, [2] visible tests pass pristine,

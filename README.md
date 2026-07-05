@@ -395,12 +395,12 @@ reports your own cumulative numbers from real usage.
 The claims above are committed, not marketing. Substrates, held-out graders, per-trial
 ledgers, exact statistics, and 11 figures live under [`docs/benchmarks/`](docs/benchmarks/):
 
-- Report: [`docs/benchmarks/REPORT-carrier-comms.md`](docs/benchmarks/REPORT-carrier-comms.md); draft
+- Report: [`docs/benchmarks/report.md`](docs/benchmarks/report.md); draft
   manuscript: [`docs/benchmarks/manuscript/`](docs/benchmarks/manuscript/).
 - Recompute every statistic (exact Clopper-Pearson CIs, Fisher/Barnard, Newcombe TOST) from
   the committed result JSONs: `python3 docs/benchmarks/figures/stats_appendix.py`.
 - Validate a substrate's held-out grader with no agents and no spend:
-  `python3 docs/benchmarks/exp4c-substrate/validate.py`.
+  `python3 docs/benchmarks/substrates/exp4c-depth/validate.py`.
 
 Run them yourself; the numbers reproduce.
 

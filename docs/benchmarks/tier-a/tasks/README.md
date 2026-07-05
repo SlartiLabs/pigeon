@@ -1,7 +1,7 @@
 # Benchmark tasks
 
 One spec per task; the **identical prompt text** feeds both arms (WITH = via
-`pigeon coordinate`, WITHOUT = the same CLIs naked). See `../PROTOCOL.md` §3–§5.
+`pigeon coordinate`, WITHOUT = the same CLIs naked). See `../protocol.md` §3–§5.
 
 ## The bar: a task must REQUIRE cross-boundary context
 Pick multi-file / multi-step work where step 2 needs what step 1 established. A

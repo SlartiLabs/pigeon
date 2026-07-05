@@ -2,7 +2,7 @@
 
 **Status:** design locked after red-team; Stage-1 calibration running. **Supersedes the
 methodology of** `EXP4B-natural-substrate-prereg.md` (kept for provenance) **without
-changing its scientific question.** Substrate: `docs/benchmarks/exp4b-substrate/`.
+changing its scientific question.** Substrate: `docs/benchmarks/substrates/exp4b-trace-presence/`.
 
 ## 1. What the red-team changed (and what it did not)
 
@@ -26,7 +26,7 @@ Exp. 4 owns the **R≈0** endpoint (Δ huge: 8/8 vs 0/8). Exp. 5 owns the **R≈
 (Δ≈0: pointers-only 8/8). **4b interpolates between two points already in hand** to find
 **R\***, the boundary where the residue starts paying for itself — on a substrate where
 the constraint, the task, and the held-out grader are **held fixed** and only the
-in-code **cue salience** varies (`docs/benchmarks/exp4b-substrate/`, the R ladder
+in-code **cue salience** varies (`docs/benchmarks/substrates/exp4b-trace-presence/`, the R ladder
 `R_low / R_mid / R_high`).
 
 ## 3. Reconciliation with the shipped Exp. 5
@@ -48,7 +48,7 @@ its stated open limitation.**
 3. **The bounded headline is refined, not contradicted — calibration result: the step is
    SHARP.** The report's law — *"residue earns its tokens iff the reasoning left no
    recoverable trace in the code"* — was a **step function asserted from two endpoints.**
-   Stage-1 calibration (2026-06-20, `docs/benchmarks/exp4b-substrate/CALIBRATION-RESULT.md`)
+   Stage-1 calibration (2026-06-20, `docs/benchmarks/substrates/exp4b-trace-presence/CALIBRATION-RESULT.md`)
    measured the middle and found the transition is a **sharp step on trace *presence***,
    not a gradient on salience:
    - **R_low (no trace): 0/8, CI95 [0, 0.369]** — residue necessary (Fork-A/Exp-4 analogue).

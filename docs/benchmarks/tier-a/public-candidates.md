@@ -1,7 +1,7 @@
 # Public benchmark repos — verified candidates (the reproducible headline)
 
 These three **external, third-party OSS** repos were run through
-`PUBLIC-REPO-CRITERIA.md` and verified by actually cloning, installing, and
+`public-repo-criteria.md` and verified by actually cloning, installing, and
 running each test suite at the pinned SHA. They are identity-neutral (no link to
 the author/alias), so naming them here carries no opsec risk (see PROTOCOL §0).
 They give the rubric's domain spread: one CLI tool, one library, one
@@ -77,6 +77,6 @@ Verified 2026-06-18.
 service/app slot; flask passed cleanly so it is held in reserve, not used.
 
 ### Status
-Per-candidate verification checklist (PUBLIC-REPO-CRITERIA.md) satisfied for all
+Per-candidate verification checklist (public-repo-criteria.md) satisfied for all
 three. Next: build the WITH/WITHOUT harness and **pilot one task end-to-end**
 (decision: start with 1, scale to 3 or 5 if the harness holds).

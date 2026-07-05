@@ -259,7 +259,7 @@ shows the pre-fix direct-needs path **loses** the constraint at hop 3.)
 
 Exp. 4 proved residue *necessary* on Fork-A, a constraint **engineered to be invisible**
 in the code (~0 % recoverable). The honest question (pre-registered,
-`PREREG-lever2-natural.md`): does residue still help when the constraint is **present and
+`preregistrations/exp5-natural-substrate.md`): does residue still help when the constraint is **present and
 recoverable** in the code, just non-salient? Substrate (fallback, semi-synthetic): a
 `ledger` where the wire convention lives in an existing `to_legacy`/`from_legacy`
 boundary with a comment that external clients depend on the keys; the task neutrally asks
@@ -301,7 +301,7 @@ Exp. 4 owns the R≈0 endpoint (Δ huge: 8/8 vs 0/8); Exp. 5 owns R≈1 (Δ≈0:
 residue starts earning its tokens, on a controlled ladder where the constraint, task, and
 held-out grader are **held fixed** and only the in-code **cue salience** varies (so
 re-derivability R is the single manipulated variable; nothing is memorizable). Substrate +
-pre-registration: `exp4b-substrate/`, `docs/design/carrier-comms/exp4b-design.md` (the prereg's
+pre-registration: `substrates/exp4b-trace-presence/`, `docs/design/carrier-comms/exp4b-design.md` (the prereg's
 4-type factorial was replaced after a red-team showed it biased toward a false KILL). The
 R≈1 rung is **byte-identical to Exp. 5**, so 4b reuses Exp. 5's 8/8 as its top anchor.
 
@@ -331,7 +331,7 @@ Exp. 5 hypothesized does not appear along the cue-subtlety axis; it would requir
 genuinely *ambiguous* cue (conflicting conventions), a separate study. *Limitation:* the
 sharp step is established on the controlled ledger substrate; like Exp. 5 it says nothing
 about the **base rate** of low-R handoffs in real traffic (§13 of the prereg). Data:
-`exp4b-substrate/CALIBRATION-RESULT.md`, `/tmp/bench/exp4b/results/`.
+`substrates/exp4b-trace-presence/CALIBRATION-RESULT.md`, `/tmp/bench/exp4b/results/`.
 
 ---
 
@@ -347,7 +347,7 @@ Difficulty is held constant **by construction**: the decisive cells **Dr** (rati
 documented in the docstring) and **Du** (identical code and task, docstring stripped) are
 byte-identical modulo that docstring (`validate.py` diff-clean), so the only thing that
 varies is whether the rationale is recoverable. Pre-registration and substrate:
-`PREREG-exp4c-deep-constraint.md`, `exp4c-substrate/`.
+`preregistrations/exp4c-deep-constraint.md`, `substrates/exp4c-depth/`.
 
 **Result (pointers-only = the R meter, sonnet, two-worktree; confirm N=12):**
 
@@ -436,7 +436,7 @@ The Exp. 4c `Du` ceiling reading (N=12) clears the formal TOST equivalence bar a
 ## 8a. Statistics appendix, exact tests, formalized
 
 Every number in this section is recomputed straight from the committed result JSONs and
-`exp4b-substrate/CALIBRATION-RESULT.md` by `docs/benchmarks/figures/stats_appendix.py`
+`substrates/exp4b-trace-presence/CALIBRATION-RESULT.md` by `docs/benchmarks/figures/stats_appendix.py`
 (`python3 docs/benchmarks/figures/stats_appendix.py`, output at
 `docs/benchmarks/results/stats-appendix.json`), nothing here is hand-entered. The script
 cross-checks every recomputed CI against the value already printed in its source file and
@@ -444,7 +444,7 @@ aborts loudly on any mismatch; **all previously reported Clopper-Pearson CIs in 
 reproduced exactly** (Exp. 4, Exp. 4b, Exp. 4c, Exp. 5). One number this appendix could
 **not** verify against a committed artifact: Gate G1's "pack ~2 992 tok vs handoff ~286 tok
 (~10.5×)" (§6); it is not present in any file under `docs/benchmarks/results/` or
-`exp4b-substrate/`, flagged for the operator, not fixed here.
+`substrates/exp4b-trace-presence/`, flagged for the operator, not fixed here.
 
 **Table 2a, Exact two-sided Fisher / Barnard tests on the CI-separated contrasts.**
 Both experiments assert "CIs cleanly separated" as their statistical case; this adds the
@@ -461,7 +461,7 @@ was already correct, this is the formal confirmation.
 **Table 2b, TOST equivalence tests on the H0 / GATE-2 claims.** Method: Newcombe (1998)
 hybrid Wilson-score CI on the risk difference; equivalence declared iff the 90 % CI (⇔ two
 one-sided tests at α = 0.05 each) sits entirely inside a pre-specified margin. **Neither
-PREREG-exp4c-deep-constraint.md §5 nor PREREG-lever2-natural.md locks a numeric margin**
+preregistrations/exp4c-deep-constraint.md §5 nor preregistrations/exp5-natural-substrate.md locks a numeric margin**
 (only that GATE 2 "must" be a TOST), so this appendix uses a stated default of **±20
 points** and reports the full CI so a reader can substitute their own margin.
 
@@ -481,7 +481,7 @@ N = 8 (margin-shopping, which is off-limits), both ceiling arms were raised to *
 which drops the Newcombe floor to ±18.4 points and clears the a-priori ±20-point margin.
 
 - **Exp. 4c GATE 2** ("PO_Du equivalent to PO_Dr by TOST", locked in
-  PREREG-exp4c-deep-constraint.md §5) is now **met**: PO_Du 12/12 and PO_Dr 12/12, Newcombe
+  preregistrations/exp4c-deep-constraint.md §5) is now **met**: PO_Du 12/12 and PO_Dr 12/12, Newcombe
   diff-CI [−18.4pt, +18.4pt], equivalent at ±20pt. The Dr control, the source of the earlier
   ±40-point margin, was run at the full **N = 12** (it was N = 4 at first pass).
 - **Exp. 4c residue-null** (with-derived equivalent to pointers-only) is likewise now

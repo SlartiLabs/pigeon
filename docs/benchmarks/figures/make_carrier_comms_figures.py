@@ -384,7 +384,7 @@ def fig10_exp4c_depth():
 def fig11_bounded_law():
     # pointers-only recoverability across every tested recoverability regime,
     # ordered absent -> present/salient. Sources: lever2-confirm.json (Exp.4),
-    # exp4b-substrate/CALIBRATION-RESULT.md (Exp.4b ladder), lever2-natural.json
+    # substrates/exp4b-trace-presence/CALIBRATION-RESULT.md (Exp.4b ladder), lever2-natural.json
     # (Exp.5 = R_high), lever2-deep-4c.json (Exp.4c Du).
     cats = ["absent\n(Exp.4\nFork-A)", "absent, findable\n(Exp.4b\nR_low)",
             "present, deep\n+ stripped\n(Exp.4c Du,\nn=12)", "present, distant\n(Exp.4b R_mid2,\nn=4)",

@@ -26,7 +26,7 @@ cost**, while **task success was identical** (both arms always completed):
 Pigeon's overhead is approximately **fixed per agent** and therefore shrinks as
 a fraction of a larger task (penalty 59 % → 8 %), but **never crosses into
 savings**, even on a task deliberately designed as pigeon's best case
-(Figure 2). Under the pre-registered go/no-go criterion (`KILL-CRITERION.md`:
+(Figure 2). Under the pre-registered go/no-go criterion (`kill-criterion.md`:
 a win on ≥ 2 of 3 public repos), **a token/cost-savings launch headline is a
 decisive NO-GO** — two of two repos show no win, so the third cannot rescue it.
 
@@ -52,7 +52,7 @@ real, reproducible number.
 > worse.
 
 The criterion and its kill conditions were locked **before** any run
-(`KILL-CRITERION.md`), so that a result could not be rationalised after the fact.
+(`kill-criterion.md`), so that a result could not be rationalised after the fact.
 
 ---
 
@@ -82,7 +82,7 @@ Two WITHOUT baselines were used:
 
 ### 3.2 Repository selection
 
-Candidates were screened against `PUBLIC-REPO-CRITERIA.md` (permissive licence,
+Candidates were screened against `public-repo-criteria.md` (permissive licence,
 public + pinnable, real passing suite, hermetic/cheap, multi-module,
 agent-friendly language, identity-neutral) and **verified by actually cloning,
 installing, and running each test suite at a pinned SHA**. Three passed, giving a

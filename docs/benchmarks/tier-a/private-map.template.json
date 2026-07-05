@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy to docs/benchmarks/.private-map.json (GITIGNORED — never commit). 'deny' is every private string that must NOT appear in committed docs/benchmarks/ (repo names, org, author name/email, codenames); check-opsec.sh greps for these. 'repos' maps public labels to private repos + pinned SHAs. Only the public 'label' may ever appear in committed files.",
+  "_comment": "Copy to docs/benchmarks/tier-a/private-map.json (GITIGNORED — never commit). 'deny' is every private string that must NOT appear in committed docs/benchmarks/ (repo names, org, author name/email, codenames); check-opsec.sh greps for these. 'repos' maps public labels to private repos + pinned SHAs. Only the public 'label' may ever appear in committed files.",
   "deny": [
     "<private-repo-name-1>",
     "<private-repo-name-2>",

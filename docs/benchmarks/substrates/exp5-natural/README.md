@@ -12,7 +12,7 @@ aggregate + TOST + verdict: `../results/lever2-natural.json`; stats: `../results
 _(original build note follows)_
 
 Substrate + held-out grader for the pre-registered Exp. 5
-([`../PREREG-lever2-natural.md`](../PREREG-lever2-natural.md)): Lever-2 on a
+([`../../preregistrations/exp5-natural-substrate.md`](../../preregistrations/exp5-natural-substrate.md)): Lever-2 on a
 **natural, partially-recoverable** constraint, as opposed to Fork-A's constructed
 (0 %-recoverable) one. Built per the prereg §2 criteria. **No arms have been run** —
 this records the build + the grader validation only.

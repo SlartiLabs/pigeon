@@ -1,7 +1,7 @@
 # Manuscript
 
-`carrier-comms-paper.md` is a **draft manuscript** derived from the working benchmark
-report `../REPORT-carrier-comms.md`. Every quantitative claim traces to
+`paper.md` is a **draft manuscript** derived from the working benchmark
+report `../report.md`. Every quantitative claim traces to
 `../results/*.json` and the committed per-trial ledgers; the report is the source of truth
 and this paper is the publication-shaped rendering of it.
 

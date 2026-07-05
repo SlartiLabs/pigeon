@@ -1,7 +1,7 @@
 # Experiment 4b substrate — the residue across a re-derivability gradient
 
 Substrate + held-out grader for **Exp. 4b, revised design** (see
-[`../../../docs/design/carrier-comms/exp4b-design.md`](../../docs/design/carrier-comms/exp4b-design.md)).
+[`../../../../docs/design/carrier-comms/exp4b-design.md`](../../../../docs/design/carrier-comms/exp4b-design.md)).
 **Stage-1 calibration only is run from here; no confirmation arms yet.**
 
 ## Why this differs from the prereg as written (the red-team result)

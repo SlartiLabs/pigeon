@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Pre-publication opsec guard (PROTOCOL §0/§8): fail if any private identity
 # string leaks into committed docs/benchmarks/. This script contains NO names — the
-# deny-list is loaded at runtime from the gitignored docs/benchmarks/.private-map.json
+# deny-list is loaded at runtime from the gitignored docs/benchmarks/tier-a/private-map.json
 # (so the guard itself never bleeds the strings it guards against).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-MAP="docs/benchmarks/.private-map.json"
+MAP="docs/benchmarks/tier-a/private-map.json"
 if [ ! -f "$MAP" ]; then
-  echo "opsec: $MAP not found (it is gitignored). Copy .private-map.template.json"
+  echo "opsec: $MAP not found (it is gitignored). Copy private-map.template.json"
   echo "       to it and fill 'deny' with every private string (repo/org/author/"
   echo "       codename) before publishing. Skipping (cannot check)."
   exit 0

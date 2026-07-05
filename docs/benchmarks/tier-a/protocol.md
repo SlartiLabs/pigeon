@@ -4,7 +4,7 @@ Produces the honest number that replaces the synthetic ~92.8%, and the evidence
 that gates the public launch. **Read §0 and §0.5 before touching a repo.**
 
 This file is the repo-safe (public-label-only) protocol. The private name↔label
-mapping lives in `docs/benchmarks/.private-map.json` (gitignored), never here.
+mapping lives in `docs/benchmarks/tier-a/private-map.json` (gitignored), never here.
 
 ---
 
@@ -17,8 +17,8 @@ bridges the alias to the author permanently.
 2. Public artifacts (`docs/benchmarks/`, blog, README) carry **numbers + generalized
    descriptions only** — e.g. "Repo A: ~N-kLOC R/Python research codebase." Never
    names, orgs, URLs, codenames, or anything that reads back to the author.
-3. The name↔label mapping is `docs/benchmarks/.private-map.json` — **gitignored**.
-4. Before any public commit or blog draft, run `docs/benchmarks/check-opsec.sh`
+3. The name↔label mapping is `docs/benchmarks/tier-a/private-map.json` — **gitignored**.
+4. Before any public commit or blog draft, run `docs/benchmarks/tier-a/check-opsec.sh`
    (greps `docs/benchmarks/` for identity strings; must return nothing). It's also a
    pre-publication checklist item (§8).
 
@@ -36,7 +36,7 @@ bridges the alias to the author permanently.
 
 ## §0.5 — Lock the kill-N FIRST
 A kill-criterion chosen after seeing results is a rationalization. Fill and commit
-`docs/benchmarks/KILL-CRITERION.md` — cold — before the first run.
+`docs/benchmarks/tier-a/kill-criterion.md` — cold — before the first run.
 
 ---
 
@@ -54,7 +54,7 @@ A kill-criterion chosen after seeing results is a rationalization. Fill and comm
 ## §2 — Per-repo setup
 For each repo: **pin an exact commit SHA** (branches move; a malformed/ moving ref
 like `v-.1.0` is not reproducible). Record SHA + private metadata (LOC, language,
-test count) in `.private-map.json` under the public label. Run both arms against a
+test count) in `private-map.json` under the public label. Run both arms against a
 clean checkout of that SHA in a throwaway worktree.
 
 ## §3 — Task selection (make-or-break)
@@ -78,7 +78,7 @@ wall-clock · success (a **pre-declared objective check** per task) · handoffs
    across tasks to avoid you learning the task between arms.
 
 ## §6 — Recording
-- `docs/benchmarks/.private-map.json` (**gitignored**): label → repo, SHA, metadata.
+- `docs/benchmarks/tier-a/private-map.json` (**gitignored**): label → repo, SHA, metadata.
 - `docs/benchmarks/results/<label>.json` (committable, anonymized): per-task/per-arm
   metrics under the public label only (schema: `results.template.json`).
 - Raw run logs stay local (`docs/benchmarks/results/raw/`, gitignored) — they contain
@@ -92,9 +92,9 @@ beats a synthetic 92.8%. The README number is the **public** repo's; the private
 three are anonymized supporting points.
 
 ## §8 — Pre-publication checklist
-- [ ] `KILL-CRITERION.md` filled and committed (§0.5)
-- [ ] `docs/benchmarks/check-opsec.sh` returns nothing (§0)
-- [ ] `.private-map.json` gitignored and not staged
+- [ ] `kill-criterion.md` filled and committed (§0.5)
+- [ ] `docs/benchmarks/tier-a/check-opsec.sh` returns nothing (§0)
+- [ ] `private-map.json` gitignored and not staged
 - [ ] Public number is from a reproducible public repo, not the private three
 - [ ] Each published delta carries its baseline + caveats (no bare percentages)
 - [ ] Every repo's SHA confirmed and pinned (no malformed/moving refs)

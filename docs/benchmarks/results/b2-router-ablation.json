@@ -6,7 +6,7 @@
     "static_all_sonnet": {
       "policy": "static", "runners": "all sonnet",
       "success": "12/12", "ci95": [0.735, 1.0], "mean_cost_usd": 1.618,
-      "source": "committed Exp-5 pointers-only (docs/benchmarks/exp5-substrate/RESULTS-confirm-N12.csv)"
+      "source": "committed Exp-5 pointers-only (docs/benchmarks/substrates/exp5-natural/RESULTS-confirm-N12.csv)"
     },
     "cost_aware": {
       "policy": "cost-aware (pigeon route)",

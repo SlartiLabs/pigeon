@@ -3,7 +3,7 @@
 The launch headline number must come from **public, reproducible** repos — a
 skeptic has to be able to re-run it (a number on undisclosed private repos is no
 better than the synthetic 92.8%). Pick **~3** public repos by this rubric; the 3
-private repos remain internal-only, anonymized supporting data (see `PROTOCOL.md`).
+private repos remain internal-only, anonymized supporting data (see `protocol.md`).
 
 ## MUST-HAVE gates (a candidate that fails ANY is out)
 1. **Permissive OSS license** (MIT / Apache-2.0 / BSD) — so we can run it and
@@ -60,7 +60,7 @@ quality, not coordination).
 - [ ] ≥ a few modules; one concrete cross-boundary task identified + its acceptance check
 - [ ] No secrets / cloud / GPU / large data needed
 - [ ] Not identity-linked to the author/alias
-- [ ] SHA pinned and recorded (in `.private-map.json` if you want metadata; the repo
+- [ ] SHA pinned and recorded (in `private-map.json` if you want metadata; the repo
       itself is public so its name MAY appear in committed results)
 
 ## Credibility / ethics
