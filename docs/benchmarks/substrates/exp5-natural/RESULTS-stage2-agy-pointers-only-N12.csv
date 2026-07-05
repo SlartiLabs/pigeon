@@ -1,0 +1,18 @@
+# Stage 2 (cross-model) recoverability side — pointers-only, receiver=agy/Gemini, architect=sonnet.
+# N=12 confirm, 2026-07-05. 12/12 PASS. cost_usd = sonnet architect hop only (agy unmeasured).
+# NOTE: this batch predates the per-hop transcript-archival + log-preservation fix (commit c7aa7a4),
+#       so agy raw transcripts for trials 1-11 were not retained (only trial 12 survived in the temp repo).
+#       Canonical cross-model token recount is available for FUTURE runs (with-derived, necessity) which archive fully.
+trial,arm,accept_rc,turns,cost_usd,wall_s,agy_fired,injected,read_cue
+1,pointers-only-agy,0,8,0.4215,129,1,0,1
+2,pointers-only-agy,0,10,0.3868,219,1,0,2
+3,pointers-only-agy,0,9,0.3707,204,1,0,2
+4,pointers-only-agy,0,6,0.1698,144,1,0,2
+5,pointers-only-agy,0,13,0.4102,255,1,0,2
+6,pointers-only-agy,0,8,0.288,160,1,0,2
+7,pointers-only-agy,0,13,0.3247,171,1,0,1
+8,pointers-only-agy,0,10,0.3355,215,1,0,1
+9,pointers-only-agy,0,6,0.1964,248,1,0,2
+10,pointers-only-agy,0,10,0.2416,182,1,0,2
+11,pointers-only-agy,0,9,0.25,174,1,0,2
+12,pointers-only-agy,0,13,0.3085,153,1,0,0
