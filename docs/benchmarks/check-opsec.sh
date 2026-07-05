@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Pre-publication opsec guard (PROTOCOL §0/§8): fail if any private identity
-# string leaks into committed benchmarks/. This script contains NO names — the
-# deny-list is loaded at runtime from the gitignored benchmarks/.private-map.json
+# string leaks into committed docs/benchmarks/. This script contains NO names — the
+# deny-list is loaded at runtime from the gitignored docs/benchmarks/.private-map.json
 # (so the guard itself never bleeds the strings it guards against).
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
-MAP="benchmarks/.private-map.json"
+MAP="docs/benchmarks/.private-map.json"
 if [ ! -f "$MAP" ]; then
   echo "opsec: $MAP not found (it is gitignored). Copy .private-map.template.json"
   echo "       to it and fill 'deny' with every private string (repo/org/author/"
@@ -35,10 +35,10 @@ if [ -z "$PATTERN" ]; then
   echo "opsec: deny-list empty; nothing to check (fill 'deny' in $MAP)"; exit 0
 fi
 
-HITS="$(git grep -niE "$PATTERN" -- benchmarks/ 2>/dev/null || true)"
+HITS="$(git grep -niE "$PATTERN" -- docs/benchmarks/ 2>/dev/null || true)"
 if [ -n "$HITS" ]; then
-  echo "OPSEC LEAK — private identity string(s) found in committed benchmarks/:"
+  echo "OPSEC LEAK — private identity string(s) found in committed docs/benchmarks/:"
   echo "$HITS"
   exit 1
 fi
-echo "opsec: benchmarks/ is clean of the private identity strings in $MAP"
+echo "opsec: docs/benchmarks/ is clean of the private identity strings in $MAP"

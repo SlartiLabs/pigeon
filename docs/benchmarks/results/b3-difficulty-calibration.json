@@ -4,7 +4,7 @@
   "purpose": "B3 (learned/prompted router) can only BEAT the B2 heuristic if the heuristic's blanket 'workers -> free' is wrong somewhere, i.e. a worker task the free arm fails but a mid runner passes. This tests whether such a split exists on the 4c dedup task.",
   "task": "4c Du (dedup-before-aggregate, rationale docstring stripped); refactor worker routed to the free arm (mimo) vs the committed sonnet baseline.",
   "free_arm_mimo": {"success": "3/4", "spend_note": "workers free; architect sonnet"},
-  "sonnet_baseline": {"success": "12/12", "source": "benchmarks/results/lever2-deep-4c.json (Du pointers-only)"},
+  "sonnet_baseline": {"success": "12/12", "source": "docs/benchmarks/results/lever2-deep-4c.json (Du pointers-only)"},
   "split": "EXISTS but WEAK",
   "failure_mode_verified": "The one free failure kept the FIRST occurrence per txn_id instead of the LAST (keep-first vs keep-last): settle([t1=100, t1=120]) returned 100, grader wants 120. A genuine subtle-correctness bug, not a no-op. The free arm dedups but gets the tie-break edge case wrong ~25% of the time; sonnet gets it right 100%.",
   "reading": "The free arm is surprisingly capable even on a subtle hard task (75%). So the B2 heuristic's blanket-free is only ~25 points suboptimal here, which bounds B3's prize: a router that sent this task to sonnet would gain at most ~25 points of success, and only if it correctly RECOGNIZES the task as hard (it looks mechanical, 'streamline settle'). Per the roadmap's own logic, the heuristic already captures ~75% for free — the learned router's marginal value is the thin remaining slice, contingent on it having signal (e.g. B1's routing log showing free failed this before) to route against the mechanical-looking surface.",

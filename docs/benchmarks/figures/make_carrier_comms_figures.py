@@ -2,7 +2,7 @@
 """Carrier-comms report figures (new — Lever 1/2 program).
 
 Conceptual figures (1, 2, 7-frame) need no run data. Data figures (8, 9) read the
-recorded screen/confirm results. Run: python3 benchmarks/figures/make_carrier_comms_figures.py
+recorded screen/confirm results. Run: python3 docs/benchmarks/figures/make_carrier_comms_figures.py
 """
 from __future__ import annotations
 

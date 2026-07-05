@@ -2,7 +2,7 @@
 
 **Author:** SlartiLabs
 **Artifact:** `carrier-pigeon` (PyPI), `github.com/SlartiLabs/pigeon`
-**Status:** DRAFT (derived from `benchmarks/REPORT-carrier-comms.md`; numbers verified against `benchmarks/results/*.json`). References and venue are placeholders to be completed.
+**Status:** DRAFT (derived from `docs/benchmarks/REPORT-carrier-comms.md`; numbers verified against `docs/benchmarks/results/*.json`). References and venue are placeholders to be completed.
 
 ---
 
@@ -94,7 +94,7 @@ On a natural, semi-synthetic substrate where the wire convention lives in an exi
 
 ### 4.7 Statistics summary
 
-The confirmed structure is a superiority result on the necessary side and equivalence results on the unnecessary side (Appendix A, `benchmarks/results/stats-appendix.json`):
+The confirmed structure is a superiority result on the necessary side and equivalence results on the unnecessary side (Appendix A, `docs/benchmarks/results/stats-appendix.json`):
 
 | Claim | Arms | Test | Result |
 |---|---|---|---|
@@ -123,7 +123,7 @@ The practical consequence for a coordinator is a decision, not a default: carry 
 ## 6. Limitations
 
 - **Deep-toy, not deep-real.** Experiment 4c stripped the rationale but not the structural trace, so its "unrecoverable" cell was still recoverable. The regime the necessity side is really about (code fully present, behavior not inferable) is untested; real analytical constraints are deeper still.
-- **Base rate unmeasured.** The law says the residue helps when the trace is absent; it does not say how often real handoffs carry such low-recoverability constraints. An instrument for measuring this over real traffic is released (`benchmarks/rederivable_probe.py`) but not run here.
+- **Base rate unmeasured.** The law says the residue helps when the trace is absent; it does not say how often real handoffs carry such low-recoverability constraints. An instrument for measuring this over real traffic is released (`docs/benchmarks/rederivable_probe.py`) but not run here.
 - **One substrate per regime.** Each point rests on a single constructed or semi-synthetic substrate; external validity compounds with more.
 - **Cost single-shot.** Experiment 1 is one trial per arm per repository; it is framed as a NULL, not an equivalence.
 - **Model-specific control gap.** The decoy control is unavailable for this model because it refused to carry misleading residue; a different model, or a non-adversarial decoy design, would be needed to isolate carried content from generic prose.
@@ -145,24 +145,24 @@ Better multi-agent coordination is not, in this setting, a way to save tokens: t
 
 ## Appendix A. Reproducibility
 
-The benchmark is committed at `github.com/SlartiLabs/pigeon` under `benchmarks/`.
+The benchmark is committed at `github.com/SlartiLabs/pigeon` under `docs/benchmarks/`.
 
 ```
 # statistics (recomputes CIs, Fisher/Barnard, Newcombe TOST from the result JSONs)
-python3 benchmarks/figures/stats_appendix.py        # -> benchmarks/results/stats-appendix.json
+python3 docs/benchmarks/figures/stats_appendix.py        # -> docs/benchmarks/results/stats-appendix.json
 
 # figures 1-11
-python3 benchmarks/figures/make_figures.py
-python3 benchmarks/figures/make_carrier_comms_figures.py
+python3 docs/benchmarks/figures/make_figures.py
+python3 docs/benchmarks/figures/make_carrier_comms_figures.py
 
 # validate a substrate's held-out grader (no agents, no spend)
-python3 benchmarks/exp4c-substrate/validate.py
+python3 docs/benchmarks/exp4c-substrate/validate.py
 ```
 
-- **Substrates + per-trial ledgers:** `benchmarks/exp{4b,4c,5}-substrate/` (each with `validate.py`, the held-out `accept.py`, and committed `RESULTS-*.csv`).
-- **Pre-registrations:** `benchmarks/PREREG-lever2-natural.md`, `benchmarks/PREREG-exp4c-deep-constraint.md`; Experiment 4b in `benchmarks/exp4b-substrate/CALIBRATION-RESULT.md`.
-- **Result data:** `benchmarks/results/lever2-{confirm,natural,deep-4c,3hop,screen}.json`, `lever1-sweep.json`, `forkA-capability.json`, and `stats-appendix.json`.
-- **Working report (source of this manuscript):** `benchmarks/REPORT-carrier-comms.md`.
+- **Substrates + per-trial ledgers:** `docs/benchmarks/exp{4b,4c,5}-substrate/` (each with `validate.py`, the held-out `accept.py`, and committed `RESULTS-*.csv`).
+- **Pre-registrations:** `docs/benchmarks/PREREG-lever2-natural.md`, `docs/benchmarks/PREREG-exp4c-deep-constraint.md`; Experiment 4b in `docs/benchmarks/exp4b-substrate/CALIBRATION-RESULT.md`.
+- **Result data:** `docs/benchmarks/results/lever2-{confirm,natural,deep-4c,3hop,screen}.json`, `lever1-sweep.json`, `forkA-capability.json`, and `stats-appendix.json`.
+- **Working report (source of this manuscript):** `docs/benchmarks/REPORT-carrier-comms.md`.
 
 Note on ledgers: the Experiment 4/4b live runs executed in disposable worktrees whose per-trial transcripts were not retained; those experiments reproduce the setup and the summary counts and exact intervals, not the per-trial transcript ledger. Experiments 4c and 5 commit their full per-trial ledgers.
 

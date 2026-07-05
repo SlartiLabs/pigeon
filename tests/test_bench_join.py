@@ -1,7 +1,7 @@
 """Gate G0: bench_join reproduces the published marshmallow result from raw.
 
-The committed ``benchmarks/results/raw/marshmallow`` artifacts and the published
-``benchmarks/results/marshmallow.json`` are two views of the same run. If
+The committed ``docs/benchmarks/results/raw/marshmallow`` artifacts and the published
+``docs/benchmarks/results/marshmallow.json`` are two views of the same run. If
 ``bench_join`` (aggregating through the same code as ``pigeon metrics``) does not
 reproduce the published totals and the recorded success tie, the instrument is
 not trustworthy and no later phase may build on it.

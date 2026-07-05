@@ -1,6 +1,6 @@
 {
   "experiment": "4c — deep constraint (dedup-before-aggregate): depth vs recoverability",
-  "prereg": "benchmarks/PREREG-exp4c-deep-constraint.md",
+  "prereg": "docs/benchmarks/PREREG-exp4c-deep-constraint.md",
   "model": "claude/sonnet, two physically separate worktrees per cell",
   "design": "Difficulty held constant by construction: Dr (deep, rationale documented) vs Du (identical code+task, docstring stripped) are byte-identical modulo the docstring (validate.py diff-clean). Recoverability meter = pointers-only pass rate. S anchors to Exp-4b R_mid (reused).",
   "stage1_calibration": {
@@ -30,5 +30,5 @@
   "limitation": "Du stripped the RATIONALE (docstring) but the dedup STRUCTURE (latest[txn_id]=amt) stayed visible in the code, so 'trace present' remained strong. True behavior-unrecoverability (code present, behavior NOT inferable) was not achieved. This moves the result from shallow-toy to deep-toy, not to deep-real; real analytical constraints are deeper still.",
   "cost": "Parity across all ceiling arms (Du po $1.051, Dr po $1.041, Du with-derived $1.024 per run, N=12). No cost penalty; not a saving.",
   "total_spend_usd": 55.38,
-  "per_trial_ledger": "benchmarks/exp4c-substrate/RESULTS-stage1-calibration.csv, RESULTS-stage2-confirm.csv (all 44 confirm trials)"
+  "per_trial_ledger": "docs/benchmarks/exp4c-substrate/RESULTS-stage1-calibration.csv, RESULTS-stage2-confirm.csv (all 44 confirm trials)"
 }

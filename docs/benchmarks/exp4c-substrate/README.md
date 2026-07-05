@@ -59,7 +59,7 @@ recoverability meter); `S` anchors the ladder to the confirmed 4b step.
 ## Validate (no agents, local only)
 
 ```
-python3 benchmarks/exp4c-substrate/validate.py
+python3 docs/benchmarks/exp4c-substrate/validate.py
 ```
 
 Asserts, for both Dr and Du: [1] grader passes pristine, [2] visible tests pass pristine,

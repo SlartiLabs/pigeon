@@ -4,7 +4,7 @@ Produces the honest number that replaces the synthetic ~92.8%, and the evidence
 that gates the public launch. **Read §0 and §0.5 before touching a repo.**
 
 This file is the repo-safe (public-label-only) protocol. The private name↔label
-mapping lives in `benchmarks/.private-map.json` (gitignored), never here.
+mapping lives in `docs/benchmarks/.private-map.json` (gitignored), never here.
 
 ---
 
@@ -14,12 +14,12 @@ real-identity / collaboration repos. Naming any of them in a public artifact
 bridges the alias to the author permanently.
 
 1. Private test repos are **local substrate only**.
-2. Public artifacts (`benchmarks/`, blog, README) carry **numbers + generalized
+2. Public artifacts (`docs/benchmarks/`, blog, README) carry **numbers + generalized
    descriptions only** — e.g. "Repo A: ~N-kLOC R/Python research codebase." Never
    names, orgs, URLs, codenames, or anything that reads back to the author.
-3. The name↔label mapping is `benchmarks/.private-map.json` — **gitignored**.
-4. Before any public commit or blog draft, run `benchmarks/check-opsec.sh`
-   (greps `benchmarks/` for identity strings; must return nothing). It's also a
+3. The name↔label mapping is `docs/benchmarks/.private-map.json` — **gitignored**.
+4. Before any public commit or blog draft, run `docs/benchmarks/check-opsec.sh`
+   (greps `docs/benchmarks/` for identity strings; must return nothing). It's also a
    pre-publication checklist item (§8).
 
 ### Internal vs. public benchmark — different jobs
@@ -36,7 +36,7 @@ bridges the alias to the author permanently.
 
 ## §0.5 — Lock the kill-N FIRST
 A kill-criterion chosen after seeing results is a rationalization. Fill and commit
-`benchmarks/KILL-CRITERION.md` — cold — before the first run.
+`docs/benchmarks/KILL-CRITERION.md` — cold — before the first run.
 
 ---
 
@@ -78,10 +78,10 @@ wall-clock · success (a **pre-declared objective check** per task) · handoffs
    across tasks to avoid you learning the task between arms.
 
 ## §6 — Recording
-- `benchmarks/.private-map.json` (**gitignored**): label → repo, SHA, metadata.
-- `benchmarks/results/<label>.json` (committable, anonymized): per-task/per-arm
+- `docs/benchmarks/.private-map.json` (**gitignored**): label → repo, SHA, metadata.
+- `docs/benchmarks/results/<label>.json` (committable, anonymized): per-task/per-arm
   metrics under the public label only (schema: `results.template.json`).
-- Raw run logs stay local (`benchmarks/results/raw/`, gitignored) — they contain
+- Raw run logs stay local (`docs/benchmarks/results/raw/`, gitignored) — they contain
   repo paths and code.
 
 ## §7 — Analysis
@@ -93,7 +93,7 @@ three are anonymized supporting points.
 
 ## §8 — Pre-publication checklist
 - [ ] `KILL-CRITERION.md` filled and committed (§0.5)
-- [ ] `benchmarks/check-opsec.sh` returns nothing (§0)
+- [ ] `docs/benchmarks/check-opsec.sh` returns nothing (§0)
 - [ ] `.private-map.json` gitignored and not staged
 - [ ] Public number is from a reproducible public repo, not the private three
 - [ ] Each published delta carries its baseline + caveats (no bare percentages)

@@ -28,7 +28,7 @@ done; kept for provenance), **proposed** (not built).
 ## Carrier-comms study ([`carrier-comms/`](carrier-comms/), complete)
 
 Design records behind the two-lever study. The **result** lives in
-[`../../benchmarks/`](../../benchmarks/) (report, manuscript, reproducible statistics).
+[`../../docs/benchmarks/`](../../docs/benchmarks/) (report, manuscript, reproducible statistics).
 
 | Doc | What it is |
 |-----|------------|

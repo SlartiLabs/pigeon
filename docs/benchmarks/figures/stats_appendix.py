@@ -16,8 +16,8 @@ Produces:
     lever2-natural.md locks was never run; that gap is reported, not papered
     over)
 
-Run: python3 benchmarks/figures/stats_appendix.py
-Writes: benchmarks/results/stats-appendix.json
+Run: python3 docs/benchmarks/figures/stats_appendix.py
+Writes: docs/benchmarks/results/stats-appendix.json
 """
 from __future__ import annotations
 

@@ -60,9 +60,9 @@ alone (a non-obvious constraint found through failed experiments, invisible in t
 | Scaffolding (never counted) | [`coordinate/__init__.py`](../../../src/pigeon/coordinate/__init__.py) `DEFAULT_PROMPT` @148-154; `crew_instructions` @156-180; readonly-constraint blocks @114-134; [`context.py`](../../../src/pigeon/context.py) `generated_body` @30-63 | Re-emitted every spawn, invisible to the ledger |
 | Distill (post-hoc reasoning capture) | [`distill.py`](../../../src/pigeon/distill.py) **deterministic, no LLM** (docstring @12-17); `list_runs` use @162; `sessions.session_handoffs` (sessions.py:17) | Natural base for capture (ii) — **keep the core deterministic** |
 | Coordinate / runners | `config.py` runners @135-139 (`claude`/`agy`/`opencode`), `telemetry_flags` @154-158, `model_pools` @185 (empty), `env_allowlist` @191 (`[]` strips secrets); [`agents.py`](../../../src/pigeon/agents.py) KNOWN_AGENTS @37-62 (opencode `-m {model}` @40; gemini @46) | `USAGE_PARSERS` registry [`coordinate/telemetry.py`](../../../src/pigeon/coordinate/telemetry.py) @102 |
-| Benchmark harness | `benchmarks/PROTOCOL.md` (two-arm WITH/WITHOUT, same-model, identical prompt, fresh worktree @ pinned SHA, held-out acceptance test §3); `benchmarks/KILL-CRITERION.md` (axes + GO/NO-GO, locked) | Cost(USD) is the headline; token bases differ across arms |
-| Marshmallow result | `benchmarks/results/marshmallow.json` — plan step naive $0.4555 vs pigeon $0.4419 (~parity); overall **+8.1%**, same 1178 tests; `handoff_saved_pct 97.5`, `pack_saved_pct 92.1` (vs re-transmission, **not** a real cross-arm saving) | Plan step is a measured wash |
-| **Fork-A cross-model — DONE** | `benchmarks/results/forkA-capability.json` + `benchmarks/figures/fig4_forkA_capability.png` | See §2 |
+| Benchmark harness | `docs/benchmarks/PROTOCOL.md` (two-arm WITH/WITHOUT, same-model, identical prompt, fresh worktree @ pinned SHA, held-out acceptance test §3); `docs/benchmarks/KILL-CRITERION.md` (axes + GO/NO-GO, locked) | Cost(USD) is the headline; token bases differ across arms |
+| Marshmallow result | `docs/benchmarks/results/marshmallow.json` — plan step naive $0.4555 vs pigeon $0.4419 (~parity); overall **+8.1%**, same 1178 tests; `handoff_saved_pct 97.5`, `pack_saved_pct 92.1` (vs re-transmission, **not** a real cross-arm saving) | Plan step is a measured wash |
+| **Fork-A cross-model — DONE** | `docs/benchmarks/results/forkA-capability.json` + `docs/benchmarks/figures/fig4_forkA_capability.png` | See §2 |
 
 ### Uncommitted, PRESERVE — do not clobber
 
@@ -208,7 +208,7 @@ constant isn't double-counted per wave. `format_summary` (@234) renders new kind
 in `metrics.jsonl` (token-only by design). The reporter reads: `metrics.jsonl` filtered by `sid`
 (add `sid` to the `pack`/`retrieval` events too while here) + the run manifest via
 `coordinate.list_runs` (as `distill.py:162` does) for `exit_code`/`status`/`telemetry` + an
-operator-written `benchmarks/results/raw/<label>/acceptance.json` (`{task_id:{pass:bool}}`, the
+operator-written `docs/benchmarks/results/raw/<label>/acceptance.json` (`{task_id:{pass:bool}}`, the
 held-out gate). Emits one row per task:
 `{task, runner, model, channel_tokens(=handoff+pack+scaffold), agent_tokens, cost_usd,
 exit_code, accept_pass, regression_count}`. **This row is the single artifact every later phase
@@ -355,7 +355,7 @@ The quality-win arm is **already demonstrated** (§2: 5/5 vs 0/5). This phase is
 | [`src/pigeon/config.py`](../../../src/pigeon/config.py) | pack-sweep keys; `derived_token_budget`; `extract_derived` flag; opencode `-m {model}` + a free-model `model_pool` for Phase 0 | 0,3,4 |
 | [`src/pigeon/pack.py`](../../../src/pigeon/pack.py) | tunable layer shares (@28-34); pointer-ize inlined slices (@89-90) | 3 |
 | [`src/pigeon/distill.py`](../../../src/pigeon/distill.py) | opt-in `extract_derived` (reuse `sessions.py`); **keep the core deterministic** | 4 |
-| `benchmarks/results/raw/<label>/acceptance.json` (operator) | held-out pass/fail per task → `bench_join` | 1+ |
+| `docs/benchmarks/results/raw/<label>/acceptance.json` (operator) | held-out pass/fail per task → `bench_join` | 1+ |
 | `docs/design/carrier-comms/brief.md`, `docs/To_do/comms-panel.tasks.yaml` (new) | brief + panel synthesis; panel coordinate file | 0 |
 
 ---
@@ -438,7 +438,7 @@ Claude attribution.
   aggregate through the *same* code as `pigeon metrics`. New `src/pigeon/bench_join.py` joins a
   recorded ledger to its held-out acceptance + regression gate, exposing
   `(channel_tokens, accept_pass, regression_count)` per arm. New `tests/test_bench_join.py` (5).
-- **Gate G0 verdict — PASS.** `bench_join` over `benchmarks/results/raw/marshmallow` reproduces the
+- **Gate G0 verdict — PASS.** `bench_join` over `docs/benchmarks/results/raw/marshmallow` reproduces the
   published `marshmallow.json` accounting exactly: events 16, overall 95.5%, handoff 97.5%, pack
   92.1%, channel (handoff actual) 3142, pack 5985 — and the recorded success **tie** (both arms
   PASS). Full suite **477 passed**; ruff clean; `pigeon metrics` unaffected.
@@ -490,7 +490,7 @@ cross-model arm, which is a blocked live run; staged below rather than written s
 
 ### Phase 2 — classify the over-send (Gate G1) ✅ PASS (from the recorded ledger)
 
-`bench_join` / `aggregate_metrics` over `benchmarks/results/raw/marshmallow/with.metrics.jsonl`:
+`bench_join` / `aggregate_metrics` over `docs/benchmarks/results/raw/marshmallow/with.metrics.jsonl`:
 per spawn the **pack injects ~2992 tok vs the handoff doc's ~286 — pack is ~10.5× the handoff**
 (lumped pack 5985 vs handoff 3142 across the run). **Confirmed:** the over-send lives in the pack
 + scaffolding, not the handoff doc (locked decision #2 holds; Lever 1 is correctly aimed). Caveat:
@@ -536,7 +536,7 @@ the first run (KILL-CRITERION discipline). **Do not push until a clean stopping 
    $1.25 (plan $0.57 / impl $0.39 / review $0.29). `bench_join` on the live ledger: channel 3433,
    pack 6745, 95.2% reduction, success tie — **G1 reproduced on fresh data**, and the new
    **`scaffold` meter fired live (3 events)**. Raw preserved at
-   `benchmarks/results/raw/marshmallow-phase2/`. This validates the live harness + the instrument
+   `docs/benchmarks/results/raw/marshmallow-phase2/`. This validates the live harness + the instrument
    end-to-end; the bigger sweep below now runs on the G-panel-v2 methodology.
 3. **Phase 3 Lever-1 (N≥3 sonnet).** Land Move 1 (say-once scaffolding — the `scaffold` meter is
    already wired, so its drop is measured for free), re-run marshmallow plan→implement N≥3, apply

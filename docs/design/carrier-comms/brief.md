@@ -85,7 +85,7 @@ refinements applied to the build (gate-level, not premise-level — no lever was
 
 1. **G0 reconciliation target fixed.** `marshmallow.json` has no per-component
    channel breakdown; `bench_join` reconciles against the raw
-   `benchmarks/results/raw/marshmallow/` metrics.jsonl (lumped `actual_tokens`) instead.
+   `docs/benchmarks/results/raw/marshmallow/` metrics.jsonl (lumped `actual_tokens`) instead.
 2. **Token axis needs a MEASURED model.** Every `oc-*` runner has `telemetry_flags: []`
    (unmeasured). The U-curve net-token rule (Phase 3) and any Phase-5 token win are
    evaluable **only on sonnet/opus**; free models give success/quality only. Verify

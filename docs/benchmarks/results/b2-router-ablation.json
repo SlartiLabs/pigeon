@@ -6,7 +6,7 @@
     "static_all_sonnet": {
       "policy": "static", "runners": "all sonnet",
       "success": "12/12", "ci95": [0.735, 1.0], "mean_cost_usd": 1.618,
-      "source": "committed Exp-5 pointers-only (benchmarks/exp5-substrate/RESULTS-confirm-N12.csv)"
+      "source": "committed Exp-5 pointers-only (docs/benchmarks/exp5-substrate/RESULTS-confirm-N12.csv)"
     },
     "cost_aware": {
       "policy": "cost-aware (pigeon route)",
@@ -19,6 +19,6 @@
   "mechanism_verified": "Per-trial after-files show correct to_wire/from_wire with the recoverable convention; manifests confirm to_wire ran on mimo and from_wire on oc-mimo (both free, both status=completed). The win is a cost win: the free arm handled the mechanical worker tasks that all-sonnet was paying full price for.",
   "honest_reading": "A SIMPLE heuristic (role-based cost-aware) already beat static. Per the roadmap's own logic, that means the routing win here is 80%-shaped: you do not need a LEARNED coordinator to capture it. So B3's gate is not 'does dynamic beat static' (answered here, yes) but 'does a LEARNED router beat the HEURISTIC router?' The specific win is a cost win that holds BECAUSE the free arm was capable enough for THIS recoverable worker task; on harder worker tasks the free arm may fail (success loss). Knowing WHERE the free arm's capability boundary is (which tasks to send free vs mid) is the thing a learned policy could add over the fixed role-heuristic — that is B3's potential value, and its real gate.",
   "limitations": "One task, one substrate. N=5 on the cost-aware arm: success is at ceiling but not TOST-confirmed equivalent to the static 12/12 (a small success loss below the N=5 detection floor cannot be ruled out; the 68% cost margin is large enough that a modest success dip would still net-favor cost-aware, but that is not established). The free-arm workers' telemetry does not report num_turns/USD (free), so cost is architect-only by construction.",
-  "per_trial_ledger": "benchmarks/results/b2-costaware-ledger.csv",
+  "per_trial_ledger": "docs/benchmarks/results/b2-costaware-ledger.csv",
   "spend_usd": 2.6
 }

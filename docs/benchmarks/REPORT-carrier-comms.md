@@ -436,14 +436,14 @@ The Exp. 4c `Du` ceiling reading (N=12) clears the formal TOST equivalence bar a
 ## 8a. Statistics appendix, exact tests, formalized
 
 Every number in this section is recomputed straight from the committed result JSONs and
-`exp4b-substrate/CALIBRATION-RESULT.md` by `benchmarks/figures/stats_appendix.py`
-(`python3 benchmarks/figures/stats_appendix.py`, output at
-`benchmarks/results/stats-appendix.json`), nothing here is hand-entered. The script
+`exp4b-substrate/CALIBRATION-RESULT.md` by `docs/benchmarks/figures/stats_appendix.py`
+(`python3 docs/benchmarks/figures/stats_appendix.py`, output at
+`docs/benchmarks/results/stats-appendix.json`), nothing here is hand-entered. The script
 cross-checks every recomputed CI against the value already printed in its source file and
 aborts loudly on any mismatch; **all previously reported Clopper-Pearson CIs in this report
 reproduced exactly** (Exp. 4, Exp. 4b, Exp. 4c, Exp. 5). One number this appendix could
 **not** verify against a committed artifact: Gate G1's "pack ~2 992 tok vs handoff ~286 tok
-(~10.5×)" (§6); it is not present in any file under `benchmarks/results/` or
+(~10.5×)" (§6); it is not present in any file under `docs/benchmarks/results/` or
 `exp4b-substrate/`, flagged for the operator, not fixed here.
 
 **Table 2a, Exact two-sided Fisher / Barnard tests on the CI-separated contrasts.**
@@ -546,13 +546,13 @@ markdown injection is now the mechanism under test (no longer the `DERIVED.md` p
 
 ```
 # figures
-python3 benchmarks/figures/make_figures.py                 # Exp.1/2 (fig1–4)
-python3 benchmarks/figures/make_carrier_comms_figures.py   # fig5–9
+python3 docs/benchmarks/figures/make_figures.py                 # Exp.1/2 (fig1–4)
+python3 docs/benchmarks/figures/make_carrier_comms_figures.py   # fig5–9
 # join any recorded arm (tokens × held-out success × turns × USD)
-python -m pigeon.bench_join benchmarks/results/raw/<label>
+python -m pigeon.bench_join docs/benchmarks/results/raw/<label>
 ```
 
-Raw artifacts: `benchmarks/results/raw/` (marshmallow, marshmallow-phase2,
+Raw artifacts: `docs/benchmarks/results/raw/` (marshmallow, marshmallow-phase2,
 cookiecutter); panel critiques: `docs/design/panel-reviews/`; the live Lever-2 screen
 ran from `/tmp/bench/forkA` (disposable public-clone substrate).
 

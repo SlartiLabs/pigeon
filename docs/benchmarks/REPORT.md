@@ -4,9 +4,9 @@
 real, multi-file coding work with LLM agent CLIs, versus running the same
 agents without it?
 **Date:** 2026-06-18 · **Status:** complete, decisive for the cost question.
-**Evidence:** `benchmarks/results/{cookiecutter,marshmallow}.json` (committed),
-raw logs in `benchmarks/results/raw/` (gitignored), figures in
-`benchmarks/figures/`.
+**Evidence:** `docs/benchmarks/results/{cookiecutter,marshmallow}.json` (committed),
+raw logs in `docs/benchmarks/results/raw/` (gitignored), figures in
+`docs/benchmarks/figures/`.
 
 ---
 

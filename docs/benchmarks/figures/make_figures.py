@@ -2,7 +2,7 @@
 """Generate Tier-A benchmark figures from the recorded results.
 
 Data are the committed per-arm cost numbers (all from claude total_cost_usd).
-Run: python3 benchmarks/figures/make_figures.py
+Run: python3 docs/benchmarks/figures/make_figures.py
 """
 import matplotlib
 matplotlib.use("Agg")

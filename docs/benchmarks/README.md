@@ -35,9 +35,9 @@ and equivalence tests (TOST) where it is not.
 ### Reproduce
 
 ```
-python3 benchmarks/figures/stats_appendix.py            # recompute every statistic
-python3 benchmarks/figures/make_carrier_comms_figures.py   # rebuild fig5-11
-python3 benchmarks/exp4c-substrate/validate.py          # validate a held-out grader (no agents, no spend)
+python3 docs/benchmarks/figures/stats_appendix.py            # recompute every statistic
+python3 docs/benchmarks/figures/make_carrier_comms_figures.py   # rebuild fig5-11
+python3 docs/benchmarks/exp4c-substrate/validate.py          # validate a held-out grader (no agents, no spend)
 ```
 
 ## Track-B routing (ASIA groundwork)
@@ -61,5 +61,5 @@ The method behind Experiment 1 and the launch-gating machinery.
   carrier-comms study above (which is now the headline).
 - `tasks/` per-repo task specs.
 - **`check-opsec.sh`** the pre-publication identity-leak guard: it greps committed
-  `benchmarks/` against the gitignored `.private-map.json` (copy from
+  `docs/benchmarks/` against the gitignored `.private-map.json` (copy from
   `.private-map.template.json`). **Run it before any public commit.**
