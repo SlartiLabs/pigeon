@@ -23,6 +23,25 @@ def test_build_records_decision_and_outcome_fields():
     assert b["num_turns"] == 12 and b["cost_usd"] == 0.5
 
 
+def test_records_carry_role_and_summarize_groups_by_role():
+    recs = routing.build_records("r", "s", {
+        "architect": _mk("sonnet", 10, 0.4, doing="design the api"),
+        "impl": _mk("sonnet", 12, 0.5, doing="implement it"),
+    }, {"architect": 0, "impl": 1}, {})
+    roles = {r["task"]: r["role"] for r in recs}
+    assert roles["architect"] == "planner" and roles["impl"] == "worker"
+    assert set(routing.summarize(recs)["roles"]) == {"planner", "worker"}
+
+
+def test_summarize_flags_small_free_vs_paid_cost_gap():
+    # a $0.00 free-arm run vs a small paid run must register as a cost signal,
+    # not get swallowed by a flat floor (the `min(costs) or 1` bug).
+    recs = routing.build_records("r1", "s", {"w": _mk("oc-mimo", 10, 0.0, doing="implement")}, {"w": 0}, {})
+    recs += routing.build_records("r2", "s", {"w": _mk("sonnet", 10, 0.03, doing="implement")}, {"w": 0}, {})
+    s = routing.summarize(recs)
+    assert s["varied_roles"] == 1 and s["signal_roles"] == 1
+
+
 def test_summarize_no_variation():
     recs = routing.build_records("r1", "s",
                                  {"a": _mk("sonnet", 10, 0.4)}, {"a": 0}, {})

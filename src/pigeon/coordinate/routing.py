@@ -27,6 +27,7 @@ _OK_STATUS = ("exited", "completed", "ok", "succeeded")
 def build_records(run_id: str | None, sid: str | None, tasks_data: dict[str, Any],
                   depth: dict[str, int], carried: dict[str, bool]) -> list[dict[str, Any]]:
     """One decision->outcome record per task. ``tasks_data`` is a manifest ``tasks`` map."""
+    from .router import classify_role
     out: list[dict[str, Any]] = []
     for tid, t in tasks_data.items():
         tel = t.get("telemetry") or {}
@@ -34,6 +35,7 @@ def build_records(run_id: str | None, sid: str | None, tasks_data: dict[str, Any
             "run_id": run_id,
             "sid": sid,
             "task": tid,
+            "role": classify_role({"id": tid, "doing": t.get("doing", "")}),
             "runner": t.get("runner"),
             "model": t.get("model") or t.get("runner"),
             "num_deps": len(t.get("needs") or []),
@@ -103,7 +105,7 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     """The free probe: do routings vary, and do outcomes vary with the routing?"""
     by_role: dict[str, dict[Any, list]] = defaultdict(lambda: defaultdict(list))
     for r in records:
-        by_role[r["task"]][r.get("runner")].append(r)
+        by_role[r.get("role") or r["task"]][r.get("runner")].append(r)
 
     roles: dict[str, Any] = {}
     varied_roles = 0
@@ -123,7 +125,7 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             costs = [o["mean_cost_usd"] for o in entry["runners"].values() if o["mean_cost_usd"] is not None]
             turns = [o["mean_turns"] for o in entry["runners"].values() if o["mean_turns"] is not None]
             passes = [o["pass_rate"] for o in entry["runners"].values() if o["pass_rate"] is not None]
-            cost_gap = (max(costs) - min(costs)) > 0.05 * (min(costs) or 1) if len(costs) > 1 else False
+            cost_gap = (max(costs) - min(costs)) > 0.05 * (min(costs) if costs else 1) if len(costs) > 1 else False
             turn_gap = (max(turns) - min(turns)) >= 2 if len(turns) > 1 else False
             pass_gap = (max(passes) - min(passes)) >= 0.2 if len(passes) > 1 else False
             if cost_gap or turn_gap or pass_gap:

@@ -160,7 +160,7 @@ python3 docs/benchmarks/figures/make_carrier_comms_figures.py
 python3 docs/benchmarks/substrates/exp4c-depth/validate.py
 ```
 
-- **Substrates + per-trial ledgers:** `docs/benchmarks/substrates/exp{4b-trace-presence,4c-depth,5-natural}/` (each with `validate.py`, the held-out `accept.py`, and committed `RESULTS-*.csv`).
+- **Substrates + per-trial ledgers:** `docs/benchmarks/substrates/exp{4b-trace-presence,4c-depth,5-natural}/`, each with `validate.py` and the held-out `accept.py`. Experiments 4c and 5 additionally commit their per-trial `RESULTS-*.csv`; Experiment 4b commits `CALIBRATION-RESULT.md` (its per-trial transcripts were not retained, see the note below).
 - **Pre-registrations:** `docs/benchmarks/preregistrations/exp5-natural-substrate.md`, `docs/benchmarks/preregistrations/exp4c-deep-constraint.md`; Experiment 4b in `docs/benchmarks/substrates/exp4b-trace-presence/CALIBRATION-RESULT.md`.
 - **Result data:** `docs/benchmarks/results/exp4-residue-necessary.json`, `exp5-natural.json`, `exp4c-depth.json`, `exp4a-multihop.json`, `exp4-residue-screen.json`, `exp3-pack-sweep.json`, `exp2-cross-model.json`, and `statistics.json`.
 - **Working report (source of this manuscript):** `docs/benchmarks/report.md`.

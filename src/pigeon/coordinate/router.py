@@ -110,6 +110,9 @@ def route(tasks: list[dict[str, Any]], policy: str, available: Iterable[str],
     if policy not in POLICIES:
         raise ValueError(f"unknown routing policy {policy!r} "
                          f"(known: {', '.join(sorted(POLICIES))})")
+    for t in tasks:
+        if not t.get("id"):
+            raise ValueError("each task needs a non-empty 'id' to be routed")
     pref = POLICIES[policy]
     if pref is None:
         return {t["id"]: t.get("runner") for t in tasks}
@@ -191,16 +194,21 @@ def parse_routing(text: str, task_ids: Iterable[str],
     import json
     import re
     ids, avail = set(task_ids), set(available)
-    obj: dict[str, Any] = {}
+    best: dict[str, str] = {}
     for m in re.finditer(r"\{[^{}]*\}", text, re.DOTALL):
         try:
             cand = json.loads(m.group(0))
         except json.JSONDecodeError:
             continue
-        if isinstance(cand, dict):
-            obj.update(cand)
-    return {k: v for k, v in obj.items()
-            if k in ids and isinstance(v, str) and v in avail}
+        if not isinstance(cand, dict):
+            continue
+        valid = {k: v for k, v in cand.items()
+                 if k in ids and isinstance(v, str) and v in avail}
+        # Prefer the object that assigns the most real tasks: the model's actual
+        # answer covers the task ids, while an echoed few-shot example does not.
+        if len(valid) > len(best):
+            best = valid
+    return best
 
 
 def explain(tasks: list[dict[str, Any]], policy: str, available: Iterable[str],

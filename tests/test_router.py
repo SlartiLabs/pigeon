@@ -83,6 +83,19 @@ def test_unknown_policy_raises():
         router.route([{"id": "a", "runner": "sonnet"}], "nope", AVAIL)
 
 
+def test_route_rejects_task_without_id():
+    # a hand-edited spec via `pigeon route` must get a clear ValueError, not a raw KeyError
+    with pytest.raises(ValueError):
+        router.route([{"runner": "sonnet"}], "cost-aware", AVAIL)
+
+
+def test_parse_routing_prefers_real_answer_over_echoed_example():
+    # prompted_prompt embeds an example {"architect":"sonnet","impl":"oc-mimo"}; a model that
+    # echoes it after answering must not have the example override its real decision.
+    text = 'example: {"architect": "sonnet", "impl": "oc-mimo"}\nmy answer: {"a": "opus", "b": "sonnet"}'
+    assert router.parse_routing(text, ["a", "b"], ["opus", "sonnet"]) == {"a": "opus", "b": "sonnet"}
+
+
 def test_apply_mutates_spec_runners():
     spec = {"sid": "s", "tasks": [
         {"id": "impl", "runner": "sonnet", "doing": "implement"},
