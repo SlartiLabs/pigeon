@@ -5,7 +5,7 @@ pointers-only **12/12**, +derived **12/12** (injection verified), TOST-equivalen
 (Newcombe diff-CI [-0.184, 0.184]) = H0 confirmed (residue unnecessary when the constraint
 is recoverable). Seven +derived trials first hit a session rate-limit (turn-1/$0 no-ops),
 discarded and rerun; all 12 reported are valid. Per-trial ledger: `RESULTS-confirm-N12.csv`;
-aggregate + TOST + verdict: `../results/lever2-natural.json`; stats: `../results/stats-appendix.json`.
+aggregate + TOST + verdict: `../results/exp5-natural.json`; stats: `../results/statistics.json`.
 
 ---
 

@@ -17,7 +17,7 @@
   },
   "two_arm_confirm_N12": {
     "date": "2026-07-04",
-    "note": "The pre-registered PRIMARY test (+derived vs pointers-only, two arms, PREREG-lever2-natural.md), run at N=12 each in two physically separate worktrees, closing the gap that the 2026-06-20 manipulation-check-only pass left open.",
+    "note": "The pre-registered PRIMARY test (+derived vs pointers-only, two arms, preregistrations/exp5-natural-substrate.md), run at N=12 each in two physically separate worktrees, closing the gap that the 2026-06-20 manipulation-check-only pass left open.",
     "pointers_only": {"n": 12, "recovered": 12, "ci95": [0.735, 1.0]},
     "with_derived": {"n": 12, "recovered": 12, "ci95": [0.735, 1.0], "injection_verified": "architect emitted 5 state.derived.constraint_found items; '## Carried reasoning' confirmed in the downstream to_wire prompt — residue was carried and still added nothing above ceiling"},
     "tost_wd_vs_po": {"method": "Newcombe hybrid Wilson-score CI on the risk difference, 90% CI, margin 0.20", "diff_ci90": [-0.184, 0.184], "equivalent_at_0.20": true},

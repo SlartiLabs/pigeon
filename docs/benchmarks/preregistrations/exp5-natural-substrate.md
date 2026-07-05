@@ -195,5 +195,5 @@ compounds with more, but one natural task is the decisive next datum.
 
 ---
 
-_Commits are the operator's. Results append to `results/lever2-natural.json` and the
+_Commits are the operator's. Results append to `results/exp5-natural.json` and the
 report's Table 2 once the run completes._

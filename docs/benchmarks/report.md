@@ -1,5 +1,5 @@
 <!-- REVIEWER VERDICT (adversarial final pass): PUBLISHABLE with the fixes below applied.
-     Verified every quantitative claim against results/*.json + stats-appendix.json, all
+     Verified every quantitative claim against results/*.json + statistics.json, all
      reproduce exactly (Clopper-Pearson CIs, Fisher p=0.000155 / Barnard p=0.000031,
      TOST diff-CIs and min-margins). Fig 9 confirmed regenerated off real means
      (screen 0.383/0.465, confirm 0.417/0.436), no hardcoded ±18% deltas. Fig 10/11 present.
@@ -188,7 +188,7 @@ left arm of the U-curve (where too-terse breaks success) and the knee both live 
 1k pack and are untested**; "the knee is below 1k" is an *inference from three monotone
 points*, not a measurement. The cost reduction is **directional** (N=3, overlapping
 CIs), not locked. Per the "Lever 1 is maintenance" steer, the sub-1k knee hunt is
-**not pursued**, the actionable result is already in hand. Data: `results/lever1-sweep.json`.
+**not pursued**, the actionable result is already in hand. Data: `results/exp3-pack-sweep.json`.
 
 ## 7. Experiment 4, Lever 2 (CONFIRMED, N=8): residue is **necessary**, at parity cost
 
@@ -221,10 +221,10 @@ penalty**, not a quality/cost trade.
 ![Figure 9, cost delta: screen vs confirm](figures/fig9_usd_weighting.png)
 
 **Figure 9.** Regenerated directly off the committed result JSONs (no hand-entered
-deltas). The **N=3 screen** (`results/lever2-screen.json`) showed derived **$0.383** vs
+deltas). The **N=3 screen** (`results/exp4-residue-screen.json`) showed derived **$0.383** vs
 pointers-only **$0.465**, a **−17.6 %** USD delta, the number the panel's "USD, not raw
 tokens" lens was demonstrated on. That **did not replicate** at the **N=8 confirm**
-(`results/lever2-confirm.json`): derived **$0.417** vs pointers-only **$0.436**, a
+(`results/exp4-residue-necessary.json`): derived **$0.417** vs pointers-only **$0.436**, a
 **−4.4 %** delta, inside the shaded ±10 % noise band. The confirmed cost claim is
 **parity**, not a USD win; the −17.6 % screen figure was a screen artifact, not a result.
 
@@ -252,7 +252,7 @@ a task's **full `needs` closure** (so A→B→C reaches C even when C only needs
 **Live validation (N=3):** a **natural** chain (`from_wire` directly `needs` only
 `to_wire`) carried the hop-1 contract transitively to hop 3: **3/3 PASS, hop-3 injection
 3/3**, all valid real runs. So the clean single-hop result extends to a real 3-hop chain.
-Data: `results/lever2-3hop.json`. (The unit test `test_derived_survives_multiple_hops`
+Data: `results/exp4a-multihop.json`. (The unit test `test_derived_survives_multiple_hops`
 shows the pre-fix direct-needs path **loses** the constraint at hop 3.)
 
 ### 7b. External validity (Exp. 5), the effect is **bounded**, not universal
@@ -292,7 +292,7 @@ when it is non-obvious. *Limitation (now discharged by Exp. 4b, §7c):* this was
 semi-synthetic substrate with a fairly salient in-code cue (named sibling method +
 explicit comment); the open question was whether a *subtler* cue lands pointers-only in
 the partial regime (1–7/8). Exp. 4b tested it across three subtlety axes. It does not.
-Data: `results/lever2-natural.json`.
+Data: `results/exp5-natural.json`.
 
 ### 7c. Experiment 4b, the boundary R\* is a **sharp step on trace presence** (CONFIRMED, N=8)
 
@@ -400,7 +400,7 @@ honest boundary):* Du stripped the *rationale* but the dedup *structure*
 behavior-unrecoverability** (code present, behavior not inferable) was not achieved. This
 moves the result from shallow-toy to **deep-toy, not deep-real**, real analytical
 constraints are deeper still, and the residue-necessary regime (Exp. 4's 0/8) still
-requires the trace to be genuinely absent. Data: `results/lever2-deep-4c.json`,
+requires the trace to be genuinely absent. Data: `results/exp4c-depth.json`,
 `/tmp/bench/exp4c/`.
 
 ![Figure 11, the two-sided bounded law, one figure](figures/fig11_bounded_law.png)
@@ -438,7 +438,7 @@ The Exp. 4c `Du` ceiling reading (N=12) clears the formal TOST equivalence bar a
 Every number in this section is recomputed straight from the committed result JSONs and
 `substrates/exp4b-trace-presence/CALIBRATION-RESULT.md` by `docs/benchmarks/figures/stats_appendix.py`
 (`python3 docs/benchmarks/figures/stats_appendix.py`, output at
-`docs/benchmarks/results/stats-appendix.json`), nothing here is hand-entered. The script
+`docs/benchmarks/results/statistics.json`), nothing here is hand-entered. The script
 cross-checks every recomputed CI against the value already printed in its source file and
 aborts loudly on any mismatch; **all previously reported Clopper-Pearson CIs in this report
 reproduced exactly** (Exp. 4, Exp. 4b, Exp. 4c, Exp. 5). One number this appendix could

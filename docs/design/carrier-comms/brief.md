@@ -83,7 +83,7 @@ Fork-A, which used agy earlier today while authed and is already banked.)
 **Substantive critique = the integrator's four lenses** (`claude-lenses.md`). Net
 refinements applied to the build (gate-level, not premise-level — no lever was wrong):
 
-1. **G0 reconciliation target fixed.** `marshmallow.json` has no per-component
+1. **G0 reconciliation target fixed.** `exp1-cost-marshmallow.json` has no per-component
    channel breakdown; `bench_join` reconciles against the raw
    `docs/benchmarks/results/raw/marshmallow/` metrics.jsonl (lumped `actual_tokens`) instead.
 2. **Token axis needs a MEASURED model.** Every `oc-*` runner has `telemetry_flags: []`

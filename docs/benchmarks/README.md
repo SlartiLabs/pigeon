@@ -24,8 +24,8 @@ and equivalence tests (TOST) where it is not.
   - `exp4b-trace-presence/` the sharp step on trace presence (cue-salience ladder).
   - `exp4c-depth/` depth: dedup-before-aggregate, cells `Dr`/`Du` diff-clean.
   - `exp5-natural/` natural recoverable constraint (`to_wire`/`from_wire`).
-- **Results:** [`results/`](results/) (`lever2-*.json`, `forkA-capability.json`,
-  `lever1-sweep.json`, `cookiecutter.json` + `marshmallow.json` for Exp 1, `stats-appendix.json`).
+- **Results:** [`results/`](results/) (`lever2-*.json`, `exp2-cross-model.json`,
+  `exp3-pack-sweep.json`, `exp1-cost-cookiecutter.json` + `exp1-cost-marshmallow.json` for Exp 1, `statistics.json`).
 - **Figures:** [`figures/`](figures/) (`fig{1..11}_*.png`, generators `make_figures.py`,
   `make_carrier_comms_figures.py`).
 - **Instruments:** [`instruments/`](instruments/) (`rederivable-probe.py`, the base-rate

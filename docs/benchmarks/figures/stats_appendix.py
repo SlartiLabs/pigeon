@@ -17,7 +17,7 @@ Produces:
     over)
 
 Run: python3 docs/benchmarks/figures/stats_appendix.py
-Writes: docs/benchmarks/results/stats-appendix.json
+Writes: docs/benchmarks/results/statistics.json
 """
 from __future__ import annotations
 
@@ -152,8 +152,8 @@ def load(name: str) -> dict:
 def main() -> dict:
     out: dict = {"clopper_pearson_cis": [], "exact_2x2_tests": [], "tost_equivalence": []}
 
-    # ---- Exp. 4 (lever2-confirm.json) --------------------------------
-    confirm = load("lever2-confirm.json")
+    # ---- Exp. 4 (exp4-residue-necessary.json) --------------------------------
+    confirm = load("exp4-residue-necessary.json")
     pd_arm = confirm["arms"]["pointers+derived"]
     po_arm = confirm["arms"]["pointers-only"]
     out["clopper_pearson_cis"].append(
@@ -163,8 +163,8 @@ def main() -> dict:
         check_ci("Exp.4 pointers-only", 0, 8, po_arm["ci95_clopper_pearson"])
     )
 
-    # ---- Exp. 2 / Fork-A cold control (forkA-capability.json) ---------
-    forkA = load("forkA-capability.json")["results"]
+    # ---- Exp. 2 / Fork-A cold control (exp2-cross-model.json) ---------
+    forkA = load("exp2-cross-model.json")["results"]
     out["clopper_pearson_cis"].append(
         check_ci("Exp.2 Fork-A bridge", forkA["bridge_pass"], forkA["N"], None)
     )
@@ -172,8 +172,8 @@ def main() -> dict:
         check_ci("Exp.2 Fork-A no-bridge (Exp.4 'cold')", forkA["nobridge_pass"], forkA["N"], None)
     )
 
-    # ---- Exp. 5 (lever2-natural.json) — two-arm confirm at N=12 ---------
-    nat = load("lever2-natural.json")["two_arm_confirm_N12"]
+    # ---- Exp. 5 (exp5-natural.json) — two-arm confirm at N=12 ---------
+    nat = load("exp5-natural.json")["two_arm_confirm_N12"]
     nat_po, nat_wd = nat["pointers_only"], nat["with_derived"]
     out["clopper_pearson_cis"].append(
         check_ci("Exp.5 pointers-only (N=12)", nat_po["recovered"], nat_po["n"], nat_po["ci95"])
@@ -190,8 +190,8 @@ def main() -> dict:
     out["clopper_pearson_cis"].append(check_ci("Exp.4b R_low", 0, 8, [0.000, 0.369]))
     out["clopper_pearson_cis"].append(check_ci("Exp.4b R_mid", 8, 8, [0.631, 1.000]))
 
-    # ---- Exp. 4c (lever2-deep-4c.json) ---------------------------------
-    deep = load("lever2-deep-4c.json")
+    # ---- Exp. 4c (exp4c-depth.json) ---------------------------------
+    deep = load("exp4c-depth.json")
     du_po = deep["confirm_N12"]["Du_pointers_only"]
     du_wd = deep["confirm_N12"]["Du_with_derived"]
     dr_po = deep["confirm_N12"]["Dr_pointers_only"]
@@ -205,8 +205,8 @@ def main() -> dict:
         check_ci("Exp.4c Dr pointers-only (difficulty control, N=12)", dr_po["recovered"], dr_po["n"], dr_po["ci95"])
     )
 
-    # ---- Exp. 3 (lever1-sweep.json) — 3/3 at every config, for completeness
-    sweep = load("lever1-sweep.json")["configs"]
+    # ---- Exp. 3 (exp3-pack-sweep.json) — 3/3 at every config, for completeness
+    sweep = load("exp3-pack-sweep.json")["configs"]
     for cfg_name, cfg in sweep.items():
         succ, n = (3, 3) if cfg["success"] == "3/3" else (None, None)
         if succ is not None:
@@ -240,7 +240,7 @@ def main() -> dict:
 
 if __name__ == "__main__":
     result = main()
-    out_path = RESULTS / "stats-appendix.json"
+    out_path = RESULTS / "statistics.json"
     out_path.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
     print(f"\nwrote {out_path}")

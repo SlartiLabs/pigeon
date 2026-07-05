@@ -10,7 +10,7 @@ Unlike Fork-A, this convention IS recoverable from the code: ``Account.to_legacy
 exact keys. But it is NON-SALIENT — the idiomatic default for a fresh ``to_wire``
 (``name/balance_cents/created`` as ISO) is the opposite. So a carrier that reads the
 legacy boundary and matches it passes; one that defaults to idiomatic keys fails.
-This is the partial-recovery regime Exp. 5 pre-registers (see PREREG-lever2-natural.md).
+This is the partial-recovery regime Exp. 5 pre-registers (see preregistrations/exp5-natural-substrate.md).
 """
 
 from __future__ import annotations

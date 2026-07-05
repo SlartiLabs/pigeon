@@ -9,8 +9,8 @@ first trial is not a prereg; the commit ordering is the point.
 
 **Roadmap note:** Track A Phase A1 cites this file as its blocking precondition. If the
 roadmap cites the path `EXP4C-deep-constraint-prereg.md`, update the citation to this
-file (`PREREG-exp4c-deep-constraint.md`) to match the repo's existing `PREREG-*.md`
-convention (`PREREG-lever2-natural.md`).
+file (`preregistrations/exp4c-deep-constraint.md`) to match the repo's existing `PREREG-*.md`
+convention (`preregistrations/exp5-natural-substrate.md`).
 
 ---
 
@@ -263,5 +263,5 @@ diff-clean requirement (§2.3, §6) and the Dr manipulation check (§4) are the 
 
 ---
 
-_Commits are the operator's. Results append to `results/lever2-deep-4c.json` and a new
+_Commits are the operator's. Results append to `results/exp4c-depth.json` and a new
 report section once the run completes._

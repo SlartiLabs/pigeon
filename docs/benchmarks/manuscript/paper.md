@@ -94,7 +94,7 @@ On a natural, semi-synthetic substrate where the wire convention lives in an exi
 
 ### 4.7 Statistics summary
 
-The confirmed structure is a superiority result on the necessary side and equivalence results on the unnecessary side (Appendix A, `docs/benchmarks/results/stats-appendix.json`):
+The confirmed structure is a superiority result on the necessary side and equivalence results on the unnecessary side (Appendix A, `docs/benchmarks/results/statistics.json`):
 
 | Claim | Arms | Test | Result |
 |---|---|---|---|
@@ -149,7 +149,7 @@ The benchmark is committed at `github.com/SlartiLabs/pigeon` under `docs/benchma
 
 ```
 # statistics (recomputes CIs, Fisher/Barnard, Newcombe TOST from the result JSONs)
-python3 docs/benchmarks/figures/stats_appendix.py        # -> docs/benchmarks/results/stats-appendix.json
+python3 docs/benchmarks/figures/stats_appendix.py        # -> docs/benchmarks/results/statistics.json
 
 # figures 1-11
 python3 docs/benchmarks/figures/make_figures.py
@@ -161,7 +161,7 @@ python3 docs/benchmarks/substrates/exp4c-depth/validate.py
 
 - **Substrates + per-trial ledgers:** `docs/benchmarks/exp{4b,4c,5}-substrate/` (each with `validate.py`, the held-out `accept.py`, and committed `RESULTS-*.csv`).
 - **Pre-registrations:** `docs/benchmarks/preregistrations/exp5-natural-substrate.md`, `docs/benchmarks/preregistrations/exp4c-deep-constraint.md`; Experiment 4b in `docs/benchmarks/substrates/exp4b-trace-presence/CALIBRATION-RESULT.md`.
-- **Result data:** `docs/benchmarks/results/lever2-{confirm,natural,deep-4c,3hop,screen}.json`, `lever1-sweep.json`, `forkA-capability.json`, and `stats-appendix.json`.
+- **Result data:** `docs/benchmarks/results/lever2-{confirm,natural,deep-4c,3hop,screen}.json`, `exp3-pack-sweep.json`, `exp2-cross-model.json`, and `statistics.json`.
 - **Working report (source of this manuscript):** `docs/benchmarks/report.md`.
 
 Note on ledgers: the Experiment 4/4b live runs executed in disposable worktrees whose per-trial transcripts were not retained; those experiments reproduce the setup and the summary counts and exact intervals, not the per-trial transcript ledger. Experiments 4c and 5 commit their full per-trial ledgers.

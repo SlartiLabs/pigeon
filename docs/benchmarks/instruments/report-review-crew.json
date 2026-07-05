@@ -12,7 +12,7 @@
       "id": "statistician",
       "runner": "sonnet",
       "needs": ["analyst"],
-      "receives": ["repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/lever2-confirm.json", "repo://docs/benchmarks/results/lever2-deep-4c.json", "repo://docs/benchmarks/results/lever2-natural.json"],
+      "receives": ["repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/exp4-residue-necessary.json", "repo://docs/benchmarks/results/exp4c-depth.json", "repo://docs/benchmarks/results/exp5-natural.json"],
       "doing": "Add rigorous, correct statistics to the manuscript, honouring the carried reasoning (see '## Carried reasoning'). Write docs/benchmarks/figures/stats_appendix.py that recomputes, from the committed results JSONs and RESULTS csvs (do NOT hand-enter numbers): exact Clopper-Pearson 95% CIs for every arm; two-sided Fisher/Barnard exact p-values for the separated-CI contrasts (Exp4 8/8 vs 0/8; Exp4b R_low vs R_mid); and TOST equivalence tests for the H0 claims (Exp5 pointers-only re-derivation; Exp4c with-derived 8/8 vs pointers-only 8/8). Run it, and add a compact Statistics section/table to docs/benchmarks/report.md citing the outputs. VERIFY every existing numeric claim in the report against the JSONs; flag or fix any mismatch. Then record your handoff. Keep cost claims at PARITY.",
       "pack": false
     },
@@ -20,8 +20,8 @@
       "id": "figures",
       "runner": "sonnet",
       "needs": ["statistician"],
-      "receives": ["repo://docs/benchmarks/figures/make_carrier_comms_figures.py", "repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/lever2-deep-4c.json"],
-      "doing": "Improve docs/benchmarks/figures/make_carrier_comms_figures.py to manuscript quality, honouring the carried reasoning. (1) FIX Figure 9: it hardcodes the N=3 screen deltas (+0.18/-0.18); replace with the N=8 confirm reality (cost parity, 0.417 vs 0.436) or convert it to an honest 'raw-token vs USD, both near parity at N=8' panel — no phantom -18% win. (2) ADD a new figure for Exp 4c: the depth-generalization result (Du rationale-stripped pointers-only 8/8 and with-derived 8/8, both at ceiling, vs Exp4's residue-necessary 0/8), reading data from lever2-deep-4c.json. (3) Ensure a clean unified 'two-sided bounded law' figure exists. RUN the generator (python3 docs/benchmarks/figures/make_carrier_comms_figures.py) so the PNGs regenerate; confirm no errors. Update figure references/numbers in the report if you renumber. Record your handoff.",
+      "receives": ["repo://docs/benchmarks/figures/make_carrier_comms_figures.py", "repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/exp4c-depth.json"],
+      "doing": "Improve docs/benchmarks/figures/make_carrier_comms_figures.py to manuscript quality, honouring the carried reasoning. (1) FIX Figure 9: it hardcodes the N=3 screen deltas (+0.18/-0.18); replace with the N=8 confirm reality (cost parity, 0.417 vs 0.436) or convert it to an honest 'raw-token vs USD, both near parity at N=8' panel — no phantom -18% win. (2) ADD a new figure for Exp 4c: the depth-generalization result (Du rationale-stripped pointers-only 8/8 and with-derived 8/8, both at ceiling, vs Exp4's residue-necessary 0/8), reading data from exp4c-depth.json. (3) Ensure a clean unified 'two-sided bounded law' figure exists. RUN the generator (python3 docs/benchmarks/figures/make_carrier_comms_figures.py) so the PNGs regenerate; confirm no errors. Update figure references/numbers in the report if you renumber. Record your handoff.",
       "pack": false
     },
     {
@@ -36,7 +36,7 @@
       "id": "reviewer",
       "runner": "opus",
       "needs": ["editor"],
-      "receives": ["repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/lever2-deep-4c.json", "repo://docs/benchmarks/results/lever2-confirm.json"],
+      "receives": ["repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/exp4c-depth.json", "repo://docs/benchmarks/results/exp4-residue-necessary.json"],
       "doing": "Adversarial final review of docs/benchmarks/report.md as a critical peer reviewer. VERIFY every quantitative claim against docs/benchmarks/results/*.json and the RESULTS csvs — do not trust the prose. Flag and FIX: any cost claim that says or implies 'cheaper' rather than parity; any figure/text mismatch; any overclaim not supported by the data (especially any 4c claim that overstates depth — it is deep-toy, structural trace stayed visible); any identity/opsec leak; any surviving em-dash. Confirm the stats (TOST, Fisher) are correctly applied and reported. Leave a concise verdict and the list of fixes you applied at the top-of-file HTML comment <!-- REVIEWER VERDICT: ... -->, then record your handoff.",
       "pack": false
     }

@@ -3,7 +3,7 @@
 Pre-registration: [`../../preregistrations/exp4c-deep-constraint.md`](../../preregistrations/exp4c-deep-constraint.md).
 **Status: substrate built + mechanically validated, and RUN LIVE (N=12 confirm, $55.38 total).**
 Per-trial ledger: `RESULTS-stage1-calibration.csv`, `RESULTS-stage2-confirm.csv` (44 trials);
-aggregate, TOST, and verdict: `../results/lever2-deep-4c.json`.
+aggregate, TOST, and verdict: `../results/exp4c-depth.json`.
 
 **Result (short):** Du (rationale stripped) pointers-only **12/12**, Dr (documented) **12/12**,
 with-derived **12/12**, all at ceiling. A capable receiver re-derives the deep constraint from
@@ -66,6 +66,6 @@ Asserts, for both Dr and Du: [1] grader passes pristine, [2] visible tests pass 
 [3] the idiomatic single-pass break **fails** the grader (constraint is real), [4] that
 break still passes the visible-test inputs (the break is **silent**), and [5] Dr/Du are
 identical modulo docstrings/comments (difficulty held constant). Results append to
-`../results/lever2-deep-4c.json` once the run completes.
+`../results/exp4c-depth.json` once the run completes.
 
 _Commits are the operator's._

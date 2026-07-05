@@ -290,8 +290,8 @@ def fig8_three_arm():
 # =====================================================================
 def fig9_usd_weighting():
     # Real measured mean USD per arm — no fabricated/hardcoded deltas.
-    # Screen (N=3):  derived 0.383 vs pointers-only 0.465  (results/lever2-screen.json)
-    # Confirm (N=8): derived 0.417 vs pointers-only 0.436  (results/lever2-confirm.json)
+    # Screen (N=3):  derived 0.383 vs pointers-only 0.465  (results/exp4-residue-screen.json)
+    # Confirm (N=8): derived 0.417 vs pointers-only 0.436  (results/exp4-residue-necessary.json)
     screen_derived, screen_po = 0.383, 0.465
     confirm_derived, confirm_po = 0.417, 0.436
     screen_delta = (screen_derived - screen_po) / screen_po
@@ -335,7 +335,7 @@ def fig9_usd_weighting():
 def fig10_exp4c_depth():
     # Exp.4 floor (trace genuinely absent) vs Exp.4c cells (deep constraint, trace
     # present but rationale stripped/documented/carried-as-residue). All pointers-only
-    # unless noted. Data: results/lever2-confirm.json, results/lever2-deep-4c.json.
+    # unless noted. Data: results/exp4-residue-necessary.json, results/exp4c-depth.json.
     cats = ["Exp.4 floor\npointers-only\n(trace absent)",
             "Exp.4c Du\npointers-only\n(rationale stripped)",
             "Exp.4c Dr\npointers-only\n(rationale documented,\nn=12 control)",
@@ -383,9 +383,9 @@ def fig10_exp4c_depth():
 # =====================================================================
 def fig11_bounded_law():
     # pointers-only recoverability across every tested recoverability regime,
-    # ordered absent -> present/salient. Sources: lever2-confirm.json (Exp.4),
-    # substrates/exp4b-trace-presence/CALIBRATION-RESULT.md (Exp.4b ladder), lever2-natural.json
-    # (Exp.5 = R_high), lever2-deep-4c.json (Exp.4c Du).
+    # ordered absent -> present/salient. Sources: exp4-residue-necessary.json (Exp.4),
+    # substrates/exp4b-trace-presence/CALIBRATION-RESULT.md (Exp.4b ladder), exp5-natural.json
+    # (Exp.5 = R_high), exp4c-depth.json (Exp.4c Du).
     cats = ["absent\n(Exp.4\nFork-A)", "absent, findable\n(Exp.4b\nR_low)",
             "present, deep\n+ stripped\n(Exp.4c Du,\nn=12)", "present, distant\n(Exp.4b R_mid2,\nn=4)",
             "present,\nnon-salient\n(Exp.4b R_mid)", "present, salient\n(Exp.4b/5\nR_high)"]

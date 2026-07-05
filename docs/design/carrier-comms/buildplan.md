@@ -61,8 +61,8 @@ alone (a non-obvious constraint found through failed experiments, invisible in t
 | Distill (post-hoc reasoning capture) | [`distill.py`](../../../src/pigeon/distill.py) **deterministic, no LLM** (docstring @12-17); `list_runs` use @162; `sessions.session_handoffs` (sessions.py:17) | Natural base for capture (ii) — **keep the core deterministic** |
 | Coordinate / runners | `config.py` runners @135-139 (`claude`/`agy`/`opencode`), `telemetry_flags` @154-158, `model_pools` @185 (empty), `env_allowlist` @191 (`[]` strips secrets); [`agents.py`](../../../src/pigeon/agents.py) KNOWN_AGENTS @37-62 (opencode `-m {model}` @40; gemini @46) | `USAGE_PARSERS` registry [`coordinate/telemetry.py`](../../../src/pigeon/coordinate/telemetry.py) @102 |
 | Benchmark harness | `docs/benchmarks/tier-a/protocol.md` (two-arm WITH/WITHOUT, same-model, identical prompt, fresh worktree @ pinned SHA, held-out acceptance test §3); `docs/benchmarks/tier-a/kill-criterion.md` (axes + GO/NO-GO, locked) | Cost(USD) is the headline; token bases differ across arms |
-| Marshmallow result | `docs/benchmarks/results/marshmallow.json` — plan step naive $0.4555 vs pigeon $0.4419 (~parity); overall **+8.1%**, same 1178 tests; `handoff_saved_pct 97.5`, `pack_saved_pct 92.1` (vs re-transmission, **not** a real cross-arm saving) | Plan step is a measured wash |
-| **Fork-A cross-model — DONE** | `docs/benchmarks/results/forkA-capability.json` + `docs/benchmarks/figures/fig4_forkA_capability.png` | See §2 |
+| Marshmallow result | `docs/benchmarks/results/exp1-cost-marshmallow.json` — plan step naive $0.4555 vs pigeon $0.4419 (~parity); overall **+8.1%**, same 1178 tests; `handoff_saved_pct 97.5`, `pack_saved_pct 92.1` (vs re-transmission, **not** a real cross-arm saving) | Plan step is a measured wash |
+| **Fork-A cross-model — DONE** | `docs/benchmarks/results/exp2-cross-model.json` + `docs/benchmarks/figures/fig4_forkA_capability.png` | See §2 |
 
 ### Uncommitted, PRESERVE — do not clobber
 
@@ -76,7 +76,7 @@ alone (a non-obvious constraint found through failed experiments, invisible in t
 
 ## 2. The Fork-A finding — already proves Lever 2's quality win (reuse)
 
-`forkA-capability.json` (2026-06-19) ran the exact cross-model substrate this program would
+`exp2-cross-model.json` (2026-06-19) ran the exact cross-model substrate this program would
 use — **claude (architect) → opencode/mimo-v2.5-free → agy/Antigravity**, three CLIs, no
 shared memory — on a controlled `ledger` repo with an **off-disk wire contract** given only to
 hop 1 and never written into the code. Held-out grader `accept.py` (agents never see it),
@@ -214,7 +214,7 @@ held-out gate). Emits one row per task:
 exit_code, accept_pass, regression_count}`. **This row is the single artifact every later phase
 reports.**
 
-**Gate G0 (lock cold):** `bench_join` reproduces the recorded `marshmallow.json` totals
+**Gate G0 (lock cold):** `bench_join` reproduces the recorded `exp1-cost-marshmallow.json` totals
 (channel tokens reconcile; the success tie matches). Full suite green (≈352+ tests). If it
 can't reproduce known numbers, fix the meter before measuring anything new.
 
@@ -318,7 +318,7 @@ test. The win test is Phase 5.
 
 The quality-win arm is **already demonstrated** (§2: 5/5 vs 0/5). This phase is *confirm-later*:
 
-- **Reuse** `forkA-capability.json` as the quality-win evidence in any writeup; cite
+- **Reuse** `exp2-cross-model.json` as the quality-win evidence in any writeup; cite
   `fig4_forkA_capability.png`.
 - **Optional confirmation re-run (time permitting):** re-cast the bridge's off-disk contract as
   a structured `state.derived.constraint_found` (+ `ruled_out` for the idiomatic defaults the
@@ -363,7 +363,7 @@ The quality-win arm is **already demonstrated** (§2: 5/5 vs 0/5). This phase is
 ## 7. Verification
 
 - **Phase 1:** `pigeon metrics` shows the `components` breakdown + `scaffold` kind; `bench_join`
-  reproduces `marshmallow.json` totals + the recorded tie; full suite green (G0).
+  reproduces `exp1-cost-marshmallow.json` totals + the recorded tie; full suite green (G0).
 - **Schema:** `mcp pigeon handoff_validate` accepts both a 1.1 and a 1.2 handoff; `pigeon
   migrate` 1.1→1.2 is a no-op; every existing `.pigeon/handoffs/*.json` still validates.
 - **Phase 2:** instrumented WITH-arm run → component split shows pack ≫ handoff (G1).
@@ -409,7 +409,7 @@ the polymath" become "it saves tokens" before a locked gate says so. Lock each g
 1. **Finish Phase 1.** Complete `account_scaffold` + its call in `_build_command`
    (`coordinate/__init__.py:963`); add `src/pigeon/bench_join.py` (tokens×success join); run the
    suite. Commit `tokens.py` + `bench_join.py`. → **Gate G0:** `bench_join` reproduces
-   `marshmallow.json` totals + the recorded success tie; full suite green.
+   `exp1-cost-marshmallow.json` totals + the recorded success tie; full suite green.
 2. **(Optional, runnable now) Phase 0 panel.** `pigeon coordinate docs/To_do/comms-panel.tasks.yaml
    --dry-run`, then `--skip-permissions --telemetry`. Synthesize the mimo/nemotron/agy critiques
    into `carrier-comms.md`; fold any valid premise-correction back into this plan **before** building further.
@@ -439,7 +439,7 @@ Claude attribution.
   recorded ledger to its held-out acceptance + regression gate, exposing
   `(channel_tokens, accept_pass, regression_count)` per arm. New `tests/test_bench_join.py` (5).
 - **Gate G0 verdict — PASS.** `bench_join` over `docs/benchmarks/results/raw/marshmallow` reproduces the
-  published `marshmallow.json` accounting exactly: events 16, overall 95.5%, handoff 97.5%, pack
+  published `exp1-cost-marshmallow.json` accounting exactly: events 16, overall 95.5%, handoff 97.5%, pack
   92.1%, channel (handoff actual) 3142, pack 5985 — and the recorded success **tie** (both arms
   PASS). Full suite **477 passed**; ruff clean; `pigeon metrics` unaffected.
 - **As-built delta vs the plan.** `account_scaffold`'s call-site wiring in `_build_command`
@@ -515,7 +515,7 @@ now says the pack is the fat target: ~10.5× the handoff).
 
 ### Phase 5 — cross-model (Gate G-Lever2): quality win REUSED; token-axis confirm STAGED
 
-Fork-A (`forkA-capability.json`, bridge 5/5 vs cold 0/5) stands as the demonstrated quality win;
+Fork-A (`exp2-cross-model.json`, bridge 5/5 vs cold 0/5) stands as the demonstrated quality win;
 no re-run needed. The optional schema'd token-axis confirm is a blocked live run (and `agy` needs
 re-auth) — staged below.
 
