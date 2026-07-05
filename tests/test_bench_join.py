@@ -17,8 +17,8 @@ import pytest
 from pigeon import bench_join, tokens
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RAW_DIR = REPO_ROOT / "benchmarks" / "results" / "raw" / "marshmallow"
-PUBLISHED = REPO_ROOT / "benchmarks" / "results" / "exp1-cost-marshmallow.json"
+RAW_DIR = REPO_ROOT / "docs" / "benchmarks" / "results" / "raw" / "marshmallow"
+PUBLISHED = REPO_ROOT / "docs" / "benchmarks" / "results" / "exp1-cost-marshmallow.json"
 
 pytestmark = pytest.mark.skipif(
     not RAW_DIR.is_dir() or not PUBLISHED.is_file(),

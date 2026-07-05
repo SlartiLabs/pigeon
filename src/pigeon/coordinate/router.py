@@ -149,7 +149,7 @@ def describe_runners(available: Iterable[str], tiers: dict[str, str] | None = No
         note = {"strong": "most capable, most expensive",
                 "mid": "reliable, metered",
                 "cheap": "free arm, abundant/near-zero cost, capable for MECHANICAL work "
-                         "but may fail hard reasoning"}[t]
+                         "but may fail hard reasoning"}.get(t, f"custom tier {t!r}")
         lines.append(f"- {r} [{t}]: {note}")
     return "\n".join(lines)
 

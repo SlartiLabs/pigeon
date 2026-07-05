@@ -1,7 +1,7 @@
 <!-- REVIEWER VERDICT (adversarial final pass): PUBLISHABLE with the fixes below applied.
      Verified every quantitative claim against results/*.json + statistics.json, all
      reproduce exactly (Clopper-Pearson CIs, Fisher p=0.000155 / Barnard p=0.000031,
-     TOST diff-CIs and min-margins). Fig 9 confirmed regenerated off real means
+     TOST diff-CIs and min-margins). Fig 9 delta recomputed from the committed means (transcribed as literals in the generator)
      (screen 0.383/0.465, confirm 0.417/0.436), no hardcoded ±18% deltas. Fig 10/11 present.
      Em-dashes: 0. No identity/opsec leak. Cost reads parity throughout.
      FIXES APPLIED: (1) §7 Exp-4 verdict said residue is necessary "at lower mean cost", a
@@ -265,7 +265,7 @@ recoverable** in the code, just non-salient? Substrate (fallback, semi-synthetic
 boundary with a comment that external clients depend on the keys; the task neutrally asks
 for a v2 `to_wire`/`from_wire` "consistent with the codebase."
 
-**Manipulation check (prereg §4), pointers-only: 12/12 PASS, read-cue 8/8.** A capable
+**Manipulation check (prereg §4), pointers-only (N=8): 8/8 PASS, read-cue 8/8.** A capable
 sonnet receiver re-derives the convention **for free**; `read-cue` is the mechanism: every
 trial read `to_legacy` and matched it, so this is genuine re-derivation, not luck.
 **Pre-registered primary two-arm test, run at N=12 (2026-07-04):** `+derived` **12/12** vs
@@ -427,7 +427,7 @@ The Exp. 4c `Du` ceiling reading (N=12) clears the formal TOST equivalence bar a
 | 3 | Lever 1, channel compression (pack sweep) | success holds 3/3 across tested [1k,4k]; knee below 1k untested | 3/config | **OVER-PROVISIONED** (compress to 1k free, firm; cost-win directional; knee not pursued) |
 | 4 | Lever 2, derived residue (same-model, isolated, real injection) | **8/8 vs 0/8 vs 0/5**; CIs separated; cost at parity ($0.417 vs $0.436, 4.4 % = noise) | 8 / 8 / 5 | **GO, CONFIRMED** |
 | 4a | Lever 2, multi-hop survival (H2) on a natural A→B→C chain | **3/3 pass, hop-3 injection 3/3** (transitive fix); pre-fix loses it (unit test) | 3 | **SURVIVES** (fix load-bearing) |
-| 5 | Lever 2, natural substrate (in-code recoverable constraint) | pointers-only **12/12** = +derived **12/12** (two-arm test; read-cue 8/8), re-derived for free | 12 | **H0 TOST-confirmed ±0.20 (§8a)**, residue unnecessary when recoverable; **bounds** the effect |
+| 5 | Lever 2, natural substrate (in-code recoverable constraint) | pointers-only **12/12** = +derived **12/12** (two-arm test, N=12; read-cue 8/8 is the N=8 manipulation check), re-derived for free | 12 | **H0 TOST-confirmed ±0.20 (§8a)**, residue unnecessary when recoverable; **bounds** the effect |
 | 4b | Lever 2, boundary R\* on a fixed-constraint cue-salience ladder | R_low **0/8** [0,.369] vs R_mid **8/8** [.631,1], CIs separated; distant/salient cues also recovered | 8 / 8 | **SHARP STEP** on trace *presence* (residue overhead once any **findable** trace exists) |
 | 4c | Lever 2, does the step survive DEPTH? (dedup-before-aggregate; Dr vs Du diff-clean) | Du (rationale stripped) pointers-only **12/12** [.735,1] = Dr 12/12; with-derived **12/12** (injection verified) | 12 | **GENERALIZES, TOST-confirmed ±0.20 (§8a)**, residue overhead at depth too when the trace is recoverable; limitation: structural trace stayed visible (deep-toy, not deep-real); decoy arm invalid (model refused) |
 
@@ -546,7 +546,7 @@ markdown injection is now the mechanism under test (no longer the `DERIVED.md` p
 
 ```
 # figures
-python3 docs/benchmarks/figures/make_figures.py                 # Exp.1/2 (fig1–4)
+python3 docs/benchmarks/figures/make_figures.py                 # Exp.1/2 (fig1–3; fig4 is a committed artifact)
 python3 docs/benchmarks/figures/make_carrier_comms_figures.py   # fig5–9
 # join any recorded arm (tokens × held-out success × turns × USD)
 python -m pigeon.bench_join docs/benchmarks/results/raw/<label>

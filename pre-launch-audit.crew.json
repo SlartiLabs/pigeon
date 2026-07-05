@@ -1,0 +1,43 @@
+{
+  "sid": "pre-launch-audit",
+  "_note": "Pre-launch multi-agent audit via pigeon coordinate. Five READ-ONLY auditors over distinct surfaces run in parallel, then an opus synthesis verifies and rules GO/NO-GO. Every task writes ONLY its one findings file under .pigeon/coordinate/reviews/audit/ and edits NO other file. The operator reviews the verdict and applies verified fixes.",
+  "tasks": [
+    {
+      "id": "audit-code",
+      "runner": "sonnet",
+      "doing": "You are a code auditor. Read the pigeon source under src/pigeon/ and tests/. Focus on the recent additions coordinate/routing.py (routing-decision log) and coordinate/router.py (heuristic + prompted router), and whether the benchmarks -> docs/benchmarks reorganization left any code path or hardcoded path broken. Look for real bugs, edge cases, and test-coverage gaps. Write your findings to .pigeon/coordinate/reviews/audit/code.md as a list, each with file:line, a one-line defect statement, a concrete failing scenario, and a severity (blocker/should/nice). If you find nothing material, say so. Do NOT edit any file except that one findings file.",
+      "pack": false
+    },
+    {
+      "id": "audit-benchmark",
+      "runner": "sonnet",
+      "doing": "You are a statistics + benchmark auditor. Verify EVERY quantitative claim in docs/benchmarks/report.md against the raw data in docs/benchmarks/results/*.json — do not trust the prose. Check that the reproduce commands run, that Fisher/Barnard (superiority) and Newcombe TOST (equivalence) are correctly applied and reported, that cost reads PARITY (never 'cheaper'), and that no claim exceeds what the data supports. Write findings to .pigeon/coordinate/reviews/audit/benchmark.md (each with the file:line, the claim, the raw number, and severity). Edit no other file.",
+      "pack": false
+    },
+    {
+      "id": "audit-manuscript",
+      "runner": "sonnet",
+      "doing": "You are a critical peer reviewer. Audit the draft manuscript docs/benchmarks/manuscript/paper.md. Do its claims match docs/benchmarks/report.md and docs/benchmarks/results/*.json? Is the abstract scoped so nothing overclaims (especially the equivalence/H0 and the deep-toy limitation)? Are the limitations, references, and reproducibility adequate for submission? Is the two-sided bounded law framed correctly (superiority + equivalence)? Write findings to .pigeon/coordinate/reviews/audit/manuscript.md with severities. Edit no other file.",
+      "pack": false
+    },
+    {
+      "id": "audit-materials",
+      "runner": "sonnet",
+      "doing": "You are a launch-materials auditor. Audit README.md and the launch/ kit (launch/announcement.md, launch/show-hn.md, launch/social-thread.md, launch/taglines.md). Check: every claim is honest and matches the committed benchmark (cost is a NULL, not savings; the bounded law is stated as superiority + equivalence, not hype); the pieces are consistent with each other and with README; the reproduce commands and links resolve to real paths in docs/benchmarks/; the CTA is clear. Flag any overclaim, inconsistency, or dead link. Write findings to .pigeon/coordinate/reviews/audit/materials.md with severities. Edit no other file.",
+      "pack": false
+    },
+    {
+      "id": "audit-opsec",
+      "runner": "sonnet",
+      "doing": "You are an opsec + house-style auditor. Sweep ALL files (tracked source/docs AND the untracked launch/ folder) for any identity leak: a real personal name, a personal email, provider domains, or any /home/<user> local path. Confirm the public identity is the SlartiLabs alias only. Also flag: any em-dash in a deliverable (house convention is none, comma/parens instead), and any broken relative link or stale path left by the benchmarks -> docs/benchmarks reorg. Write findings to .pigeon/coordinate/reviews/audit/opsec.md with severities (any identity leak = blocker). Edit no other file.",
+      "pack": false
+    },
+    {
+      "id": "synthesis",
+      "runner": "opus",
+      "needs": ["audit-code", "audit-benchmark", "audit-manuscript", "audit-materials", "audit-opsec"],
+      "doing": "You are the audit lead. Read all five findings files in .pigeon/coordinate/reviews/audit/ (code.md, benchmark.md, manuscript.md, materials.md, opsec.md). VERIFY the most severe findings against the actual files yourself — do not trust the auditors. Produce one prioritized pre-launch audit report at .pigeon/coordinate/reviews/audit/VERDICT.md: three sections (BLOCKERS = must fix before publish, SHOULD-FIX, NICE-TO-HAVE), each item with file:line and the concrete fix, dropping any finding you could not confirm. End with an explicit GO or NO-GO for launch and a one-paragraph rationale. Edit no file except VERDICT.md.",
+      "pack": false
+    }
+  ]
+}
