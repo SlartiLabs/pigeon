@@ -1,6 +1,6 @@
 {
   "sid": "s2-exp5-po",
-  "_note": "STAGE 2 recoverability side, pointers-only, RECEIVER SWAPPED TO agy/Gemini. Architect stays on sonnet because it is the hop that could run shell; the to_wire/from_wire hops are pure-edit (no shell, no tests), which is the only kind of task agy can run under coordinate (known gotcha). Same substrate + held-out grader as Exp 5. GATE C check: if agy's edit format breaks or injection never reaches it, that is an engineering gap, not a recoverability finding — fix and rerun.",
+  "_note": "STAGE 2 recoverability side, pointers-only, RECEIVER = agy/Gemini. Architect DEFAULTS to sonnet here, but that is a default, not a constraint: agy v1.0.16 runs shell synchronously under coordinate (retested 2026-07-05), so any runner can play any role — the run script's ARCH_RUNNER/RECV_RUNNER args reassign them freely. Same substrate + held-out grader as Exp 5. GATE C check: if agy's edit format breaks or injection never reaches it, that is an engineering gap, not a recoverability finding — fix and rerun.",
   "tasks": [
     {
       "id": "architect",

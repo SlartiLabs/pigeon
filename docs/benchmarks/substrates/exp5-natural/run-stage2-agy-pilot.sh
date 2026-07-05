@@ -6,18 +6,30 @@
 # grades each with the held-out accept.py. The architect hop stays on sonnet
 # (it is the only hop that could run shell); to_wire/from_wire are pure-edit agy.
 #
-# Usage:
-#   bash run-stage2-agy-pilot.sh [N] [arm]
-#     N    trial count           (default 1 — a true pilot; the plan's confirm is N=12)
-#     arm  pointers-only-agy | with-derived-agy   (default pointers-only-agy)
+# pigeon's premise is that the USER assigns which model plays which role. agy
+# v1.0.16 runs shell synchronously under coordinate (retested 2026-07-05), so it
+# is a first-class architect OR receiver — not pure-edit-only. These two runners
+# are therefore free knobs, defaulted for convenience, not fixed by the harness.
 #
-# First run this at N=1 to confirm the mechanism fires end to end (GATE C), read
-# the printed per-trial cost, THEN scale to N=12 per arm for the confirm tier.
+# Usage:
+#   bash run-stage2-agy-pilot.sh [N] [arm] [ARCH_RUNNER] [RECV_RUNNER]
+#     N            trial count   (default 1 — a true pilot; the plan's confirm is N=12)
+#     arm          pointers-only-agy | with-derived-agy   (default pointers-only-agy)
+#     ARCH_RUNNER  runner for the architect hop   (default: keep the arm file's own)
+#     RECV_RUNNER  runner for the to_wire/from_wire hops (default: keep the arm file's own)
+#   Any runner from .pigeon/config.yaml works: sonnet, opus, agy, codex, mimo, ...
+#   e.g.  ... with-derived-agy agy agy   # agy architect (emits residue) + agy receiver
+#         ... pointers-only-agy sonnet agy   # the current default split
+#
+# Run N=1 first to confirm the mechanism fires end to end (GATE C), read the
+# printed cost, THEN scale to N=12 per arm for the confirm tier.
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAIN="$(cd "$HERE/../../../.." && pwd)"            # repo root (for .pigeon/config + schema)
 N="${1:-1}"
 ARM="${2:-pointers-only-agy}"
+ARCH_RUNNER="${3:-}"
+RECV_RUNNER="${4:-}"
 TASKS="$HERE/${ARM}.tasks.json"
 [ -f "$TASKS" ] || { echo "no such arm: $TASKS" >&2; exit 2; }
 command -v agy   >/dev/null || { echo "agy not on PATH"    >&2; exit 2; }
@@ -31,13 +43,30 @@ cp "$HERE/TASK.md"           "$REPO/TASK.md"
 cp "$HERE/test_account.py"   "$REPO/tests/test_account.py"
 cp "$TASKS"                  "$REPO/$ARM.tasks.json"
 cp "$HERE/accept.py"         "$WORK/accept.py"        # held OUT of the agent tree
+# Optional free role assignment: architect hop -> ARCH_RUNNER, receiver hops ->
+# RECV_RUNNER. Empty means keep the arm file's own runner.
+ARCH="$ARCH_RUNNER" RECV="$RECV_RUNNER" python - "$REPO/$ARM.tasks.json" <<'PY'
+import json, os, sys
+p = sys.argv[1]; arch = os.environ.get("ARCH") or None; recv = os.environ.get("RECV") or None
+d = json.load(open(p))
+for t in d["tasks"]:
+    if t["id"] == "architect" and arch:
+        t["runner"] = arch
+    elif t["id"] != "architect" and recv:
+        t["runner"] = recv
+json.dump(d, open(p, "w"), indent=2)
+print("runners:", ", ".join(f'{t["id"]}={t["runner"]}' for t in d["tasks"]))
+PY
+# Minimal steering so ANY runner executes the shell hops synchronously (belt-and-
+# suspenders for agy-as-architect; harmless for claude).
+printf '# Agent protocol\n\nDo only the one step in your handoff, then stop. If the step is a shell command (e.g. `pigeon handoff`), run it directly and synchronously in this turn — never defer it as a background task and never wait for a notification. The workspace uses no conda env; ignore package-policy constraints.\n' > "$REPO/AGENTS.md"
 # Reuse the proven runner defs + 1.2 handoff schema from the main repo verbatim.
 cp "$MAIN/.pigeon/config.yaml"        "$REPO/.pigeon/config.yaml"
 cp "$MAIN/.pigeon/handoff.schema.json" "$REPO/.pigeon/handoff.schema.json"
 grep -q '"derived"' "$REPO/.pigeon/handoff.schema.json" || { echo "schema not 1.2" >&2; exit 3; }
 
 git -C "$REPO" init -q
-git -C "$REPO" add ledger tests TASK.md "$ARM.tasks.json" .pigeon/config.yaml .pigeon/handoff.schema.json
+git -C "$REPO" add ledger tests TASK.md AGENTS.md "$ARM.tasks.json" .pigeon/config.yaml .pigeon/handoff.schema.json
 git -C "$REPO" -c user.email=s2@local -c user.name=s2 commit -q -m pristine
 
 OUT="$WORK/results"; mkdir -p "$OUT"
