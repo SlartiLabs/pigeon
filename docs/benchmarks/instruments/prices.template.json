@@ -1,0 +1,9 @@
+{
+  "_note": "Prices for canonical-retokenize.py --price. Keys are model-name SUBSTRINGS matched against each row's `model`; the first that occurs wins. Values are USD per MILLION tokens, {in, out}. VERIFY every number against the provider's current published pricing before you cite it, and stamp the date below — Stage 0 requires cost to be timestamped to a pricing snapshot. Keys starting with '_' are ignored by the tool. The numbers below are PLACEHOLDERS to be confirmed, not authoritative.",
+  "_snapshot_date": "REPLACE-WITH-run-date-YYYY-MM-DD",
+  "_source": "REPLACE-WITH-pricing-page-URLs-you-checked",
+  "gemini-3.5-flash": { "in": 0.30, "out": 2.50 },
+  "gemini-3.1-pro":   { "in": 1.25, "out": 10.00 },
+  "sonnet":           { "in": 3.00, "out": 15.00 },
+  "opus":             { "in": 15.00, "out": 75.00 }
+}

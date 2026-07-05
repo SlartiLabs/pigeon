@@ -33,8 +33,9 @@ and equivalence tests (TOST) where it is not.
   `make_carrier_comms_figures.py`).
 - **Instruments:** [`instruments/`](instruments/) (`rederivable-probe.py`, the base-rate
   probe; `report-review-crew.json`, the pigeon crew that adversarially reviewed the report;
-  `canonical-retokenize.py`, the Stage-0 single-tokenizer recount; `scale-generator.py`, the
-  Stage-3 synthetic-repo generator).
+  `canonical-retokenize.py`, the Stage-0 single-tokenizer recount — the fair cross-model metric
+  when a provider (agy/Gemini) emits no usage; `--price prices.template.json` adds an ESTIMATED
+  USD for those unmeasured arms; `scale-generator.py`, the Stage-3 synthetic-repo generator).
 
 ### Reproduce
 

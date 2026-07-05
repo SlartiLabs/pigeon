@@ -105,6 +105,33 @@ def recount_run(manifest: Path, root: Path) -> list[dict]:
     return rows
 
 
+def _load_prices(path: Path) -> dict:
+    """A prices file maps a model-name SUBSTRING to per-million-token USD rates:
+    {"gemini-3.5-flash": {"in": 0.30, "out": 2.50}, "sonnet": {...}}. First
+    substring that occurs in a row's model wins. Kept external + dated on purpose
+    (Stage 0: cost is timestamped to a pricing snapshot), never hardcoded."""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _price_row(row: dict, prices: dict) -> None:
+    """Attach an ESTIMATED USD to a row from its canonical token counts. This is
+    an estimate, not a bill: (a) the recount uses the canonical tokenizer, not the
+    provider's native one, and (b) the archived transcript is the resolved prompt
+    + the child's stdout, so files the agent read via its own tools are not in the
+    input count. Use it for an order-of-magnitude cross-model USD where the
+    provider (e.g. agy/Gemini) emits no usage; prefer measured cost_usd where it
+    exists, and the tokenizer-independent canon_total for the *fair* comparison."""
+    model = (row.get("model") or "").lower()
+    rate = next((v for k, v in prices.items() if k.lower() in model), None)
+    if not rate or row.get("canon_total") in ("", None):
+        row["est_usd_canonical"] = ""
+        return
+    cp = row.get("canon_prompt") or 0
+    cc = row.get("canon_completion") or 0
+    row["est_usd_canonical"] = round(cp / 1e6 * rate.get("in", 0)
+                                     + cc / 1e6 * rate.get("out", 0), 6)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -113,6 +140,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="also recount every *.json manifest in this directory")
     ap.add_argument("--root", type=Path, default=Path.cwd(),
                     help="repo root the transcript pointers are relative to (default cwd)")
+    ap.add_argument("--price", type=Path, default=None,
+                    help="prices JSON (model-substring -> {in,out} $/Mtok); adds an "
+                         "ESTIMATED est_usd_canonical column for unmeasured arms (e.g. agy)")
     ap.add_argument("--csv", type=Path, default=None, help="write rows to this CSV")
     ap.add_argument("--json", dest="json_out", type=Path, default=None,
                     help="write rows to this JSON")
@@ -127,6 +157,15 @@ def main(argv: list[str] | None = None) -> int:
 
     cols = ["run_id", "task", "runner", "model", "status", "native_total_tokens",
             "cost_usd", "canon_prompt", "canon_completion", "canon_total", "transcript"]
+    if args.price:
+        prices = _load_prices(args.price)
+        for r in rows:
+            _price_row(r, prices)
+        cols.insert(cols.index("canon_prompt"), "est_usd_canonical")
+        print("# est_usd_canonical is an ESTIMATE from canonical tokens x your "
+              "priced snapshot — not a provider bill (canonical tokenizer; "
+              "transcript-scoped input). Prefer measured cost_usd where present.",
+              file=sys.stderr)
     w = csv.DictWriter(sys.stdout, fieldnames=cols)
     w.writeheader()
     w.writerows(rows)
