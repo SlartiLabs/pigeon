@@ -74,7 +74,7 @@ no-trace (5/5).
 |---|---|---|---|
 | 1a cost N=8 | reuse Exp-1 (cookiecutter, marshmallow) | operator go + spend | $30-50 |
 | 1b confirm | `decoy-rebuilt.tasks.json` on Du, N=8-12 | operator go + spend | $10-15 |
-| 2 cross-model | Exp-5 agy arms + `run-stage2-agy-pilot.sh` (free role assignment; agy v1.0.16 runs shell, so it can be architect too) | go + spend | $30-90 |
+| 2 cross-model | BOTH sides built: recoverability (`exp5-natural` agy arms, **pilot passed N=1**) + necessity (`forkA-necessity` agy arms, validated 3/3). Free role assignment; agy v1.0.16 runs shell, so it can be architect too. Confirm = N=12 recoverability + N=8 necessity, each arm | go + spend | $30-90 |
 | 3 scale runs | `scale-generator.py` points, screen N=3-4 → confirm N=8 | operator go + spend | $40-120 |
 | 4 base-rate `--live` | `instruments/rederivable-probe.py` | operator go + spend | $10-30 |
 | 5 pilot → confirm | `exp-stage5-deepreal/` arms | go + spend; **redesign likely** | $50-200+ |

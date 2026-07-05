@@ -1,0 +1,27 @@
+{
+  "sid": "s2-forkA-wd",
+  "_note": "STAGE 2 NECESSITY side, with-derived, RECEIVER = agy/Gemini. The architect is GIVEN the off-disk contract (by prompt) and carries it into state.derived via the pigeon handoff shell call — injected downstream as '## Carried reasoning'. The to_wire/from_wire hops implement EXACTLY the carried contract. Expected: with-derived ~8/8 (the residue is what makes the unrecoverable contract implementable). Architect defaults to sonnet but agy runs the handoff shell too (v1.0.16), so ARCH=agy RECV=agy gives an all-Gemini necessity chain. GATE A (boundary transfers): pointers-only ~0/8 vs with-derived ~8/8, non-overlapping exact CIs.",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "doing": "You are the architect for the ledger wire format. The agreed contract is below. It is NOT in the code and the idiomatic Python defaults are the OPPOSITE of it. Do NOT write it to any file and do NOT edit anything under ledger/. The ONLY way to carry it to the implementers is your handoff's state.derived. Record it by running: pigeon handoff --json-in - <<'EOF'\n{\"schema_version\":\"1.2\",\"sid\":\"s2-forkA-wd\",\"from\":\"architect\",\"to\":\"Coordinator\",\"state\":{\"done\":[\"specified wire contract\"],\"doing\":\"implementers add Account.to_wire and Account.from_wire per the carried constraints\",\"derived\":{\"constraint_found\":[\"to_wire returns keys EXACTLY acct,cents,ts (NOT the field names): acct<-name, cents<-balance_cents, ts<-int(created.timestamp()) UTC epoch int\",\"to_wire includes the note key ONLY if self.note is not None; OMIT it entirely when None (never emit null)\",\"from_wire is LENIENT: acct->name; cents accepts int OR numeric str; ts via datetime.fromtimestamp(float(ts),tz=utc) accepts int OR float; missing note means None\",\"from_wire(to_wire(a)) must round-trip equal\"]}}}\nEOF\n THE CONTRACT: producer Account.to_wire(self)->dict uses keys acct,cents,ts; acct<-name; cents<-balance_cents; ts<-int(self.created.timestamp()) UTC; note only-if-not-None. consumer Account.from_wire(cls,w)->Account is lenient (acct->name; cents int or numeric str; ts int or float via fromtimestamp; missing note->None) and round-trips."
+    },
+    {
+      "id": "to_wire",
+      "runner": "agy",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/account.py"],
+      "doing": "Implement the method Account.to_wire(self) -> dict in ledger/account.py EXACTLY per the carried constraints in your prompt (see '## Carried reasoning'). Do NOT implement from_wire. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    },
+    {
+      "id": "from_wire",
+      "runner": "agy",
+      "needs": ["architect", "to_wire"],
+      "receives": ["repo://ledger/account.py"],
+      "doing": "Implement the classmethod Account.from_wire(cls, w: dict) -> Account in ledger/account.py EXACTLY per the carried constraints in your prompt (see '## Carried reasoning'); lenient, round-trips with to_wire. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}

@@ -23,7 +23,10 @@ and equivalence tests (TOST) where it is not.
   `validate.py`, and a committed per-trial ledger:
   - `exp4b-trace-presence/` the sharp step on trace presence (cue-salience ladder).
   - `exp4c-depth/` depth: dedup-before-aggregate, cells `Dr`/`Du` diff-clean.
-  - `exp5-natural/` natural recoverable constraint (`to_wire`/`from_wire`).
+  - `exp5-natural/` natural recoverable constraint (`to_wire`/`from_wire`); also holds the
+    Stage 2 cross-model agy arms + `run-stage2-agy-pilot.sh` (recoverability side).
+  - `forkA-necessity/` the Stage 2 necessity side: pristine `account.py`, off-disk contract
+    0%-recoverable, agy-receiver arms + `run-stage2-forkA-agy.sh`.
 - **Results:** [`results/`](results/) (`lever2-*.json`, `exp2-cross-model.json`,
   `exp3-pack-sweep.json`, `exp1-cost-cookiecutter.json` + `exp1-cost-marshmallow.json` for Exp 1, `statistics.json`).
 - **Figures:** [`figures/`](figures/) (`fig{1..11}_*.png`, generators `make_figures.py`,

@@ -1,0 +1,28 @@
+{
+  "sid": "s2-forkA-null",
+  "_note": "STAGE 2 NECESSITY side, pointers-only (null), RECEIVER = agy/Gemini. The architect deliberately carries NO residue; the to_wire/from_wire hops must choose a wire format from the pristine code alone. Because the acct/cents/ts contract is off-disk and the idiomatic default is the opposite, they cannot recover it — the necessity result is pointers-only ~0/8. Architect defaults to sonnet but ANY runner works (ARCH_RUNNER). Same held-out grader (accept.py) and same contract as Exp 5; only the substrate differs (no to_legacy cue).",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "doing": "You are the architect for the ledger wire format. A wire-format contract exists for Account serialization, but for THIS run you must NOT transmit it. Do NOT write any contract, notes, or hints to any file, and do NOT modify any file under ledger/. Simply record a brief handoff stating that the downstream implementers should add Account.to_wire and Account.from_wire methods to ledger/account.py for JSON serialization. Carry NO reasoning residue forward — pointers only.",
+      "pack": false
+    },
+    {
+      "id": "to_wire",
+      "runner": "agy",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/account.py"],
+      "doing": "Read ledger/account.py. Implement the method Account.to_wire(self) -> dict that serializes an Account to a JSON-ready dict for an external consumer, and is round-trippable by a from_wire. Choose the wire format yourself from the code. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    },
+    {
+      "id": "from_wire",
+      "runner": "agy",
+      "needs": ["to_wire"],
+      "receives": ["repo://ledger/account.py"],
+      "doing": "Read ledger/account.py. Implement the classmethod Account.from_wire(cls, w: dict) -> Account that reconstructs an Account from the dict produced by to_wire, round-tripping with it. Do NOT run shell commands or tests — just edit ledger/account.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}
