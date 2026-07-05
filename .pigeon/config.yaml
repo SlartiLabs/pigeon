@@ -117,7 +117,7 @@ coordinate:
     codex:            [timeout, "-k", "30", "900", codex, exec, "{prompt}"]
     # --- Xiaomi MiMo-Code (opencode fork; absolute path — not on the non-login
     #     PATH; works out of the box, no login needed) ---
-    mimo:             [timeout, "-k", "30", "900", /home/awcd/.mimocode/bin/mimo, run, "{prompt}"]
+    mimo:             [timeout, "-k", "30", "900", mimo, run, "{prompt}"]
   skip_permissions_flags:
     oc-mimo: []
     oc-north: []

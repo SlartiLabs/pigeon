@@ -24,8 +24,8 @@ venv/
 
 # Benchmark opsec: the private name<->label map and raw run logs never leave the
 # machine (they carry real repo names + code paths). Only anonymized results ship.
-benchmarks/.private-map.json
-benchmarks/results/raw/
+docs/benchmarks/tier-a/private-map.json
+docs/benchmarks/results/raw/
 
 # Optional local vector store
 .pigeon/vector/

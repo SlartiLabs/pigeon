@@ -1,52 +1,52 @@
 # Design records
 
-Forward-looking design for pigeon, produced by **dogfooding pigeon's own
-`coordinate` layer** — a multi-model "army" drafts proposals in parallel, two
-independent reviewers gate them, and a final authority reconciles the reviews
-and writes the verdict. Separate CLIs, no shared context window; the contract is
-the filesystem.
+Forward-looking design docs for pigeon, most produced by dogfooding pigeon's own
+`coordinate` layer (a multi-model army drafts in parallel, independent reviewers gate, a
+final authority reconciles). They live here, out of the gitignored `.pigeon/coordinate/`
+runtime, so they survive a `git clean` and stay reviewable in history. The
+"Authority: verdict (...)" headers record which model rendered each verdict; they are
+proposals that were acted on, not commitments.
 
-These are committed here (out of the gitignored `.pigeon/coordinate/` runtime
-tree) so they survive a `git clean` and are reviewable in history.
+Status key: **shipped** (the feature is in a release), **archival** (the work it planned is
+done; kept for provenance), **proposed** (not built).
 
-## Read this first
+## Roadmap and army
 
-| File | What it is |
-|------|------------|
-| [`PLAN.md`](PLAN.md) | **The roadmap.** Four pillars (Army · Edit/Review/Verify · Reasoning Bank · Empirical Model Selection), the local learning loop, a session-sized phased build (A–F), success metrics, and an explicit "not building" list. |
-| [`DESIGN.md`](DESIGN.md) | **Pillar 1 in full** — first-class multi-model ("army") support: `model:`/`model_pool:` fields, `sha1(sid)`-seeded round-robin, cross-wave `receives:` pointer injection, clock-only throttling. `PLAN.md` treats this as decided. |
+| Doc | What it is | Status |
+|-----|------------|--------|
+| [`PLAN.md`](PLAN.md) | The roadmap: four pillars, the local learning loop, a phased build (A-F), success metrics, and a "not building" list. | shipped through v0.5.x |
+| [`DESIGN.md`](DESIGN.md) | Pillar 1 in full: first-class multi-model ("army") support (`model:` / `model_pool:`, seeded round-robin, cross-wave `receives:` injection, throttling). | shipped |
 
-`inputs/` holds the raw brainstorm artifacts each verdict reconciled, kept for
-provenance:
+## `pigeon adopt` ([`adopt/`](adopt/), shipped v0.5.0)
 
-- `inputs/army-design/` — the four free-model proposals + the two reviews
-  (Sonnet `review-triage.md`, agy `review-concord.md`) that produced `DESIGN.md`.
-- `inputs/roadmap/` — the lens proposals (`idea-gen-*.md`) + the two reviews
-  (`triage.md`, `concord.md`) that produced `PLAN.md`.
+| Doc | What it is |
+|-----|------------|
+| [`adopt/design.md`](adopt/design.md) | The design: discover / catalog / import existing subagents, skills, and MCP servers behind an allow-list. |
+| [`adopt/p1-contract.md`](adopt/p1-contract.md) | The authoritative P1 contract (plus memory-page typing). |
+| [`adopt/buildplan.md`](adopt/buildplan.md) | The build plan that finished it. |
 
-## How they were produced (honest provenance)
+## Carrier-comms study ([`carrier-comms/`](carrier-comms/), complete)
 
-Two `pigeon coordinate` runs, topology **army → gate · concordance → verdict**:
+Design records behind the two-lever study. The **result** lives in
+[`../../docs/benchmarks/`](../../docs/benchmarks/) (report, manuscript, reproducible statistics).
 
-1. **`army-design`** → `DESIGN.md`. Four free opencode models drafted; Sonnet +
-   agy gated; Opus 4.8 ruled. One model (nemotron) flaked without writing; the
-   gate routed around it on the strength of the other three.
-2. **`roadmap`** → `PLAN.md`. Four lenses (Creation/Production, Edit/Review,
-   Local Learning, Platform Vision) → Sonnet `triage` + agy `concord` → Opus
-   `verdict`. Of the four generators, **`deepseek` (Edit/Review)** and **`mimo`
-   (Local Learning)** wrote clean proposals; **`nemotron` (Creation/Production)**
-   hit an upstream provider timeout and **`north` (Platform Vision)** dumped a
-   partial to stdout without writing — so `PLAN.md` was synthesized from those
-   two lenses plus `DESIGN.md` and both gate reviews. The missing lenses are
-   largely subsumed by Pillar 1 (parallel generation) and Pillar 4 (win-rate
-   measurement); a future re-run can fold them in.
+| Doc | What it is |
+|-----|------------|
+| [`carrier-comms/brief.md`](carrier-comms/brief.md) | The design brief (pointer doc for cross-model critique). |
+| [`carrier-comms/buildplan.md`](carrier-comms/buildplan.md) | The executable two-lever build plan. |
+| [`carrier-comms/exp4b-design.md`](carrier-comms/exp4b-design.md) | Experiment 4b revised design (red-teamed; referenced by the report). |
 
-A reliability note from run 2: concurrent opencode instances share one
-WAL-mode SQLite DB and deadlock on its lock. The army runners in
-`.pigeon/config.yaml` give each instance its own `XDG_DATA_HOME` (its own DB,
-seeded with auth) and wrap every runner in `timeout`, which is what let the full
-pipeline finish in ~16 minutes.
+## Standalone feature designs
 
-The "Authority: verdict (Claude Opus 4.8)" headers in the documents record which
-model rendered each verdict; they describe the artifact's origin, not its status
-as a decision — these are proposals to act on, not commitments.
+| Doc | What it is | Status |
+|-----|------------|--------|
+| [`free-runner-harness.md`](free-runner-harness.md) | `pigeon probe`: free-runner qualification. | shipped |
+| [`timeout-salvage.md`](timeout-salvage.md) | Progress-aware timeouts + salvage-aware scheduling. | shipped |
+| [`review-artifact.md`](review-artifact.md) | The review-artifact convention (Phase D). | proposed |
+| [`measuring-recall.md`](measuring-recall.md) | Measuring the learning loop (Phase E gate, Reasoning Bank). | proposed |
+
+## Provenance artifacts
+
+- [`panel-reviews/`](panel-reviews/) the cross-model critiques that gated the carrier-comms brief.
+- [`examples/`](examples/) example task specs.
+- [`remediation/`](remediation/) DD remediation-loop coordinate files.

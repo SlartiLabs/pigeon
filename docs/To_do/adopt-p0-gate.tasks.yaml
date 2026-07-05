@@ -29,7 +29,7 @@ tasks:
     doing: >-
       GATEKEEPER review of the `pigeon adopt` P0 integration diff
       (.pigeon/coordinate/diffs/adopt-p0-2/integrate.diff) against
-      .pigeon/coordinate/reviews/adopt/contract.md, docs/design/adopt.md §6/§7/§8,
+      .pigeon/coordinate/reviews/adopt/contract.md, docs/design/adopt/design.md §6/§7/§8,
       and the live code on branch pigeon/adopt-p0-2/integrate. Do NOT edit source.
       Verify, citing file:line: (1) non-destruction — no write under a user source
       path; note that `update_allow` rewrites .pigeon/config.yaml via yaml.safe_dump

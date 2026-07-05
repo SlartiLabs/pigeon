@@ -9,9 +9,9 @@ tasks:
     readonly: true
     isolation: shared
     receives:
-      - "repo://docs/design/carrier-comms.md"
+      - "repo://docs/design/carrier-comms/brief.md"
     doing: >-
-      Read docs/design/carrier-comms.md (your receives pointer) — the two-lever
+      Read docs/design/carrier-comms/brief.md (your receives pointer) — the two-lever
       carrier-comms optimization plan. Critique it adversarially: where is it
       wrong, what's missing, where will it fail, and what must be measured that
       isn't? A well-argued "this premise is false / this gate isn't falsifiable /
@@ -24,9 +24,9 @@ tasks:
     readonly: true
     isolation: shared
     receives:
-      - "repo://docs/design/carrier-comms.md"
+      - "repo://docs/design/carrier-comms/brief.md"
     doing: >-
-      Read docs/design/carrier-comms.md (your receives pointer) — the two-lever
+      Read docs/design/carrier-comms/brief.md (your receives pointer) — the two-lever
       carrier-comms optimization plan. Critique it adversarially and independently:
       where is it wrong, what's missing, where will it fail, what must be measured?
       Be specific. Write your findings to
@@ -38,9 +38,9 @@ tasks:
     readonly: true
     isolation: shared
     receives:
-      - "repo://docs/design/carrier-comms.md"
+      - "repo://docs/design/carrier-comms/brief.md"
     doing: >-
-      Read docs/design/carrier-comms.md (your receives pointer) — the two-lever
+      Read docs/design/carrier-comms/brief.md (your receives pointer) — the two-lever
       carrier-comms optimization plan. Critique it adversarially and independently:
       where is it wrong, what's missing, where will it fail, what must be measured?
       Be specific. Using only your file-editing tools, write your findings to

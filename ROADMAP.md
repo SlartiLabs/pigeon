@@ -23,7 +23,7 @@ Status legend: ✅ shipped · 🔜 in progress · ⏳ planned · ❄️ deferred
 ### Tier A — Evidence (the launch gate)
 - ⏳ **Benchmark harness** — reproducible runs on real repos recording tokens /
   time / cost / success-rate / handoffs / interventions, committed under
-  `benchmarks/`. Replaces the constructed-counterfactual figure with a real,
+  `docs/benchmarks/`. Replaces the constructed-counterfactual figure with a real,
   repeatable one.
 - ⏳ **Isolated comparative eval** — same agents, same tasks, *with vs. without*
   pigeon's coordination. Isolates the one variable; publishes methodology + raw data.

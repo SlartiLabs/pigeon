@@ -1,0 +1,41 @@
+{
+  "experiment": "Lever-2 derived-residue screen (same-model, isolated)",
+  "date": "2026-06-19",
+  "substrate": "Fork-A `ledger` repo + off-disk wire CONTRACT.md; held-out accept.py (anti-idiomatic contract, not inferable from pristine code)",
+  "model": "claude/sonnet throughout all hops (isolates residue value from any cross-model confound)",
+  "design": "3-hop chain architect->to_wire->from_wire. Two PHYSICALLY SEPARATE worktrees (wt-bridge / wt-nobridge) so the contract cannot leak between arms; pristine-asserted before every trial.",
+  "N": 3,
+  "status": "SCREEN — N>=8 confirm pre-registered (see REPORT Table 1) and pending",
+  "arms": {
+    "pointers+derived": {
+      "transport": "architect writes the contract to DERIVED.md; downstream receives repo://DERIVED.md",
+      "success": "3/3",
+      "ci95_cloppper_pearson": [0.292, 1.0],
+      "mean_turns": 28.3,
+      "mean_cost_usd": 0.383,
+      "trials": [{"accept": true, "turns": 28, "cost_usd": 0.3704},
+                 {"accept": true, "turns": 30, "cost_usd": 0.4209},
+                 {"accept": true, "turns": 27, "cost_usd": 0.3590}]
+    },
+    "pointers-only": {
+      "transport": "downstream receives only repo://ledger/account.py (pristine); must infer the wire format",
+      "success": "0/3",
+      "ci95_cloppper_pearson": [0.0, 0.708],
+      "mean_turns": 24.0,
+      "mean_cost_usd": 0.465,
+      "trials": [{"accept": false, "turns": 24, "cost_usd": 0.6536},
+                 {"accept": false, "turns": 26, "cost_usd": 0.4028},
+                 {"accept": false, "turns": 22, "cost_usd": 0.3392}],
+      "failure_mode": "idiomatic keys / ISO-string ts instead of the contract's acct/cents/ts epoch-int"
+    },
+    "cold": {
+      "note": "Fork-A cross-model no-bridge (Exp. 2), included for the three-arm comparison",
+      "success": "0/5",
+      "ci95_cloppper_pearson": [0.0, 0.522]
+    }
+  },
+  "verdict": "GO at screen level: in the regime where the reasoning is genuinely irreducible (a constraint invisible in the final code), the derived residue is NECESSARY (3/3 vs 0/3) and FREE (cheaper than the failing null). The panel's 're-derives cheaply' failure mode does NOT fire for a capable same-model receiver here. Confirm at N>=8 before promoting beyond a strong screen.",
+  "usd_weighting_note": "Residue is +18% raw channel tokens but -18% net USD vs pointers-only (the null arm explores then fails). Raw-token and USD deltas point opposite ways (REPORT Fig 9).",
+  "validity": "Three earlier screen attempts were VOID and discarded: (1) reset reverted only ledger/, leaving contract-encoding tests; (2) shared-worktree side channels; (3) wt-nobridge lacked the sonnet runner -> null no-op'd (turns/cost/wall=0). Each caught by checking the numbers were physically possible. This result is the post-fix isolated run.",
+  "raw": "docs/benchmarks/results/raw/forkA-lever2/ (gitignored, regenerable via run-screen-iso.sh + run-null.sh)"
+}

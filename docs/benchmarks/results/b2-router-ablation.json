@@ -1,0 +1,24 @@
+{
+  "experiment": "Track B, rung B2 — heuristic router ablation: does dynamic routing beat the static DAG, net of cost?",
+  "date": "2026-07-04",
+  "substrate": "Exp-5 to_wire/from_wire chain (architect -> to_wire -> from_wire), held-out grader accept.py; the wire convention is recoverable from an in-code to_legacy cue.",
+  "arms": {
+    "static_all_sonnet": {
+      "policy": "static", "runners": "all sonnet",
+      "success": "12/12", "ci95": [0.735, 1.0], "mean_cost_usd": 1.618,
+      "source": "committed Exp-5 pointers-only (docs/benchmarks/substrates/exp5-natural/RESULTS-confirm-N12.csv)"
+    },
+    "cost_aware": {
+      "policy": "cost-aware (pigeon route)",
+      "runners": "architect=sonnet (mid), to_wire=mimo (free), from_wire=oc-mimo (free)",
+      "success": "5/5", "ci95": [0.478, 1.0], "mean_cost_usd": 0.52,
+      "note": "cost is entirely the sonnet architect; the free-arm workers cost $0"
+    }
+  },
+  "verdict": "GATE CLEARED (GO): dynamic routing beats the static all-sonnet DAG net of cost — equal success (both at ceiling) at a 67.8% lower cost ($0.52 vs $1.618/trial). The free arm (mimo, oc-mimo) genuinely implemented the worker tasks correctly (to_wire/from_wire with the acct/cents/ts convention, verified from the after-files; all three tasks completed on their assigned runners; grader PASS 5/5).",
+  "mechanism_verified": "Per-trial after-files show correct to_wire/from_wire with the recoverable convention; manifests confirm to_wire ran on mimo and from_wire on oc-mimo (both free, both status=completed). The win is a cost win: the free arm handled the mechanical worker tasks that all-sonnet was paying full price for.",
+  "honest_reading": "A SIMPLE heuristic (role-based cost-aware) already beat static. Per the roadmap's own logic, that means the routing win here is 80%-shaped: you do not need a LEARNED coordinator to capture it. So B3's gate is not 'does dynamic beat static' (answered here, yes) but 'does a LEARNED router beat the HEURISTIC router?' The specific win is a cost win that holds BECAUSE the free arm was capable enough for THIS recoverable worker task; on harder worker tasks the free arm may fail (success loss). Knowing WHERE the free arm's capability boundary is (which tasks to send free vs mid) is the thing a learned policy could add over the fixed role-heuristic — that is B3's potential value, and its real gate.",
+  "limitations": "One task, one substrate. N=5 on the cost-aware arm: success is at ceiling but not TOST-confirmed equivalent to the static 12/12 (a small success loss below the N=5 detection floor cannot be ruled out; the 68% cost margin is large enough that a modest success dip would still net-favor cost-aware, but that is not established). The free-arm workers' telemetry does not report num_turns/USD (free), so cost is architect-only by construction.",
+  "per_trial_ledger": "docs/benchmarks/results/b2-costaware-ledger.csv",
+  "spend_usd": 2.6
+}

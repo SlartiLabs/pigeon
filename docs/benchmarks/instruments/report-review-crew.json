@@ -1,0 +1,44 @@
+{
+  "sid": "report-improve",
+  "_note": "Pigeon plan: a crew that improves docs/benchmarks/report.md as the MANUSCRIPT base. Chained (needs), same working tree, sonnet for generation + opus for the adversarial verdict. Discipline carried as state.derived: verify every number against docs/benchmarks/results/*.json, cost is PARITY (never 'cheaper'), scope every claim (shallow 4b vs deep 4c), identity = SlartiLabs alias (no leak), em-dashes removed by convention. Run in an isolated git worktree; review the diff before merging.",
+  "tasks": [
+    {
+      "id": "analyst",
+      "runner": "sonnet",
+      "doing": "You are the analyst for a manuscript based on docs/benchmarks/report.md. READ: that report in full; every docs/benchmarks/results/*.json (lever2-confirm, lever2-natural, lever2-3hop, lever2-screen, lever2-deep-4c, lever1-sweep, forkA-capability); docs/benchmarks/substrates/exp4b-trace-presence/CALIBRATION-RESULT.md; docs/benchmarks/substrates/exp4c-depth/ (README, RESULTS-*.csv, PREREG); docs/benchmarks/figures/make_carrier_comms_figures.py. Produce a concrete improvement plan for a publishable manuscript: gaps in text, tables, figures, and statistics; overclaims; missing scope/limitation statements; the two-sided bounded law (Exp4 necessary / Exp5+4c unnecessary-when-recoverable) framing. Do NOT edit any file. Record the non-obvious, must-not-miss findings in state.derived.constraint_found (one per item) via: pigeon handoff --json-in - <<'EOF' {\"schema_version\":\"1.2\",\"sid\":\"report-improve\",\"from\":\"analyst\",\"to\":\"Coordinator\",\"state\":{\"done\":[\"audited report + all results + substrates + figure generator\"],\"doing\":\"statistician adds rigor, figures rebuilds, editor rewrites, reviewer verifies\",\"derived\":{\"constraint_found\":[\"Fig 9 currently plots the N=3 SCREEN -18% USD gap which did NOT replicate; at N=8 cost is PARITY (0.417 vs 0.436) — regenerate at N=8 or replace with an honest parity panel\",\"Exp 5 (8/8 pointers-only) and Exp 4c (with-derived 8/8 = pointers-only 8/8) claim H0 but lack a FORMAL equivalence test — add TOST\",\"Exp 4 (8/8 vs 0/8) and 4b (8/8 vs 0/8) assert separated CIs — add exact Fisher/Barnard p-values\",\"Exp 4c needs its own figure (depth generalization: Du/Dr/with-derived at ceiling vs Exp4 0/8)\",\"cost must read PARITY everywhere, never cheaper; keep identity as SlartiLabs; remove em-dashes\",\"...add any further gaps you find, concretely...\"]}}} EOF . Point downstream at the report, results dir, and figure generator.",
+      "pack": false
+    },
+    {
+      "id": "statistician",
+      "runner": "sonnet",
+      "needs": ["analyst"],
+      "receives": ["repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/exp4-residue-necessary.json", "repo://docs/benchmarks/results/exp4c-depth.json", "repo://docs/benchmarks/results/exp5-natural.json"],
+      "doing": "Add rigorous, correct statistics to the manuscript, honouring the carried reasoning (see '## Carried reasoning'). Write docs/benchmarks/figures/stats_appendix.py that recomputes, from the committed results JSONs and RESULTS csvs (do NOT hand-enter numbers): exact Clopper-Pearson 95% CIs for every arm; two-sided Fisher/Barnard exact p-values for the separated-CI contrasts (Exp4 8/8 vs 0/8; Exp4b R_low vs R_mid); and TOST equivalence tests for the H0 claims (Exp5 pointers-only re-derivation; Exp4c with-derived 8/8 vs pointers-only 8/8). Run it, and add a compact Statistics section/table to docs/benchmarks/report.md citing the outputs. VERIFY every existing numeric claim in the report against the JSONs; flag or fix any mismatch. Then record your handoff. Keep cost claims at PARITY.",
+      "pack": false
+    },
+    {
+      "id": "figures",
+      "runner": "sonnet",
+      "needs": ["statistician"],
+      "receives": ["repo://docs/benchmarks/figures/make_carrier_comms_figures.py", "repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/exp4c-depth.json"],
+      "doing": "Improve docs/benchmarks/figures/make_carrier_comms_figures.py to manuscript quality, honouring the carried reasoning. (1) FIX Figure 9: it hardcodes the N=3 screen deltas (+0.18/-0.18); replace with the N=8 confirm reality (cost parity, 0.417 vs 0.436) or convert it to an honest 'raw-token vs USD, both near parity at N=8' panel — no phantom -18% win. (2) ADD a new figure for Exp 4c: the depth-generalization result (Du rationale-stripped pointers-only 8/8 and with-derived 8/8, both at ceiling, vs Exp4's residue-necessary 0/8), reading data from exp4c-depth.json. (3) Ensure a clean unified 'two-sided bounded law' figure exists. RUN the generator (python3 docs/benchmarks/figures/make_carrier_comms_figures.py) so the PNGs regenerate; confirm no errors. Update figure references/numbers in the report if you renumber. Record your handoff.",
+      "pack": false
+    },
+    {
+      "id": "editor",
+      "runner": "sonnet",
+      "needs": ["figures"],
+      "receives": ["repo://docs/benchmarks/report.md"],
+      "doing": "Raise docs/benchmarks/report.md to manuscript quality, honouring the carried reasoning. Add or sharpen a tight abstract; ensure the two-sided bounded law is the spine (Exp4 residue necessary when no recoverable trace; Exp5+4c unnecessary when recoverable, shallow AND deep); scope EVERY headline claim (shallow key-naming vs deep dedup; deep-toy not deep-real); strengthen the Limitations and Threats sections; integrate the new statistics table and the new/updated figures. Enforce house style: cost is PARITY not cheaper; identity stays SlartiLabs (scan for and remove any real-name/opsec leak); remove em-dashes (use commas or parentheses; keep en-dashes only in numeric ranges). Do not invent results; every number must trace to a committed JSON/csv. Record your handoff with a short changelog in state.done.",
+      "pack": false
+    },
+    {
+      "id": "reviewer",
+      "runner": "opus",
+      "needs": ["editor"],
+      "receives": ["repo://docs/benchmarks/report.md", "repo://docs/benchmarks/results/exp4c-depth.json", "repo://docs/benchmarks/results/exp4-residue-necessary.json"],
+      "doing": "Adversarial final review of docs/benchmarks/report.md as a critical peer reviewer. VERIFY every quantitative claim against docs/benchmarks/results/*.json and the RESULTS csvs — do not trust the prose. Flag and FIX: any cost claim that says or implies 'cheaper' rather than parity; any figure/text mismatch; any overclaim not supported by the data (especially any 4c claim that overstates depth — it is deep-toy, structural trace stayed visible); any identity/opsec leak; any surviving em-dash. Confirm the stats (TOST, Fisher) are correctly applied and reported. Leave a concise verdict and the list of fixes you applied at the top-of-file HTML comment <!-- REVIEWER VERDICT: ... -->, then record your handoff.",
+      "pack": false
+    }
+  ]
+}

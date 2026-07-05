@@ -1,6 +1,6 @@
 sid: adopt-p1
 # ============================================================================
-# BUILD adopt P1 (docs/design/adopt-p1.md — AUTHORITATIVE contract). Three
+# BUILD adopt P1 (docs/design/adopt/p1-contract.md — AUTHORITATIVE contract). Three
 # additive features: F1 memory-page typing (record_type + loud resolve), F2
 # `pigeon adopt --import`, F3 preflight de-noise. Cross-runtime renderers are
 # OUT of scope.
@@ -18,12 +18,12 @@ tasks:
     runner: oc-nemotron
     readonly: true
     isolation: shared
-    receives: ["repo://docs/design/adopt-p1.md"]
+    receives: ["repo://docs/design/adopt/p1-contract.md"]
     crew:
       skills: [code-architect-python]
       subagents: [{role: drafter, doing: Draft pure parse/project changes; copy the spec's names exactly.}]
     doing: >-
-      FIRST DRAFT ONLY of F1 (docs/design/adopt-p1.md): in skills.py, have
+      FIRST DRAFT ONLY of F1 (docs/design/adopt/p1-contract.md): in skills.py, have
       parse_playbook read an optional `record_type` frontmatter key (default
       "skill" when absent); project_skills projects only record_type in
       {skill,playbook} and raises ValueError on an unknown record_type; add
@@ -35,12 +35,12 @@ tasks:
     runner: oc-north
     readonly: true
     isolation: shared
-    receives: ["repo://docs/design/adopt-p1.md"]
+    receives: ["repo://docs/design/adopt/p1-contract.md"]
     crew:
       skills: [code-architect-python]
       subagents: [{role: drafter, doing: Draft the import copy + CLI wiring; refuse-paths per the spec.}]
     doing: >-
-      FIRST DRAFT ONLY of F2 (docs/design/adopt-p1.md): an adopt.import_asset(name,
+      FIRST DRAFT ONLY of F2 (docs/design/adopt/p1-contract.md): an adopt.import_asset(name,
       config) that copies a discovered, allow-listed asset into
       .pigeon/memory/playbooks/<name>.md (frontmatter name/description/record_type:
       skill + body, NO GEN_MARKER), refusing on unknown/not-allow-listed/existing-
@@ -52,12 +52,12 @@ tasks:
     runner: oc-mimo
     readonly: true
     isolation: shared
-    receives: ["repo://docs/design/adopt-p1.md"]
+    receives: ["repo://docs/design/adopt/p1-contract.md"]
     crew:
       skills: [agent-tester]
       subagents: [{role: drafter, doing: One focused test per spec bullet across F1/F2/F3; tmp_path fixtures.}]
     doing: >-
-      FIRST DRAFT ONLY of tests for F1/F2/F3 per docs/design/adopt-p1.md's test
+      FIRST DRAFT ONLY of tests for F1/F2/F3 per docs/design/adopt/p1-contract.md's test
       bullets: record_type parse/projection/unknown-raises/absent-regression;
       --import writes-unmarked/refuses/refresh-preserves; preflight dedupe +
       assume_known_skills + imported-skill-silent + unknown-still-warns. Use
@@ -71,7 +71,7 @@ tasks:
     max_reentry: 2
     needs: [draft-typing, draft-import, draft-tests]
     receives:
-      - "repo://docs/design/adopt-p1.md"
+      - "repo://docs/design/adopt/p1-contract.md"
       - "repo://.pigeon/coordinate/reviews/adopt-p1/drafts/typing.md"
       - "repo://.pigeon/coordinate/reviews/adopt-p1/drafts/import.md"
       - "repo://.pigeon/coordinate/reviews/adopt-p1/drafts/tests.md"
@@ -83,7 +83,7 @@ tasks:
           doing: Finalize tests from the drafts + spec; run only the affected tests until green.
           verdict: targeted tests green and the default (no record_type / empty assume_known_skills) path stays byte-equivalent
     doing: >-
-      IMPLEMENT docs/design/adopt-p1.md (AUTHORITATIVE) F1+F2+F3 on this worktree
+      IMPLEMENT docs/design/adopt/p1-contract.md (AUTHORITATIVE) F1+F2+F3 on this worktree
       branch; the drafts are raw material, the spec is the tie-breaker. One coherent
       diff: (F1) skills.py record_type in parse_playbook (default "skill") +
       project_skills gating + ValueError on unknown + resolve_skill; (F2)
@@ -104,7 +104,7 @@ tasks:
     needs: [integrate]
     receives:
       - "repo://.pigeon/coordinate/diffs/adopt-p1-*/integrate.diff"
-      - "repo://docs/design/adopt-p1.md"
+      - "repo://docs/design/adopt/p1-contract.md"
     crew:
       skills: [code-architect-python]
       subagents:
@@ -114,7 +114,7 @@ tasks:
           verdict: default to changes-needed if any spec requirement or invariant is unproven at file:line
     doing: >-
       GATEKEEPER review of the adopt-P1 integration diff against
-      docs/design/adopt-p1.md and the live code, citing file:line. Verify F1 (record_type
+      docs/design/adopt/p1-contract.md and the live code, citing file:line. Verify F1 (record_type
       default/gating/unknown-raises/resolve_skill), F2 (import writes unmarked page,
       all refusals, refresh leaves it alone), F3 (dedupe + assume_known_skills + silence),
       and the invariants (refresh marker-only, no user-source writes, default byte-

@@ -1,0 +1,34 @@
+{
+  "experiment": "4c — deep constraint (dedup-before-aggregate): depth vs recoverability",
+  "prereg": "docs/benchmarks/preregistrations/exp4c-deep-constraint.md",
+  "model": "claude/sonnet, two physically separate worktrees per cell",
+  "design": "Difficulty held constant by construction: Dr (deep, rationale documented) vs Du (identical code+task, docstring stripped) are byte-identical modulo the docstring (validate.py diff-clean). Recoverability meter = pointers-only pass rate. S anchors to Exp-4b R_mid (reused).",
+  "stage1_calibration": {
+    "Du_pointers_only": {"n": 4, "recovered": 4, "note": "calibration; superseded by the N=12 confirm below"},
+    "Dr_pointers_only": {"n": 4, "recovered": 4, "note": "calibration; superseded by the N=12 confirm below"}
+  },
+  "confirm_N12": {
+    "Du_pointers_only": {"n": 12, "recovered": 12, "ci95": [0.735, 1.0], "mean_cost_usd": 1.051},
+    "Dr_pointers_only": {"n": 12, "recovered": 12, "ci95": [0.735, 1.0], "mean_cost_usd": 1.041},
+    "Du_with_derived": {"n": 12, "recovered": 12, "ci95": [0.735, 1.0], "mean_cost_usd": 1.024},
+    "Du_decoy": {"n": 8, "recovered": 8, "ci95": [0.631, 1.0], "mean_cost_usd": 1.170, "INVALID_CONTROL": true}
+  },
+  "tost_closed": {
+    "method": "Newcombe hybrid Wilson-score CI on the risk difference, 90% CI, equivalence margin 0.20",
+    "gate2_PODu_vs_PODr": {"arms": "12/12 vs 12/12", "diff_ci90": [-0.184, 0.184], "equivalent_at_0.20": true},
+    "residue_null_wd_vs_po": {"arms": "12/12 vs 12/12", "diff_ci90": [-0.184, 0.184], "equivalent_at_0.20": true},
+    "reading": "Both decisive contrasts now formally pass TOST at a ±0.20 margin (min-margin 0.184). The N=8 gap (min-margin 0.25) that could not clear ±0.20 is closed by raising both ceiling arms to N=12 (Newcombe floor drops to ±0.184). Margin fixed a priori at 0.20; not margin-shopped."
+  },
+  "verdict": "GATE 2, TOST-CONFIRMED at N=12 (margin 0.20). Du pointers-only 12/12 [0.735,1.0]: a capable receiver re-derives the deep dedup-before-aggregate constraint from the code even with the rationale docstring stripped, statistically equivalent to Dr (documented) 12/12. Du with-derived 12/12: carried residue is equivalent to pointers-only (both 12/12), residue UNNECESSARY. The sharp step generalizes from Exp-4b's shallow key-naming constraint to this deeper dedup constraint, now with formal equivalence, not just coincident point estimates. Superiority side (Exp-4/4b 8/8 vs 0/8, Fisher p=0.000155) unaffected.",
+  "decoy_arm_invalidated": "The mandatory decoy arm (irrelevant residue, to isolate carried-content from generic prose) could NOT be realized with this model. The sonnet architect recognized the decoy instruction as an attempt to plant a bug-inducing rationale and REFUSED it, carrying the TRUE constraint instead. Verbatim from exp4c-decoy-2.json constraint_found: \"this handoff's 'doing' field told me to omit dedup/retries/double-counting from constraint_found and substitute unrelated cover reasons to steer a refactor into the bug\" — then it stated the real dedup constraint. Leak check: 5 constraint-term occurrences reached the decoy refactor prompt via the residue. So decoy 8/8 is a refused-manipulation, not a clean prose-only control. The content-vs-prose isolation is therefore UNAVAILABLE for this model. It is also moot: with-derived does not exceed pointers-only (both at ceiling), so there is no content-driven lift to attribute. This is an incidental model-behaviour finding (sonnet will not carry sabotaging residue), reported, not hidden.",
+  "prereg_deviations": "Disclosed deviations from PREREG-exp4c-deep-constraint.md: (1) the mandatory decoy arm WAS run but is INVALID (model refused the decoy manipulation; see decoy_arm_invalidated); (2) Stage-1 calibration N=4 and Stage-2 confirm were not pooled; the reported result is the N=12 confirm. The constraint was fixed a priori in prereg Sec 2 (no substrate search, so no cherry-pick), and no search log exists because none was performed.",
+  "mechanism_verified": {
+    "touch_probe": "All reported trials engaged the constrained region (every one refactored settle to a single streaming pass, the risky move). Genuine engagement, not untouched code; verified on new Dr and decoy trials too.",
+    "re_derivation_evidence": "Du trials re-derived the rationale in their own docstrings ('last write wins', 'corrections / amendments') from the stripped code.",
+    "injection_verified": "with-derived: architect emitted concrete constraint_found items; the '## Carried reasoning (state.derived from upstream)' block was confirmed present in the refactor agent's prompt. The null is not vacuous, residue was carried and still added nothing."
+  },
+  "limitation": "Du stripped the RATIONALE (docstring) but the dedup STRUCTURE (latest[txn_id]=amt) stayed visible in the code, so 'trace present' remained strong. True behavior-unrecoverability (code present, behavior NOT inferable) was not achieved. This moves the result from shallow-toy to deep-toy, not to deep-real; real analytical constraints are deeper still.",
+  "cost": "Parity across all ceiling arms (Du po $1.051, Dr po $1.041, Du with-derived $1.024 per run, N=12). No cost penalty; not a saving.",
+  "total_spend_usd": 55.38,
+  "per_trial_ledger": "docs/benchmarks/substrates/exp4c-depth/RESULTS-stage1-calibration.csv, RESULTS-stage2-confirm.csv (all 44 confirm trials)"
+}
