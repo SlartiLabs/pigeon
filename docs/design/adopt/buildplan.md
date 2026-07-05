@@ -1,7 +1,7 @@
 # BUILD PLAN — finishing `docs/design/PLAN.md`
 
 **Date:** 2026-06-17 · **Authority:** roadmap session
-**Companion design:** [`adopt.md`](adopt.md) · **Runnable P0:** [`../To_do/adopt-p0.tasks.yaml`](../To_do/adopt-p0.tasks.yaml)
+**Companion design:** [`adopt.md`](design.md) · **Runnable P0:** [`../To_do/adopt-p0.tasks.yaml`](../../To_do/adopt-p0.tasks.yaml)
 
 This plan answers: *what in `PLAN.md` is done, what is left, and how pigeon
 builds the rest* — small tasks, each with a crew, routed by model tier.

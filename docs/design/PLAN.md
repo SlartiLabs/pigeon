@@ -277,4 +277,4 @@ working tree. Hand off to the Coordinator for sequencing into sessions._
   servers, and make them referenceable in `coordinate` crews — non-destructively
   (leaning on the `GEN_MARKER` to separate user-authored from pigeon-generated),
   behind an allow-list trust gate, with MCP inventory-only in the MVP.
-  **Status: PROPOSED.** Full design: [`docs/design/adopt.md`](adopt.md).
+  **Status: PROPOSED.** Full design: [`docs/design/adopt/design.md`](adopt/design.md).

@@ -301,7 +301,7 @@ Exp. 4 owns the R≈0 endpoint (Δ huge: 8/8 vs 0/8); Exp. 5 owns R≈1 (Δ≈0:
 residue starts earning its tokens, on a controlled ladder where the constraint, task, and
 held-out grader are **held fixed** and only the in-code **cue salience** varies (so
 re-derivability R is the single manipulated variable; nothing is memorizable). Substrate +
-pre-registration: `exp4b-substrate/`, `docs/design/EXP4B-revised-design.md` (the prereg's
+pre-registration: `exp4b-substrate/`, `docs/design/carrier-comms/exp4b-design.md` (the prereg's
 4-type factorial was replaced after a red-team showed it biased toward a false KILL). The
 R≈1 rung is **byte-identical to Exp. 5**, so 4b reuses Exp. 5's 8/8 as its top anchor.
 

@@ -2,7 +2,7 @@
 **Reviewer:** critique-agy (powered by Gemini)
 **Date:** 2026-06-20
 **Session:** comms-panel
-**Target Document:** `docs/design/carrier-comms.md` & `docs/design/carrier-comms-buildplan.md`
+**Target Document:** `docs/design/carrier-comms/brief.md` & `docs/design/carrier-comms/buildplan.md`
 
 ---
 

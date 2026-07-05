@@ -1,7 +1,7 @@
 # Carrier-Comms Optimization — design brief (pointer doc)
 
 > A pointer doc for cross-model critique. The full executable plan is
-> [`carrier-comms-buildplan.md`](carrier-comms-buildplan.md); read code on demand
+> [`carrier-comms-buildplan.md`](buildplan.md); read code on demand
 > at the `file:line` refs there rather than re-deriving.
 
 ## Scope

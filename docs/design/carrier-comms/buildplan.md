@@ -4,7 +4,7 @@
 **Executor:** a Claude terminal (interactive Claude Code), step by step — **not** a
 free-model coordinate fan-out, except the two coordinate runs called out in Phase 0 and Phase 4.
 **Companion:** the two-lever design brief is embedded in §0 below (it has no on-disk home yet).
-**Reads first:** [`AGENTS.md`](../../AGENTS.md), `.pigeon/manifest.json`, this file.
+**Reads first:** [`AGENTS.md`](../../../AGENTS.md), `.pigeon/manifest.json`, this file.
 
 This plan answers: *how to compress the carrier-to-carrier channel (Lever 1, parity
 ceiling) and build + test the polymath handoff (Lever 2, the research question)* — as a
@@ -54,12 +54,12 @@ alone (a non-obvious constraint found through failed experiments, invisible in t
 
 | Capability | Where (file:line) | Note |
 |---|---|---|
-| Handoff contract v1.1, **pointers-only** | [`.pigeon/handoff.schema.json`](../../.pigeon/handoff.schema.json) `state` `additionalProperties:false` @43; `artifacts` @56-62; `decisions` (freeform, forward-only) @63-67 | **No derived-reasoning field exists** — this is Lever 2's gap |
-| Handoff token accounting | [`tokens.py`](../../src/pigeon/tokens.py) `account_handoff` @142-166 (**single chokepoint**, 6 call sites); `_prose_baseline_for_handoff` @108-139; `summarize` @201-231 (sums only known fields); `record` @85-92 | One lumped `actual_tokens` per handoff |
-| Pack bundle (the real over-send) | [`pack.py`](../../src/pigeon/pack.py) `_LAYERS` @28-34 (mem 20/manifest 10/code 50/hist 20); `pack()` @70-157; header/footer @121-128; inlined code fences @89-90 | 4000-tok default; **this is what lands in the receiver's window** |
-| Scaffolding (never counted) | [`coordinate/__init__.py`](../../src/pigeon/coordinate/__init__.py) `DEFAULT_PROMPT` @148-154; `crew_instructions` @156-180; readonly-constraint blocks @114-134; [`context.py`](../../src/pigeon/context.py) `generated_body` @30-63 | Re-emitted every spawn, invisible to the ledger |
-| Distill (post-hoc reasoning capture) | [`distill.py`](../../src/pigeon/distill.py) **deterministic, no LLM** (docstring @12-17); `list_runs` use @162; `sessions.session_handoffs` (sessions.py:17) | Natural base for capture (ii) — **keep the core deterministic** |
-| Coordinate / runners | `config.py` runners @135-139 (`claude`/`agy`/`opencode`), `telemetry_flags` @154-158, `model_pools` @185 (empty), `env_allowlist` @191 (`[]` strips secrets); [`agents.py`](../../src/pigeon/agents.py) KNOWN_AGENTS @37-62 (opencode `-m {model}` @40; gemini @46) | `USAGE_PARSERS` registry [`coordinate/telemetry.py`](../../src/pigeon/coordinate/telemetry.py) @102 |
+| Handoff contract v1.1, **pointers-only** | [`.pigeon/handoff.schema.json`](../../../.pigeon/handoff.schema.json) `state` `additionalProperties:false` @43; `artifacts` @56-62; `decisions` (freeform, forward-only) @63-67 | **No derived-reasoning field exists** — this is Lever 2's gap |
+| Handoff token accounting | [`tokens.py`](../../../src/pigeon/tokens.py) `account_handoff` @142-166 (**single chokepoint**, 6 call sites); `_prose_baseline_for_handoff` @108-139; `summarize` @201-231 (sums only known fields); `record` @85-92 | One lumped `actual_tokens` per handoff |
+| Pack bundle (the real over-send) | [`pack.py`](../../../src/pigeon/pack.py) `_LAYERS` @28-34 (mem 20/manifest 10/code 50/hist 20); `pack()` @70-157; header/footer @121-128; inlined code fences @89-90 | 4000-tok default; **this is what lands in the receiver's window** |
+| Scaffolding (never counted) | [`coordinate/__init__.py`](../../../src/pigeon/coordinate/__init__.py) `DEFAULT_PROMPT` @148-154; `crew_instructions` @156-180; readonly-constraint blocks @114-134; [`context.py`](../../../src/pigeon/context.py) `generated_body` @30-63 | Re-emitted every spawn, invisible to the ledger |
+| Distill (post-hoc reasoning capture) | [`distill.py`](../../../src/pigeon/distill.py) **deterministic, no LLM** (docstring @12-17); `list_runs` use @162; `sessions.session_handoffs` (sessions.py:17) | Natural base for capture (ii) — **keep the core deterministic** |
+| Coordinate / runners | `config.py` runners @135-139 (`claude`/`agy`/`opencode`), `telemetry_flags` @154-158, `model_pools` @185 (empty), `env_allowlist` @191 (`[]` strips secrets); [`agents.py`](../../../src/pigeon/agents.py) KNOWN_AGENTS @37-62 (opencode `-m {model}` @40; gemini @46) | `USAGE_PARSERS` registry [`coordinate/telemetry.py`](../../../src/pigeon/coordinate/telemetry.py) @102 |
 | Benchmark harness | `benchmarks/PROTOCOL.md` (two-arm WITH/WITHOUT, same-model, identical prompt, fresh worktree @ pinned SHA, held-out acceptance test §3); `benchmarks/KILL-CRITERION.md` (axes + GO/NO-GO, locked) | Cost(USD) is the headline; token bases differ across arms |
 | Marshmallow result | `benchmarks/results/marshmallow.json` — plan step naive $0.4555 vs pigeon $0.4419 (~parity); overall **+8.1%**, same 1178 tests; `handoff_saved_pct 97.5`, `pack_saved_pct 92.1` (vs re-transmission, **not** a real cross-arm saving) | Plan step is a measured wash |
 | **Fork-A cross-model — DONE** | `benchmarks/results/forkA-capability.json` + `benchmarks/figures/fig4_forkA_capability.png` | See §2 |
@@ -143,7 +143,7 @@ No auto-merge. A human runs `pytest` + `pyrefly` and merges the branch after eac
 Dogfood pigeon's own cross-model path to pressure-test this plan before building, and produce
 the "different opinions from different models" the user asked for.
 
-1. Write `docs/design/carrier-comms.md` = this brief (§0) + the Fork-A reality (§2), as a
+1. Write `docs/design/carrier-comms/brief.md` = this brief (§0) + the Fork-A reality (§2), as a
    **pointer** doc the carriers resolve.
 2. Create `docs/To_do/comms-panel.tasks.yaml` (mirror `timeout-salvage-design.tasks.yaml`
    shape). One readonly critique task per voice, each handed a *pointer* to the design doc and
@@ -159,7 +159,7 @@ the "different opinions from different models" the user asked for.
        runner: opencode
        model: opencode/mimo-v2.5-free
        isolation: worktree
-       doing: "Critique docs/design/carrier-comms.md. Do not edit repo source; write findings to .pigeon/coordinate/reviews/comms/mimo.md and hand back."
+       doing: "Critique docs/design/carrier-comms/brief.md. Do not edit repo source; write findings to .pigeon/coordinate/reviews/comms/mimo.md and hand back."
      - id: critique-free2
        runner: opencode
        model: opencode/<a-second-free-model>   # pick a distinct provider from `opencode models`
@@ -177,7 +177,7 @@ the "different opinions from different models" the user asked for.
    given +8.1% and known-neutral cost?), *measurement-rigor* (are the gates falsifiable?),
    *ops-feasibility* (free-model flakiness, env_allowlist, telemetry parsers).
 4. **Synthesis:** reconcile all voices into a *refined* design appended to
-   `docs/design/carrier-comms.md`, with an explicit list of where the honest answer is most
+   `docs/design/carrier-comms/brief.md`, with an explicit list of where the honest answer is most
    likely "no." `pigeon metrics` / `coordinate_status` show each model's voice was recorded.
 
 **Gate G-panel:** if the panel surfaces a premise this plan got wrong, fix the plan before
@@ -191,7 +191,7 @@ No contract change. Nothing downstream is interpretable without per-spawn token 
 breakdown.
 
 **1a. Sub-component split inside the handoff record.** In `account_handoff`
-([`tokens.py:142`](../../src/pigeon/tokens.py)) build a `components` sub-dict before `record()`:
+([`tokens.py:142`](../../../src/pigeon/tokens.py)) build a `components` sub-dict before `record()`:
 `{pointers, decisions, constraints, derived, crew, rag}`, each an independent `count_tokens` of
 that serialized slice (reuse `count_tokens` + `serialize_handoff`). Keep `actual_tokens` as the
 total. `summarize` (@201) sums only known fields, so `components` is **purely additive — no
@@ -199,9 +199,9 @@ migration, no test breakage**. `components.derived` is the residue-bloat meter (
 
 **1b. The missing `scaffold` kind.** Add `tokens.account_scaffold(config, *, prompt_text,
 kind_detail)` recording `{"kind":"scaffold", actual_tokens, ...}`. Call it from `_build_command`
-([`coordinate/__init__.py:963`](../../src/pigeon/coordinate/__init__.py), right after the prompt
+([`coordinate/__init__.py:963`](../../../src/pigeon/coordinate/__init__.py), right after the prompt
 is finalized @979-982) on the **exact** finalized prompt + crew string. Count `generated_body`
-**once** via `sync_context` ([`context.py:130`](../../src/pigeon/context.py)) so the per-repo
+**once** via `sync_context` ([`context.py:130`](../../../src/pigeon/context.py)) so the per-repo
 constant isn't double-counted per wave. `format_summary` (@234) renders new kinds for free.
 
 **1c. Join SUCCESS to tokens — new module `src/pigeon/bench_join.py`.** Do **not** put success
@@ -266,7 +266,7 @@ Honest expectation: movement toward parity, **never** savings. Bank it and stop.
 ## PHASE 4 — Lever 2: the `derived` schema + same-model bloat check
 
 **4a. Add `derived` to the schema.** Under `state.properties` in
-[`.pigeon/handoff.schema.json`](../../.pigeon/handoff.schema.json) (state is
+[`.pigeon/handoff.schema.json`](../../../.pigeon/handoff.schema.json) (state is
 `additionalProperties:false` @43 → must be explicit). Optional object, caps bound worst-case
 residue at ~900–1100 tokens:
 
@@ -286,9 +286,9 @@ residue at ~900–1100 tokens:
 ```
 
 **4b. Forward-compat v1.1 → v1.2.** Bump `SCHEMA_VERSION` in
-[`src/pigeon/__init__.py`](../../src/pigeon/__init__.py); rename schema `$id` to
+[`src/pigeon/__init__.py`](../../../src/pigeon/__init__.py); rename schema `$id` to
 `handoff-1.2.json`; register a **no-op** `_MIGRATIONS["1.1"]→("1.2", …)` in
-[`handoff.py`](../../src/pigeon/handoff.py) @132 (mirror `_migrate_1_0_to_1_1` @122); thread a
+[`handoff.py`](../../../src/pigeon/handoff.py) @132 (mirror `_migrate_1_0_to_1_1` @122); thread a
 `derived` kwarg into `build_handoff` @176 (like `decisions`/`salvaged_upstream` @196-199), and
 into the MCP/CLI `handoff_write` signatures. Because `derived` is optional, every existing 1.1
 handoff still validates under 1.2 (superset). Add a **soft** budget *warn* (never reject) in
@@ -347,16 +347,16 @@ The quality-win arm is **already demonstrated** (§2: 5/5 vs 0/5). This phase is
 
 | File | Change | Phase |
 |---|---|---|
-| [`src/pigeon/tokens.py`](../../src/pigeon/tokens.py) | `account_handoff` `components` (@142); `account_scaffold` + `scaffold` kind; `summarize`/`format_summary` absorb new kinds | 1 |
+| [`src/pigeon/tokens.py`](../../../src/pigeon/tokens.py) | `account_handoff` `components` (@142); `account_scaffold` + `scaffold` kind; `summarize`/`format_summary` absorb new kinds | 1 |
 | **`src/pigeon/bench_join.py`** (new) | tokens×success join reporter (reuse `coordinate.list_runs`) | 1 |
-| [`.pigeon/handoff.schema.json`](../../.pigeon/handoff.schema.json) | optional `derived` under `state.properties` (@43); `$id`→1.2 | 4 |
-| [`src/pigeon/handoff.py`](../../src/pigeon/handoff.py) | `SCHEMA_VERSION` bump; `_MIGRATIONS` 1.1→1.2 no-op (@132); `build_handoff` derived kwarg (@176); soft budget warn | 4 |
-| [`src/pigeon/coordinate/__init__.py`](../../src/pigeon/coordinate/__init__.py) | trim `DEFAULT_PROMPT`/`crew_instructions` (@148-180); `account_scaffold` in `_build_command` (@963); expose pack knobs (@1445). **Preserve the `stdin=DEVNULL` fix @~1235.** | 1,3 |
-| [`src/pigeon/config.py`](../../src/pigeon/config.py) | pack-sweep keys; `derived_token_budget`; `extract_derived` flag; opencode `-m {model}` + a free-model `model_pool` for Phase 0 | 0,3,4 |
-| [`src/pigeon/pack.py`](../../src/pigeon/pack.py) | tunable layer shares (@28-34); pointer-ize inlined slices (@89-90) | 3 |
-| [`src/pigeon/distill.py`](../../src/pigeon/distill.py) | opt-in `extract_derived` (reuse `sessions.py`); **keep the core deterministic** | 4 |
+| [`.pigeon/handoff.schema.json`](../../../.pigeon/handoff.schema.json) | optional `derived` under `state.properties` (@43); `$id`→1.2 | 4 |
+| [`src/pigeon/handoff.py`](../../../src/pigeon/handoff.py) | `SCHEMA_VERSION` bump; `_MIGRATIONS` 1.1→1.2 no-op (@132); `build_handoff` derived kwarg (@176); soft budget warn | 4 |
+| [`src/pigeon/coordinate/__init__.py`](../../../src/pigeon/coordinate/__init__.py) | trim `DEFAULT_PROMPT`/`crew_instructions` (@148-180); `account_scaffold` in `_build_command` (@963); expose pack knobs (@1445). **Preserve the `stdin=DEVNULL` fix @~1235.** | 1,3 |
+| [`src/pigeon/config.py`](../../../src/pigeon/config.py) | pack-sweep keys; `derived_token_budget`; `extract_derived` flag; opencode `-m {model}` + a free-model `model_pool` for Phase 0 | 0,3,4 |
+| [`src/pigeon/pack.py`](../../../src/pigeon/pack.py) | tunable layer shares (@28-34); pointer-ize inlined slices (@89-90) | 3 |
+| [`src/pigeon/distill.py`](../../../src/pigeon/distill.py) | opt-in `extract_derived` (reuse `sessions.py`); **keep the core deterministic** | 4 |
 | `benchmarks/results/raw/<label>/acceptance.json` (operator) | held-out pass/fail per task → `bench_join` | 1+ |
-| `docs/design/carrier-comms.md`, `docs/To_do/comms-panel.tasks.yaml` (new) | brief + panel synthesis; panel coordinate file | 0 |
+| `docs/design/carrier-comms/brief.md`, `docs/To_do/comms-panel.tasks.yaml` (new) | brief + panel synthesis; panel coordinate file | 0 |
 
 ---
 
@@ -456,7 +456,7 @@ The second panel run (operator-authorized `--skip-permissions`, `agy` re-authed)
 where the prior session timed out: `critique-mimo` + `critique-agy`(Gemini) produced substantive
 adversarial critiques and handed back via the 1.2 schema (`critique-nemotron` still timed out, 1/3).
 Full text: `.pigeon/coordinate/reviews/comms/{mimo,agy}.md`; synthesis + the six adopted corrections
-in [`carrier-comms.md`](carrier-comms.md) §"Phase-0 panel RE-RUN". **Material upshot — the
+in [`carrier-comms.md`](brief.md) §"Phase-0 panel RE-RUN". **Material upshot — the
 measurement design was partly falsified even though the levers were not:** raw-token win rules and
 N=3 would measure the wrong thing. Folded into §11 below: USD-weighted win + `num_turns` tracking
 (multi-turn tool tax), a pointers-only NULL arm as the real Lever-2 test, N=3 screen / **N≥8**
@@ -465,7 +465,7 @@ confirm, and `derived`-as-markdown injection (not raw nested JSON).
 ### Phase 0 — multi-model panel (Gate G-panel) ✅ PROCEED (carried over from prior session)
 
 Already executed by the prior terminal and recorded in
-[`carrier-comms.md`](carrier-comms.md) §"Phase-0 panel synthesis": the free-model voices
+[`carrier-comms.md`](brief.md) §"Phase-0 panel synthesis": the free-model voices
 (`oc-mimo`, `oc-nemotron`) **timed out at 600 s** and `agy`'s **Google OAuth had expired** — an
 ops finding, not a critique. The substantive pass was the integrator's four lenses; verdict
 **PROCEED**, no premise falsified, four gate-level refinements applied. Re-running the panel this

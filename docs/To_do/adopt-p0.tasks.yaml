@@ -1,7 +1,7 @@
 sid: adopt-p0
 # ============================================================================
-# BUILD `pigeon adopt` — P0 / MVP  (design: docs/design/adopt.md; plan:
-# docs/design/adopt-buildplan.md). The last unbuilt item in docs/design/PLAN.md
+# BUILD `pigeon adopt` — P0 / MVP  (design: docs/design/adopt/design.md; plan:
+# docs/design/adopt/buildplan.md). The last unbuilt item in docs/design/PLAN.md
 # (Phases A-F shipped in v0.5.0). P0 = discovery + catalog + human view for
 # subagents & skills, `adopt.allow` trust gate, same-runtime crew resolution,
 # coordinate preflight warning for unknown skill names, MCP inventory-only.
@@ -44,7 +44,7 @@ tasks:
           doing: Pin exact function signatures, the discovered-record JSON shape, the adopt config keys, the catalog path, and the CLI surface — every drafter must be able to code to it without guessing.
           verdict: the contract must be concrete enough that two drafters writing different modules cannot disagree on a name or shape
     doing: >-
-      Read docs/design/adopt.md (esp. §3 design, §6 trust, §7 P0 scope, §9 open
+      Read docs/design/adopt/design.md (esp. §3 design, §6 trust, §7 P0 scope, §9 open
       questions) and the live seams it builds on: src/pigeon/config.py (defaults +
       path properties), src/pigeon/skills.py (GEN_MARKER, parse_playbook,
       project_skills, _RENDERERS), src/pigeon/agents.py (detect_agents,
