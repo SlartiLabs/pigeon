@@ -83,6 +83,37 @@ def count_tokens(text: str, encoding: str = "cl100k_base") -> int:
     return _heuristic_tokens(text)
 
 
+# The canonical tokenizer for cross-model recounts (Stage 0 / Stage 2 of the
+# limitations-closing plan). A third-party, model-agnostic BPE chosen *because*
+# it favors neither Claude's nor Gemini's own segmentation — the property a fair
+# cross-model volume comparison needs and that either provider's native
+# tokenizer would break. State this name explicitly in Methods; do not let
+# "standard tokens" stand in for a named choice.
+CANONICAL_ENCODING = "o200k_base"
+
+
+def canonical_token_count(text: str, *, strict: bool = True) -> int:
+    """Recount ``text`` under the canonical model-agnostic tokenizer
+    (:data:`CANONICAL_ENCODING`), decoupled from provider pricing and
+    provider-specific segmentation.
+
+    ``strict`` (default): raise if exact tiktoken counting for the canonical
+    encoding is unavailable, rather than silently substitute the offline
+    heuristic. The heuristic is fine for a *within-run ratio* (both sides use it)
+    but it is NOT the canonical metric — reporting a heuristic number as an
+    ``o200k_base`` recount would be exactly the "standard means unambiguous"
+    sleight the plan warns against. Pass ``strict=False`` only for a rough
+    preview clearly labelled as non-canonical."""
+    if strict and not using_tiktoken(CANONICAL_ENCODING):
+        raise RuntimeError(
+            "canonical recount needs tiktoken with the "
+            f"{CANONICAL_ENCODING!r} encoding; install the [tokens] extra "
+            "(pip install tiktoken). Refusing to substitute the offline "
+            "heuristic for a metric the Methods text names as o200k_base."
+        )
+    return count_tokens(text, CANONICAL_ENCODING)
+
+
 def record(config: Config, event: dict[str, Any]) -> dict[str, Any]:
     """Append a token-accounting event (with timestamp) to metrics.jsonl."""
     stored = {"ts": datetime.now(UTC).isoformat(), **event}

@@ -1,0 +1,21 @@
+{
+  "sid": "s5-po",
+  "_note": "Pointers-only (the recoverability meter). Architect reads the repo and hands the implementer a brief pointer with NO carried residue; the implementer edits money.py from the code + TASK.md alone. Because the deciding exponent fact is external (validate.py [4]/[5]), any success above the no-code floor comes from the model's own priors, NOT from recovering a trace in the code — which is why the no-code baseline is mandatory to interpret this arm. Expected (GATE 1 case): pointers-only near the no-code floor = genuinely unrecoverable.",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "receives": ["repo://ledger/money.py", "repo://TASK.md"],
+      "doing": "You are the architect. Read TASK.md and ledger/money.py and decide how to extend to_minor_units for the new JPY and BHD desks. Do NOT edit any file. Hand off to the implementer with a brief pointer only: tell them to extend to_minor_units in ledger/money.py per TASK.md. Do NOT write conversion details (per-currency factors, digit counts) into your handoff or any file.",
+      "pack": false
+    },
+    {
+      "id": "implement",
+      "runner": "sonnet",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/money.py", "repo://TASK.md"],
+      "doing": "Extend to_minor_units(amount_major, currency) -> int in ledger/money.py per TASK.md so it settles JPY and BHD correctly alongside USD and EUR. Keep the public signature. Do NOT run shell commands or tests — just edit ledger/money.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}

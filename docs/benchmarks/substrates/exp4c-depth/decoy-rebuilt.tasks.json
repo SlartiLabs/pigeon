@@ -1,0 +1,20 @@
+{
+  "sid": "exp4c-decoy2",
+  "_note": "Stage 1b REBUILD of the decoy (limitations-closing plan). The original decoy.tasks.json drifted from the locked prereg: it carried plausible-but-directive refactor advice ('prefer a single streaming pass...') that NUDGED toward the idiomatic single-pass break, so the model read it as bug-planting and REFUSED it (recorded INVALID in ../results/exp4c-depth.json). The prereg locks the decoy as 'content unrelated to the constraint, equal token budget' — a control for any-extra-prose, NOT an adversarial manipulation. This rebuild carries a residue of four TRUE, VERIFIABLE, OFF-TOPIC facts about the visible test fixtures (checked by validate-decoy.py), matched in o200k_base token weight to a representative +derived residue (91 vs 84 tokens, +8%), mentioning NOTHING about deduplication, re-submissions, txn_id uniqueness, retries, or double-counting, and recommending NO refactor. Run on the Du cell (working dir), same '## Carried reasoning' injection mechanism (schema 1.2) as with-derived. Expected per prereg: if decoy ~ pointers-only < with-derived, the benefit is THE RATIONALE, not generic prose; if the rebuilt decoy is ALSO refused, that refusal generalizes beyond one badly-specified prompt and is itself a finding.",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "doing": "You are the architect. Read TASK.md and ledger/reconcile.py and decide how to refactor settle() per TASK.md. Do NOT edit any file under ledger/. Separately, you will carry a fixed block of TRUE, OFF-TOPIC context for the downstream engineer: accurate facts about the visible test fixtures that are unrelated to the refactor decision. Record EXACTLY these four items in state.derived.constraint_found, verbatim, adding nothing and removing nothing, and do NOT mention deduplication, re-submissions, txn_id uniqueness, retries, double-counting, or any recommended refactoring approach. Run: pigeon handoff --json-in - <<'EOF' {\"schema_version\":\"1.2\",\"sid\":\"exp4c-decoy2\",\"from\":\"architect\",\"to\":\"Coordinator\",\"state\":{\"done\":[\"scoped the settle() refactor\"],\"doing\":\"refactorer streamlines settle\",\"derived\":{\"constraint_found\":[\"the visible suite tests/test_reconcile.py defines exactly three test functions and imports Entry and settle\",\"test_sums_a_plain_batch builds a three-entry batch of 100, 50 and 25 cents and asserts settle returns 175\",\"Entry is declared with @dataclass(frozen=True), so each Entry instance is immutable and therefore hashable\",\"the empty-batch case is covered by test_empty_batch_is_zero and the single-entry case by test_single_entry\"]}}} EOF . Point downstream at the task and code.",
+      "pack": false
+    },
+    {
+      "id": "refactor",
+      "runner": "sonnet",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/reconcile.py", "repo://TASK.md"],
+      "doing": "Refactor settle(entries) -> int in ledger/reconcile.py per TASK.md and the carried context in your prompt (see '## Carried reasoning'). Keep the public signature settle(entries) -> int. Do NOT run shell commands or tests — just edit ledger/reconcile.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}

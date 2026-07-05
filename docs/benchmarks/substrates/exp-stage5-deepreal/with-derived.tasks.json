@@ -1,0 +1,21 @@
+{
+  "sid": "s5-wd",
+  "_note": "with-derived. The architect carries the EXTERNAL deciding fact (each new desk's minor-unit digit count) as state.derived residue, injected downstream as '## Carried reasoning' (schema 1.2). This is the arm where residue can genuinely earn its tokens IF the fact is unrecoverable from the code (validate.py [4]/[5]) and un-guessable above the no-code floor. GATE 1 (strongest current-headline outcome): pointers-only near the no-code floor AND with-derived clears both pointers-only and decoy with separated CIs. Only run confirm-tier AFTER the no-code pilot + pointers-only pilot clear (plan Stage 5, step 4).",
+  "tasks": [
+    {
+      "id": "architect",
+      "runner": "sonnet",
+      "receives": ["repo://ledger/money.py", "repo://TASK.md"],
+      "doing": "You are the architect. Read TASK.md and ledger/money.py. The task extends to_minor_units for two new desks, JPY and BHD, whose correct conversion depends on how many whole minor units each currency settles in — a fact fixed OUTSIDE this codebase. Record that deciding fact for the implementer in state.derived.constraint_found, concretely (the minor-unit digit count for each of JPY and BHD, and that USD/EUR already settle in hundredths), by running: pigeon handoff --json-in - <<'EOF' {\"schema_version\":\"1.2\",\"sid\":\"s5-wd\",\"from\":\"architect\",\"to\":\"Coordinator\",\"state\":{\"done\":[\"scoped the to_minor_units extension\"],\"doing\":\"implementer extends to_minor_units per the carried minor-unit facts\",\"derived\":{\"constraint_found\":[\"...the per-currency minor-unit digit counts for JPY and BHD, concretely...\"]}}} EOF . Do NOT edit any file; the carried reasoning is your handoff's job, not a file.",
+      "pack": false
+    },
+    {
+      "id": "implement",
+      "runner": "sonnet",
+      "needs": ["architect"],
+      "receives": ["repo://ledger/money.py", "repo://TASK.md"],
+      "doing": "Extend to_minor_units(amount_major, currency) -> int in ledger/money.py per TASK.md and the carried facts in your prompt (see '## Carried reasoning') so it settles JPY and BHD correctly alongside USD and EUR. Keep the public signature. Do NOT run shell commands or tests — just edit ledger/money.py, then record your handoff.",
+      "pack": false
+    }
+  ]
+}

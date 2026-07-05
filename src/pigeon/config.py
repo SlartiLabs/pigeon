@@ -166,6 +166,14 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
             # flag here — a wrong flag makes the runner print help and exit.
             # claude -p --output-format json is verified; add your runner's
             # real usage flag (agy/opencode have none by default).
+            # Stage 0 finding (limitations-closing plan, task 1): agy's `-p`
+            # print mode exposes NO structured-usage flag today (no
+            # --output-format json), so its slot stays empty — a real asymmetry
+            # in how cleanly providers expose cost accounting, worth noting in
+            # any cross-model write-up. The receiving half is already built: the
+            # `_gemini_parser` in telemetry.py claims Gemini's `usageMetadata`
+            # the moment agy (or a direct generateContent call) surfaces it, with
+            # no scheduler-core edit.
             "telemetry_flags": {
                 "claude": ["--output-format", "json"],
                 "agy": [],

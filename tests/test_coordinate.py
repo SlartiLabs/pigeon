@@ -728,6 +728,13 @@ def test_telemetry_recorded_in_manifest_and_metrics(repo):
     telem = run["tasks"]["spender"]["telemetry"]
     assert telem["total_tokens"] == 180
     assert telem["usage"]["input_tokens"] == 100
+    # Stage 0: the canonical token/cache split and a transcript pointer are
+    # persisted on every measured trial, not just the raw vendor usage.
+    assert telem["usage_canonical"] == {
+        "input_tokens": 100, "output_tokens": 50,
+        "cache_creation_input_tokens": 5, "cache_read_input_tokens": 25}
+    assert telem["transcript"].endswith("spender.log")
+    assert (cfg.root / telem["transcript"]).is_file()  # transcript actually archived
 
     events = [json.loads(l) for l in cfg.metrics.read_text(encoding="utf-8").splitlines()]
     agent_runs = [e for e in events if e.get("kind") == "agent_run"]
@@ -735,6 +742,8 @@ def test_telemetry_recorded_in_manifest_and_metrics(repo):
     assert agent_runs[0]["task"] == "spender"
     assert agent_runs[0]["actual_tokens"] == 180
     assert agent_runs[0]["cost_usd"] == 0.0123
+    assert agent_runs[0]["usage_canonical"]["input_tokens"] == 100
+    assert agent_runs[0]["transcript"].endswith("spender.log")
 
 
 def test_telemetry_flags_appended_only_when_requested(repo, capsys):
@@ -816,6 +825,52 @@ def test_extract_telemetry_parses_opencode_tokens_shape():
     # claude `usage` shape is unaffected (no regression)
     claude = co._extract_telemetry('{"usage":{"input_tokens":7,"output_tokens":3},"total_cost_usd":0.01}')
     assert claude["total_tokens"] == 10
+
+
+def test_extract_telemetry_parses_gemini_usagemetadata_shape():
+    # Stage 0: Gemini (the generateContent shape agy wraps) reports
+    # `usageMetadata:{promptTokenCount, candidatesTokenCount, totalTokenCount,
+    # cachedContentTokenCount?, thoughtsTokenCount?}` — none of claude's
+    # `usage:{*_tokens}` nor opencode's `tokens:{...}`.
+    body = ('{"modelVersion":"gemini-2.5-pro","usageMetadata":'
+            '{"promptTokenCount":1200,"candidatesTokenCount":300,'
+            '"totalTokenCount":1500}}')
+    t = co._extract_telemetry(body)
+    assert t and t["total_tokens"] == 1500
+    assert t["model"] == "gemini-2.5-pro"
+    assert t["usage"]["promptTokenCount"] == 1200
+    # nested (streamed chunk envelope) + no totalTokenCount -> sum components,
+    # cachedContentTokenCount is NOT re-added (already inside promptTokenCount)
+    nested = ('{"response":{"usageMetadata":{"promptTokenCount":1000,'
+              '"candidatesTokenCount":200,"thoughtsTokenCount":50,'
+              '"cachedContentTokenCount":800}}}')
+    t2 = co._extract_telemetry(nested)
+    assert t2["total_tokens"] == 1250  # 1000 + 200 + 50, cached excluded
+    # a zero/streaming chunk is not a measurement
+    assert co._extract_telemetry('{"usageMetadata":{"totalTokenCount":0}}') is None
+
+
+def test_normalize_usage_projects_every_vendor_onto_canonical_fields():
+    from pigeon.coordinate.telemetry import normalize_usage
+    # claude: native passthrough
+    c = normalize_usage({"input_tokens": 100, "output_tokens": 50,
+                         "cache_creation_input_tokens": 10, "cache_read_input_tokens": 20})
+    assert c == {"input_tokens": 100, "output_tokens": 50,
+                 "cache_creation_input_tokens": 10, "cache_read_input_tokens": 20}
+    # opencode: reasoning folds into output; cache.read/write map across
+    o = normalize_usage({"input": 100, "output": 50, "reasoning": 5,
+                         "cache": {"read": 20, "write": 3}})
+    assert o == {"input_tokens": 100, "output_tokens": 55,
+                 "cache_creation_input_tokens": 3, "cache_read_input_tokens": 20}
+    # gemini: uncached input = prompt - cached; thoughts fold into output
+    g = normalize_usage({"promptTokenCount": 1000, "candidatesTokenCount": 200,
+                         "thoughtsTokenCount": 50, "cachedContentTokenCount": 800})
+    assert g == {"input_tokens": 200, "output_tokens": 250,
+                 "cache_creation_input_tokens": 0, "cache_read_input_tokens": 800}
+    # unknown shape -> zeros, never raises
+    assert normalize_usage(None) == {"input_tokens": 0, "output_tokens": 0,
+                                     "cache_creation_input_tokens": 0,
+                                     "cache_read_input_tokens": 0}
 
 
 def test_handoffs_are_token_accounted(repo):

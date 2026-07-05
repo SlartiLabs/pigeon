@@ -1458,6 +1458,17 @@ def _run_task(
             procs.pop(task_id, None)
         log.write(f"# exit {rc}\n")
     telemetry = _extract_telemetry("\n".join(tail))
+    if telemetry:
+        # Stage 0 (limitations-closing plan): every trial archives the token/cache
+        # split in the same four canonical fields regardless of vendor, and a
+        # pointer to the raw transcript teed to log_path (prompt on the first
+        # line, completion below) — so a later single-tokenizer recount has the
+        # text it needs and is not left inheriting the old "not retained" gap.
+        telemetry["usage_canonical"] = normalize_usage(telemetry["usage"])
+        try:
+            telemetry["transcript"] = str(log_path.relative_to(config.root))
+        except ValueError:
+            telemetry["transcript"] = str(log_path)
     if telemetry and budget:
         budget.add(telemetry["total_tokens"], telemetry.get("total_cost_usd", 0.0))
     if telemetry:
@@ -1466,6 +1477,8 @@ def _run_task(
             "actual_tokens": telemetry["total_tokens"],
             "baseline_tokens": 0, "saved_tokens": 0,
             "usage": telemetry["usage"],
+            "usage_canonical": telemetry["usage_canonical"],
+            "transcript": telemetry["transcript"],
         }
         if model:
             event["model"] = model
@@ -2030,7 +2043,13 @@ from .reporting import (
     run_events,
     timeline_report,
 )
-from .telemetry import USAGE_PARSERS, UsageParser, _extract_telemetry, _opencode_usage
+from .telemetry import (
+    USAGE_PARSERS,
+    UsageParser,
+    _extract_telemetry,
+    _opencode_usage,
+    normalize_usage,
+)
 from .worktree import (
     _worktree_commit_and_remove,
     _worktree_finish,

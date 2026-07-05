@@ -56,6 +56,31 @@ recoverability meter); `S` anchors the ladder to the confirmed 4b step.
 - `decoy.tasks.json` — equal-weight but irrelevant residue; isolates carried *content*
   from generic added prose. (It even nudges toward the break, making it a strong control.)
 
+## Stage 1b — decoy rebuilt to the locked design
+
+The original `decoy.tasks.json` ran 8/8 but was recorded **INVALID**: the model
+refused it. Root cause (limitations-closing plan, Stage 1b): the residue drifted
+from the prereg's "content unrelated to the constraint, equal budget" into
+plausible-but-directive refactor advice ("prefer a single streaming pass...")
+that nudged toward the idiomatic single-pass break — an adversarial manipulation,
+not the any-extra-prose control the prereg locks.
+
+`decoy-rebuilt.tasks.json` is the rebuild: the carried residue is four **true,
+verifiable, off-topic** facts about the visible test fixtures, mentioning nothing
+about dedup / re-submissions / retries / double-counting and recommending no
+refactor, matched in `o200k_base` token weight to a representative `+derived`
+residue (88 vs 84 tokens, +4.8%). `validate-decoy.py` asserts all three
+properties (true, off-topic, weight-matched) with no agents and no spend. It is
+**ready for confirm-tier N=8-12 on the Du cell**, gated only on operator go +
+live-trial spend. Kill-criterion (per plan): if the rebuilt decoy is *also*
+refused, that refusal generalizes beyond one bad prompt and is itself a finding;
+if accepted and `decoy ~ pointers-only < with-derived`, the residue's benefit is
+the rationale, not generic prose.
+
+```
+python3 docs/benchmarks/substrates/exp4c-depth/validate-decoy.py
+```
+
 ## Validate (no agents, local only)
 
 ```

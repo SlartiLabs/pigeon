@@ -17,6 +17,23 @@ def test_heuristic_deterministic():
     assert tk.count_tokens(s) > 0
 
 
+def test_canonical_token_count_named_and_strict():
+    # The canonical cross-model tokenizer is a stated, model-agnostic choice.
+    assert tk.CANONICAL_ENCODING == "o200k_base"
+    s = "the ledger module defines to_legacy/from_legacy conventions"
+    if tk.using_tiktoken(tk.CANONICAL_ENCODING):
+        # exact recount available: equals a direct o200k_base count, > 0
+        assert tk.canonical_token_count(s) == tk.count_tokens(s, "o200k_base") > 0
+        assert tk.canonical_token_count("") == 0
+    else:
+        # strict mode refuses to pass the offline heuristic off as canonical
+        import pytest
+        with pytest.raises(RuntimeError):
+            tk.canonical_token_count(s)
+        # non-strict preview still returns a (clearly non-canonical) number
+        assert tk.canonical_token_count(s, strict=False) > 0
+
+
 def test_handoff_pointers_beat_inlining(repo):
     h = ho.build_handoff(
         sid="s1", frm="Planner", to="Executor",

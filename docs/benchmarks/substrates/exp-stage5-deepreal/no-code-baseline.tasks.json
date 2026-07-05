@@ -1,0 +1,13 @@
+{
+  "sid": "s5-nocode",
+  "_note": "STAGE 5 NO-CODE GUESSING BASELINE — the new control this stage adds that no prior experiment needed. The implementer gets the task description ALONE: no repository access, no pack, no pointers, no upstream residue. It writes ledger/money.py from priors only. The held-out grader's pass rate here is the FLOOR that every subsequent pointers-only result must be read against — NOT a clean 0% baseline. A naturalistic currency rule is partly guessable from training-data priors (a model may know JPY settles in whole yen and BHD in thousandths); this arm measures exactly how much. Pilot at N=3-4. GATE 3: if pointers-only later lands near THIS floor, the substrate did not hide the trace or the floor is too high to interpret — redesign before confirm-tier spend.",
+  "tasks": [
+    {
+      "id": "implement_blind",
+      "runner": "sonnet",
+      "readonly": false,
+      "pack": false,
+      "doing": "Create the file ledger/money.py containing exactly one function with this signature:\n\n    from decimal import Decimal\n    def to_minor_units(amount_major: Decimal, currency: str) -> int: ...\n\nThe function converts a major-unit monetary amount into the integer number of WHOLE MINOR UNITS that a clearing partner settles in — the smallest indivisible unit the currency actually trades in — and never returns a fractional minor unit. It must be correct for these four currencies: USD, EUR, JPY, BHD. You have NO repository, NO existing code, and NO other context beyond this description; implement it from your own knowledge of these currencies. Do NOT run shell commands or tests. Just write ledger/money.py, then record your handoff."
+    }
+  ]
+}
