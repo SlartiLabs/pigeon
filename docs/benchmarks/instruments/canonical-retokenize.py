@@ -85,6 +85,8 @@ def recount_run(manifest: Path, root: Path) -> list[dict]:
         if not pointer:
             continue
         tpath = (root / pointer) if not Path(pointer).is_absolute() else Path(pointer)
+        if not tpath.is_file() and (manifest.parent / pointer).is_file():
+            tpath = manifest.parent / pointer
         if not tpath.is_file():
             rows.append({"run_id": data.get("run_id"), "task": task_id,
                          "runner": t.get("runner"), "model": t.get("model", ""),
@@ -121,7 +123,7 @@ def _price_row(row: dict, prices: dict) -> None:
     input count. Use it for an order-of-magnitude cross-model USD where the
     provider (e.g. agy/Gemini) emits no usage; prefer measured cost_usd where it
     exists, and the tokenizer-independent canon_total for the *fair* comparison."""
-    model = (row.get("model") or "").lower()
+    model = (row.get("model") or row.get("runner") or "").lower()
     rate = next((v for k, v in prices.items() if k.lower() in model), None)
     if not rate or row.get("canon_total") in ("", None):
         row["est_usd_canonical"] = ""

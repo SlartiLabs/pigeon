@@ -66,6 +66,18 @@ for i in $(seq 1 "$N"); do
       --skip-permissions --telemetry --budget-usd 3 ) > "$rdir/run" 2>&1
   wall=$(( $(date +%s) - t0 ))
 
+  # GUARD (data-integrity): if any runner rejected an unknown CLI flag, it printed
+  # its usage and never did the work — an INVALID trial, not a failure. This is the
+  # agy `--json` telemetry-flag break: agy has no --json, so telemetry_flags.agy
+  # MUST stay []. Abort loudly rather than record a false 0/N.
+  if grep -rqi "flags provided but not defined\|flag provided but not defined" \
+       "$REPO/.pigeon/coordinate/logs" 2>/dev/null; then
+    echo "ABORT t$i: a runner rejected an unknown CLI flag (usage printed, no work done)." >&2
+    echo "  Almost certainly telemetry_flags.agy is not [] in .pigeon/config.yaml." >&2
+    echo "  Set it back to [] and re-run. This trial is INVALID." >&2
+    exit 5
+  fi
+
   PYTHONPATH="$REPO" python "$WORK/accept.py" > "$rdir/accept" 2>&1; arc=$?
   man="$(ls -t "$REPO"/.pigeon/coordinate/runs/*.json 2>/dev/null | head -1)"
   cp "$man" "$rdir/manifest.json" 2>/dev/null
@@ -95,6 +107,9 @@ done
 if [ -n "${STAGE2_OUT:-}" ]; then mkdir -p "$STAGE2_OUT"; cp -r "$OUT/." "$STAGE2_OUT/"; echo "persisted -> $STAGE2_OUT"; fi
 echo "=== STAGE 2 NECESSITY ($ARM, N=$N) ==="
 echo "PASS (accept_rc==0): $(awk -F, 'NR>1 && $3==0' "$RES" | wc -l)/$N   (expected ~0/N for pointers-only, ~N/N for with-derived)"
-echo "artifacts: ${STAGE2_OUT:-$OUT}   canonical recount: python docs/benchmarks/instruments/canonical-retokenize.py <trial>/manifest.json --root <trial>"
-echo "NOTE: agy telemetry is unmeasured; cost_usd is the measured (claude) hops only."
+echo "artifacts: ${STAGE2_OUT:-$OUT}"
+echo "cat $RES:"
 cat "$RES"
+echo ""
+echo "=== CANONICAL RETOKENIZATION & ESTIMATED COST FOR AGY ==="
+python "$MAIN/docs/benchmarks/instruments/canonical-retokenize.py" "$OUT"/t*/manifest.json --price "$MAIN/docs/benchmarks/instruments/prices.template.json"

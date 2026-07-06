@@ -85,6 +85,18 @@ for i in $(seq 1 "$N"); do
       --skip-permissions --telemetry --budget-usd 3 ) > "$rdir/run" 2>&1
   wall=$(( $(date +%s) - t0 ))
 
+  # GUARD (data-integrity): if any runner rejected an unknown CLI flag, it printed
+  # its usage and never did the work — that is an INVALID trial, not a failure.
+  # This is exactly the agy `--json` telemetry-flag break: agy has no --json, so
+  # telemetry_flags.agy MUST stay []. Abort loudly rather than record a false 0/N.
+  if grep -rqi "flags provided but not defined\|flag provided but not defined" \
+       "$REPO/.pigeon/coordinate/logs" 2>/dev/null; then
+    echo "ABORT t$i: a runner rejected an unknown CLI flag (usage printed, no work done)." >&2
+    echo "  Almost certainly telemetry_flags.agy is not [] in .pigeon/config.yaml — agy has" >&2
+    echo "  no --json/usage flag. Set it back to [] and re-run. This trial is INVALID." >&2
+    exit 5
+  fi
+
   PYTHONPATH="$REPO" python "$WORK/accept.py" > "$rdir/accept" 2>&1; arc=$?
   man="$(ls -t "$REPO"/.pigeon/coordinate/runs/*.json 2>/dev/null | head -1)"
   cp "$man" "$rdir/manifest.json" 2>/dev/null
@@ -124,8 +136,9 @@ fi
 
 echo "=== STAGE 2 PILOT ($ARM, N=$N) ==="
 echo "PASS (accept_rc==0): $(awk -F, 'NR>1 && $3==0' "$RES" | wc -l)/$N"
-echo "artifacts: ${STAGE2_OUT:-$OUT}   (results.csv, per-trial run/accept/manifest, raw logs)"
-echo "canonical recount (cross-model token metric), per trial:"
-echo "  python docs/benchmarks/instruments/canonical-retokenize.py <trialdir>/manifest.json --root <trialdir>"
-echo "NOTE: agy telemetry is unmeasured (telemetry_flags.agy=[]), so cost_usd reflects the measured (claude) hops only — the receiver-side USD asymmetry is itself a Stage 2 finding, and why the canonical token recount is the fair cross-model metric here."
+echo "artifacts: ${STAGE2_OUT:-$OUT}"
+echo "cat $RES:"
 cat "$RES"
+echo ""
+echo "=== CANONICAL RETOKENIZATION & ESTIMATED COST FOR AGY ==="
+python "$MAIN/docs/benchmarks/instruments/canonical-retokenize.py" "$OUT"/t*/manifest.json --price "$MAIN/docs/benchmarks/instruments/prices.template.json"
