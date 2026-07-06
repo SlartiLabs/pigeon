@@ -21,7 +21,7 @@
      decoy manipulation and carried the true constraint). See §7d and §8a. -->
 # Carrier-Comms Optimization (Benchmark Report)
 
-**Status:** living document · **Date:** 2026-06-19 · **Branch:** `feat/carrier-comms`
+**Status:** living document · **Date:** 2026-07-06 (limitations-closing §9 added) · **Branch:** `feat/carrier-comms`
 **Scope:** how *carriers* (CLI agents that share no memory) talk to each other (the
 handoff channel and the context pigeon injects) and whether two levers improve it.
 
@@ -47,6 +47,18 @@ handoff channel and the context pigeon injects) and whether two levers improve i
 > deep-real). **Exp. 3** finds the default pack
 > **over-provisioned** (compress to pack=1k, success holds 3/3 across the tested 4× range;
 > knee below 1k, untested, not pursued, Lever 1 is maintenance).
+>
+> **Limitations-closing update (§9, 2026-07-06).** Five disclosed limitations were
+> addressed with live trials. **The necessity law replicates on a second,
+> architecturally different model (Gemini via agy):** the off-disk contract is
+> unrecoverable pointers-only (0/8) and rescued by the carried residue (7/8, Fisher
+> p ≈ 0.0014), and the recoverable side recovers (12/12), so the boundary is a
+> property of the task and artifacts, not of Sonnet. **Cost is now a *powered* null:**
+> at N=8, pigeon $0.644 vs naive $0.200, a difference of +$0.445 with a 95% CI
+> [+0.350, +0.545] that excludes any saving. Scale did not break pack's retrieval up
+> to 5000 files (trace surfaced 11/11); the deep-real substrate pilot **failed its
+> guessing-floor gate** (no-code 4/4 = pointers-only 4/4), a redesign signal reported
+> as such, not a favorable result.
 
 ---
 
@@ -195,7 +207,7 @@ CIs), not locked. Per the "Lever 1 is maintenance" steer, the sub-1k knee hunt i
 The decisive test, **same model throughout (sonnet ×3)** to isolate the residue's
 value from any cross-model confound, on the Fork-A contract substrate, in **two
 physically separate worktrees** so the contract cannot leak between arms (it did, in
-two earlier harness versions, see §9). Pristine-asserted before every trial.
+two earlier harness versions, see §10). Pristine-asserted before every trial.
 
 The confirm runs the **productionized mechanism**, not the screen's `DERIVED.md`
 proxy: the architect emits the contract into **`state.derived`**, and
@@ -233,7 +245,7 @@ genuinely irreducible (a constraint invisible in the final code), the `state.der
 residue is **necessary and free**: 8/8 vs 0/8 with exact 95 % CIs that do not overlap,
 at **parity cost** ($0.417 vs $0.436, a 4.4 % difference within the ±10 % noise band, not a saving). This holds through the real injection mechanism, not just the
 screen proxy. (Trials that hit a mid-run session rate-limit, turn-1 $0 no-ops, were
-discarded and re-run; the 8 reported per arm are all valid; see §9.)
+discarded and re-run; the 8 reported per arm are all valid; see §10.)
 
 ### 7a. Multi-hop survival (H2), the constraint reaches hop 3
 
@@ -431,6 +443,10 @@ The Exp. 4c `Du` ceiling reading (N=12) clears the formal TOST equivalence bar a
 | 4b | Lever 2, boundary R\* on a fixed-constraint cue-salience ladder | R_low **0/8** [0,.369] vs R_mid **8/8** [.631,1], CIs separated; distant/salient cues also recovered | 8 / 8 | **SHARP STEP** on trace *presence* (residue overhead once any **findable** trace exists) |
 | 4c | Lever 2, does the step survive DEPTH? (dedup-before-aggregate; Dr vs Du diff-clean) | Du (rationale stripped) pointers-only **12/12** [.735,1] = Dr 12/12; with-derived **12/12** (injection verified) | 12 | **GENERALIZES, TOST-confirmed ±0.20 (§8a)**, residue overhead at depth too when the trace is recoverable; limitation: structural trace stayed visible (deep-toy, not deep-real); decoy arm invalid (model refused) |
 
+The five **limitations-closing** experiments (cross-model replication, scale, powered
+cost, base-rate, deep-real) are summarized in **Table 3 (§9)**, kept separate because
+they test the disclosed limitations rather than the core levers.
+
 ---
 
 ## 8a. Statistics appendix, exact tests, formalized
@@ -514,7 +530,132 @@ throughout.
 
 ---
 
-## 9. Threats to validity (what the screens cost us, and what we fixed)
+## 9. Closing the disclosed limitations (cross-model, scale, cost, base-rate, deep-real)
+
+The manuscript's Section 4 disclosed eight limitations. A staged effort
+(`../design/limitations-closing-buildplan.md`) addressed five with live trials
+(2026-07-05/06). The point of this section is honesty, not a victory lap: two
+stages replicate the headline on new ground, one is a powered null, one is not
+estimable from available data, and one is an explicit redesign signal. Every run
+below archived its raw transcripts and was verified free of the telemetry-flag
+contamination that voided an earlier Stage-2 batch (see 9.1).
+
+**Table 3, Limitations-closing results.**
+
+| Stage | Limitation addressed | Result | N | Verdict |
+|---|---|---|---|---|
+| 1a | Exp-1 cost was N=1/arm | naive $0.200 [.156,.254] vs pigeon $0.644 [.530,.765]; Δ = +$0.445 [+.350,+.545] | 8/arm | **NULL, now powered** (coordination is a cost, not a saving) |
+| 2 | single model (Sonnet only) | necessity all-agy 0/8 vs 7/8 (Fisher p ≈ 0.0014); recoverable side 12/12 | 8–12 | **BOUNDARY TRANSFERS** (necessity direction); with-derived sonnet→agy agy-flakiness-confounded (GATE C) |
+| 3 | scale untested as a confound | pack surfaced the buried trace **11/11** at 5000 files; recovery 10/11; no ranking cutoff | 3–11 | **NO FAILURE FOUND** (not tested large enough) |
+| 4 | base rate of unrecoverable constraints unknown | corpus non-viable (4 mechanism-aware constraints, dead pointers) | n/a | **NOT ESTIMABLE** (as the plan predicted) |
+| 5 | deep-toy, not deep-real (4c's structural trace stayed visible) | GATE 3: no-code floor 4/4 = pointers-only 4/4 (ISO-4217 fact guessable from priors) | 4/arm | **REDESIGN** (substrate defeated by training priors) |
+
+### 9.1 Stage 2, the two-sided law replicated on Gemini (agy as receiver)
+
+![Figure 12, Stage 2 GATE A](figures/fig_s2_gateA.png)
+
+**Figure 12.** The two-sided law with the receiver swapped from Sonnet to
+Gemini/agy. *Left (necessity, Fork-A off-disk contract, 0%-recoverable):* in the
+controlled all-agy configuration, pointers-only **0/8** vs with-derived **7/8**, a
+clean separation (Fisher exact **p ≈ 0.0014**), so the carried `state.derived`
+contract is necessary *and* sufficient for a constraint the code cannot reveal,
+cross-model. *Right (recoverability, Exp-5 in-code cue):* pointers-only **12/12**,
+so a capable Gemini receiver re-derives the recoverable convention from the code,
+exactly as Sonnet does. The hatched with-derived bar is **agy-no-op/timeout
+confounded** (see below), a GATE-C execution gap, not a residue effect. Reading:
+the boundary is a property of the task and artifacts, not of Sonnet specifically.
+
+![Figure 13, Stage 2 cross-model token volume](figures/fig_s2_tokens.png)
+
+**Figure 13.** agy emits no native usage report (no `--json`/usage flag, a real
+provider asymmetry), so USD is measured only on the Sonnet architect hops. The fair
+cross-model unit is the canonical single-tokenizer recount (`o200k_base`, applied
+uniformly to both models' archived transcripts): agy **354** vs Sonnet **630**
+tokens per hop across the clean arms.
+
+**The GATE-C caveat, stated plainly.** The two `sonnet→agy` with-derived arms are
+*not* clean measurements: agy intermittently no-opped (exited 0 having produced
+nothing and edited nothing) on 8/8 necessity trials and 2–3/12 recoverability
+trials. That is agy's documented receiver flakiness under `coordinate`, an
+engineering gap in cross-model execution, not a finding about recoverability, and
+the all-agy 7/8 proves cross-model injection works when agy actually runs.
+
+**Data-integrity note.** An earlier batch of these arms (and an agy-authored report
+built on it) was **voided**: `telemetry_flags.agy` had been set to `[--json]`, but
+agy has no such flag, so under `--telemetry` it printed its usage and exited without
+editing, recording false `0/N`. Every number here is from a clean re-run with
+`telemetry_flags.agy: []`, verified to contain zero flag-break errors; both run
+scripts now abort loudly if any runner rejects an unknown flag. Full report and
+per-arm ledgers: `results/stage2-cross-model-report.md`, `results/stage2/`.
+
+### 9.2 Stage 3, scale as a confound for retrieval
+
+![Figure 14, Stage 3 scale](figures/fig_s3_scale.png)
+
+**Figure 14.** The Exp-5 convention is buried byte-identical inside a synthetic
+repository at 10 to 5000 files (`instruments/scale-generator.py`); recoverability is
+held constant and only decoy count varies. The metric under test, whether `pack`
+ranks the buried `ledger/account.py` into the context bundle, **held at ceiling at
+every scale, including 11/11 at 5000 files** (blue): retrieval never degraded. End-
+to-end recovery is **10/11** at 5000 (a screen 2/3 that a confirm tier resolved to
+8/8); the lone miss came *with* the trace already in context, so it is
+implementation / context-dilution variance, not a retrieval-ranking cutoff. Per the
+locked kill-criterion, the honest conclusion is **"no retrieval-ranking failure
+point found in the tested range (≤5000 files), i.e. not tested large enough,"** not
+"scale does not confound retrieval." This is ripgrep retrieval over semi-synthetic
+decoys; a vector retriever or hand-crafted near-duplicates could break sooner.
+Report: `results/stage3-scale.md`.
+
+### 9.3 Stage 1a, cost as a powered estimate
+
+![Figure 15, Stage 1a cost](figures/fig_s1a_cost.png)
+
+**Figure 15.** Experiment 1 rerun at N=8 per arm (cookiecutter `shoutcase` task at
+the Exp-1 base SHA; naive single call vs pigeon two-hop `coordinate`), the precision
+upgrade the plan asked for. naive **$0.200** [.156,.254], pigeon **$0.644**
+[.530,.765]; the paired difference is **+$0.445 with a bootstrap 95% CI [+0.350,
++0.545]**, entirely positive. The decisive question the plan posed, does the
+difference-CI include a comfortably negative (saving) region, answers **no**:
+coordination overhead is a measurable cost, not a saving. This is the powered form
+of the Exp-1 null; on this small task the ratio is ~3.2×, which will compress on
+larger tasks as fixed overhead amortizes but will not flip sign. cookiecutter only
+(marshmallow's Exp-1 grader was not committed). Report: `results/stage1a-cost.md`.
+
+### 9.4 Stage 4, base-rate probe (softer evidence, and here, not estimable)
+
+The base-rate instrument (`instruments/rederivable-probe.py`) was wired to a live
+judge (reconstruct-from-code, then a semantic-match verdict). The available real
+(non-experiment) traffic is **4 carried constraints across 3 pre-launch-audit
+handoffs**, all written after the team knew the mechanism, and their pointers
+reference audit review files that have since been cleaned, so they do not resolve.
+That corpus cannot yield a meaningful code-recoverability base rate, exactly the
+outcome the plan anticipates ("if no pre-mechanism traffic survives, say so"). The
+probe is wired and waiting for a genuine corpus; no number is reported because none
+would be honest. Report: `results/stage4-base-rate.md`.
+
+### 9.5 Stage 5, deep-real substrate pilot (the one that did not close favorably)
+
+![Figure 16, Stage 5 GATE 3](figures/fig_s5_gate3.png)
+
+**Figure 16.** Experiment 4c's honest limitation was that its structural trace
+stayed visible (deep-toy, not deep-real). Stage 5's substrate fixes a constraint by
+a fact *external* to the codebase (ISO-4217 minor units: JPY settles in whole yen,
+BHD in thousandths) that appears in no visible constant, comment, or test, with a
+mandatory no-code guessing baseline the plan added for exactly this case. The pilot
+result is a **GATE-3 redesign signal**: the no-code floor is **4/4** and
+pointers-only is **4/4**, identical. Sonnet gets the minor-units fact right with no
+repository at all, so the pointers-only "success" is a training-data-prior guess,
+not recovery from the artifact, and the substrate cannot distinguish the two. This
+is precisely why the no-code baseline was made a hard requirement; without it,
+pointers-only 4/4 would have been misread as recovery. The deep-real question
+remains open and needs a substrate whose deciding fact is *prior-independent*
+(Fork-A got this for free via arbitrary keys). Side-note in the right panel:
+pointers-only paid ~2× ($0.63 vs $0.28) to reach the answer it would have guessed.
+Report: `results/stage5-deep-real-pilot.md`.
+
+---
+
+## 10. Threats to validity (what the screens cost us, and what we fixed)
 
 The Lever-2 screen took **three** voided attempts before a trustworthy null, each
 caught by checking that the numbers were *physically possible*, not by trusting the
@@ -542,15 +683,26 @@ substrate would strengthen external validity; Lever 1's **cost-win is directiona
 "compress to 1k with no success loss" is firm. The productionized `state.derived`→
 markdown injection is now the mechanism under test (no longer the `DERIVED.md` proxy).
 
-## 10. Reproduce
+## 11. Reproduce
 
 ```
 # figures
 python3 docs/benchmarks/figures/make_figures.py                 # Exp.1/2 (fig1–3; fig4 is a committed artifact)
 python3 docs/benchmarks/figures/make_carrier_comms_figures.py   # fig5–9
+python3 docs/benchmarks/figures/make_stage2_figures.py          # §9.1 fig12–13 (cross-model)
+python3 docs/benchmarks/figures/make_stage3_1a_figures.py       # §9.2/9.3 fig14–15 (scale, cost)
+python3 docs/benchmarks/figures/make_stage5_figure.py           # §9.5 fig16 (deep-real GATE 3)
 # join any recorded arm (tokens × held-out success × turns × USD)
 python -m pigeon.bench_join docs/benchmarks/results/raw/<label>
 ```
+
+The §9 (limitations-closing) per-trial ledgers **are** committed:
+`results/stage2/`, `results/stage3/`, `results/stage1a-cost-N8.csv`,
+`results/stage5/`, one row per trial, with a data-integrity header. Their
+harnesses (`instruments/run-stage{1a,3}*.sh`,
+`substrates/{exp5-natural,forkA-necessity,exp-stage5-deepreal}/run-*.sh`) rebuild
+each substrate from committed sources and re-execute; the canonical cross-model
+recount is `instruments/canonical-retokenize.py`.
 
 Raw artifacts: `docs/benchmarks/results/raw/` (marshmallow, marshmallow-phase2,
 cookiecutter); panel critiques: `docs/design/panel-reviews/`; the live Lever-2 screen
