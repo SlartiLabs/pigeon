@@ -91,13 +91,27 @@ def _committed_pointers_only(p: pathlib.Path) -> dict | None:
 
 
 def load_cells(data: pathlib.Path) -> dict:
+    """Pick the CLEANEST available config per cell and label it. Necessity uses
+    the controlled all-agy pair (PO 0/8 vs WD 7/8, same config); recoverability
+    uses the committed pointers-only 12/12 + the sonnet->agy with-derived arm,
+    which is flagged `confound` because agy no-op/timeout dominated its misses."""
+    home = pathlib.Path.home()
+    def tag(c, cfg, confound=False):
+        if c:
+            c["cfg"] = cfg
+            c["confound"] = confound
+        return c
     return {
-        ("necessity", "pointers-only"): read_arm(data / "nec-pointers-only" / "results.csv"),
-        ("necessity", "with-derived"): read_arm(data / "nec-with-derived" / "results.csv"),
-        ("recoverability", "pointers-only"): _committed_pointers_only(
+        ("necessity", "pointers-only"): tag(
+            read_arm(data / "nec-po-allagy" / "results.csv"), "all-agy"),
+        ("necessity", "with-derived"): tag(
+            read_arm(home / "stage2" / "nec-wd-allagy" / "results.csv"), "all-agy"),
+        ("recoverability", "pointers-only"): tag(_committed_pointers_only(
             HERE.parent / "substrates" / "exp5-natural"
-            / "RESULTS-stage2-agy-pointers-only-N12.csv"),
-        ("recoverability", "with-derived"): read_arm(data / "exp5-with-derived" / "results.csv"),
+            / "RESULTS-stage2-agy-pointers-only-N12.csv"), "sonnet→agy"),
+        ("recoverability", "with-derived"): tag(
+            read_arm(data / "exp5-with-derived" / "results.csv"), "sonnet→agy",
+            confound=True),
     }
 
 
@@ -117,11 +131,19 @@ def fig_gate_a(cells: dict) -> None:
                 continue
             p = c["x"] / c["n"]
             lo, hi = clopper_pearson(c["x"], c["n"])
-            ax.bar(i, p, width=0.6, color=color, edgecolor=INK, linewidth=1.1, zorder=3)
+            confound = c.get("confound")
+            ax.bar(i, p, width=0.6, color=color, edgecolor=INK, linewidth=1.1,
+                   zorder=3, alpha=0.45 if confound else 1.0,
+                   hatch="///" if confound else None)
             ax.errorbar(i, p, yerr=[[p - lo], [hi - p]], fmt="none", ecolor=INK,
                         elinewidth=1.4, capsize=6, capthick=1.4, zorder=4)
-            ax.text(i, min(hi + 0.05, 1.02), f"{c['x']}/{c['n']}", ha="center",
+            ax.text(i, min(hi + 0.05, 1.03), f"{c['x']}/{c['n']}", ha="center",
                     va="bottom", fontsize=11, fontweight="bold", color=INK)
+            ax.text(i, -0.075, c.get("cfg", ""), ha="center", va="top",
+                    fontsize=8, color=MUTE)
+            if confound:
+                ax.text(i, 0.14, "agy no-op /\ntimeout\nconfounded", ha="center",
+                        va="center", fontsize=7.5, color=MUTE, style="italic")
         ax.set_xticks(xs)
         ax.set_xticklabels([a for a, _ in arms])
         ax.set_ylim(0, 1.15); ax.set_yticks(np.arange(0, 1.01, 0.25))
@@ -129,13 +151,15 @@ def fig_gate_a(cells: dict) -> None:
         ax.set_title(title, fontsize=10.5, color=INK, pad=10)
         ax.axhline(1.0, color=FAINT, lw=1, zorder=1)
         _despine(ax)
-    fig.suptitle("Stage 2 — the two-sided law transfers to Gemini (agy as receiver)",
+    fig.suptitle("Stage 2 — the two-sided law, replicated on Gemini (agy as receiver)",
                  fontsize=13, fontweight="bold", y=0.99)
-    fig.text(0.5, 0.005,
-             "Necessity SEPARATES (residue required) · Recoverability at CEILING both arms "
-             "(residue not required) → the boundary is a property of task+artifacts, not of Sonnet.",
-             ha="center", fontsize=9, color=MUTE)
-    fig.tight_layout(rect=(0, 0.03, 1, 0.96))
+    fig.text(0.5, 0.035,
+             "Necessity separates on Gemini (all-agy 0/8 → 7/8, Fisher p ≈ 0.0014); recoverable side recovers (12/12).",
+             ha="center", fontsize=8.5, color=INK)
+    fig.text(0.5, 0.010,
+             "Hatched bar = agy no-op / timeout confounded — a GATE-C execution gap, not a residue effect.",
+             ha="center", fontsize=8, color=MUTE, style="italic")
+    fig.tight_layout(rect=(0, 0.065, 1, 0.955))
     out = FIGDIR / "fig_s2_gateA.png"
     fig.savefig(out); plt.close(fig)
     print("wrote", out)

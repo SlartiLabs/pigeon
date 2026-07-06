@@ -1,0 +1,14 @@
+# Stage 2 clean ledger (exp5-recoverability-with-derived-sonnet-agy-N12), 2026-07-05, telemetry_flags.agy=[] (0 flag-breaks verified).
+trial,arm,accept_rc,turns,cost_usd,wall_s,agy_fired,injected,read_cue
+1,with-derived-agy,0,6,0.3552,141,1,1,2
+2,with-derived-agy,1,5,0.3111,900,0,0,0
+3,with-derived-agy,0,8,0.2328,356,1,1,2
+4,with-derived-agy,0,7,0.1549,160,1,1,2
+5,with-derived-agy,0,5,0.2747,146,1,1,2
+6,with-derived-agy,0,6,0.179,172,1,1,2
+7,with-derived-agy,0,6,0.1648,205,1,1,2
+8,with-derived-agy,1,6,0.167,164,1,1,2
+9,with-derived-agy,0,7,0.1936,146,1,1,2
+10,with-derived-agy,0,6,0.1605,142,1,1,2
+11,with-derived-agy,1,8,0.1962,170,1,1,2
+12,with-derived-agy,1,5,0.173,73,1,1,2

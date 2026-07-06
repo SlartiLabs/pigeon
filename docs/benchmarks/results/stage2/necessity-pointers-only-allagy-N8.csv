@@ -1,0 +1,10 @@
+# Stage 2 clean ledger (necessity-pointers-only-allagy-N8), 2026-07-05, telemetry_flags.agy=[] (0 flag-breaks verified).
+trial,arm,accept_rc,turns,cost_usd,wall_s,recv_fired,injected,used_contract
+1,pointers-only-agy,1,0,0,25,1,0,0
+2,pointers-only-agy,1,0,0,24,1,0,0
+3,pointers-only-agy,1,0,0,24,1,0,0
+4,pointers-only-agy,1,0,0,25,1,0,0
+5,pointers-only-agy,1,0,0,24,1,0,0
+6,pointers-only-agy,1,0,0,26,1,0,0
+7,pointers-only-agy,1,0,0,25,1,0,0
+8,pointers-only-agy,1,0,0,22,1,0,0
