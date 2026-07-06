@@ -45,3 +45,5 @@ htmlcov/
 # arbitrary handoff content (incl. identity/opsec material). Never version-control.
 .pigeon/memory/decisions.md
 .pigeon/memory/graph.json
+# Auto-distilled per-session records (same risk class as decisions.md/graph.json).
+.pigeon/memory/sessions/
