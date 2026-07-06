@@ -68,16 +68,16 @@ stayed visible). Ships the mandatory **no-code guessing baseline** arm
 pointers-only and with-derived. `validate.py` proves real + silent + external +
 no-trace (5/5).
 
-## Staged — live trials (gated on operator go + spend; Stage 2 also on agy re-auth)
+## Live trials — RUN (2026-07-05/06): Stages 1a, 2, 3, 4, 5 executed; 1b staged
 
-| Stage | Ready artifact | Gate | Rough spend |
-|---|---|---|---|
-| 1a cost N=8 | reuse Exp-1 (cookiecutter, marshmallow) | operator go + spend | $30-50 |
-| 1b confirm | `decoy-rebuilt.tasks.json` on Du, N=8-12 | operator go + spend | $10-15 |
-| 2 cross-model | **RUN (clean).** Report: [`../benchmarks/results/stage2-cross-model-report.md`](../benchmarks/results/stage2-cross-model-report.md); ledgers `../benchmarks/results/stage2/`; figs `fig_s2_gateA/tokens.png`. Necessity separates on Gemini (all-agy 0/8→7/8, Fisher p≈0.0014); recoverable side recovers (12/12). with-derived sonnet→agy arms agy-no-op-confounded (GATE C). ⚠️ a prior batch was VOIDED by `telemetry_flags.agy=[--json]` (agy has no --json); guard added, config is []. | done | ~$15 clean |
-| 3 scale runs | `scale-generator.py` points, screen N=3-4 → confirm N=8 | operator go + spend | $40-120 |
-| 4 base-rate `--live` | `instruments/rederivable-probe.py` | operator go + spend | $10-30 |
-| 5 pilot → confirm | `exp-stage5-deepreal/` arms | go + spend; **redesign likely** | $50-200+ |
+| Stage | Status | Result |
+|---|---|---|
+| 1a cost N=8 | **RUN** | `results/stage1a-cost.md`. naive $0.200 vs pigeon $0.644 (N=8, 8/8 each); diff +$0.445 [+0.350,+0.545], CI all-positive → coordination is a COST, not a saving (powered "cost is a null"). Fig `fig_s1a_cost.png`. cookiecutter only (marshmallow grader not committed). |
+| 1b confirm | staged | `decoy-rebuilt.tasks.json` on Du, N=8-12 — not yet run |
+| 2 cross-model | **RUN (clean)** | `results/stage2-cross-model-report.md`. Necessity separates on Gemini (all-agy 0/8→7/8, Fisher p≈0.0014); recoverable side recovers (12/12). with-derived sonnet→agy agy-no-op-confounded (GATE C). ⚠️ prior batch VOIDED by `telemetry_flags.agy=[--json]`; guard added. |
+| 3 scale | **RUN** | `results/stage3-scale.md`. Recovery 3/3 to 1000, 2/3 at 5000; pack surfaced the trace 3/3 at ALL scales incl 5000 → retrieval never degraded; the 5000 miss came WITH the trace (not a ranking cutoff). "Not tested large enough." Fig `fig_s3_scale.png`. |
+| 4 base-rate | **RUN** | `results/stage4-base-rate.md`. Probe wired; corpus non-viable (4 mechanism-aware constraints, dead pointers) → base rate not estimable — the outcome the plan predicts. |
+| 5 pilot | **RUN** | `results/stage5-deep-real-pilot.md`. GATE 3: no-code floor 4/4 = pointers-only 4/4 — ISO-4217 fact guessable from priors, substrate can't isolate recovery. Redesign toward a prior-independent fact. Fig `fig_s5_gate3.png`. |
 
 **Why the live trials were not auto-run:** each is a paid multi-agent run
 (real dollars), Stage 2 additionally needs the documented agy re-auth, and a

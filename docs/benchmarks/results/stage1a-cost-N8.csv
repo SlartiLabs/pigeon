@@ -1,0 +1,18 @@
+# Stage 1a cost clean ledger (cookiecutter shoutcase, naive vs pigeon), 2026-07-06, N=8/arm, sonnet.
+arm,trial,success,cost_usd,turns,wall_s
+naive,1,1,0.3493188,8,54
+naive,2,1,0.2913111,7,52
+naive,3,1,0.1396698,7,46
+naive,4,1,0.1838796,8,59
+naive,5,1,0.15724649999999998,7,51
+naive,6,1,0.1419939,7,39
+naive,7,1,0.17715629999999996,8,45
+naive,8,1,0.15648240000000002,7,47
+pigeon,1,1,0.8787,18,103
+pigeon,2,1,0.7866,20,110
+pigeon,3,1,0.5667,20,102
+pigeon,4,1,0.4733,16,84
+pigeon,5,1,0.6052,22,128
+pigeon,6,1,0.5516,22,100
+pigeon,7,1,0.4127,15,79
+pigeon,8,1,0.881,28,176

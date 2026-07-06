@@ -52,12 +52,23 @@ run_pigeon () {  # coordinate: architect scopes, implementer edits
   mkdir -p "$REPO/.pigeon"
   cp "$MAIN/.pigeon/config.yaml" "$REPO/.pigeon/config.yaml"
   cp "$MAIN/.pigeon/handoff.schema.json" "$REPO/.pigeon/handoff.schema.json"
-  cat > "$REPO/s1a.tasks.json" <<JSON
-{"sid":"s1a","tasks":[
- {"id":"architect","runner":"sonnet","doing":"You are the architect. Scope this task, then hand off a brief pointer to the implementer (do NOT edit files): $TASK","pack":false},
- {"id":"impl","runner":"sonnet","needs":["architect"],"receives":["repo://cookiecutter/extensions.py","repo://cookiecutter/environment.py"],"doing":"Implement exactly this, editing only cookiecutter/extensions.py and cookiecutter/environment.py: $TASK Do not run tests; just edit, then record your handoff.","pack":false}
+  # Build the tasks JSON with json.dumps so backticks / quotes / {{ }} in $TASK
+  # are escaped correctly (a raw heredoc corrupts the JSON).
+  TASK="$TASK" python3 - "$REPO/s1a.tasks.json" <<'PY'
+import json, os, sys
+t = os.environ["TASK"]
+d = {"sid": "s1a", "tasks": [
+  {"id": "architect", "runner": "sonnet", "pack": False,
+   "doing": "You are the architect. Scope this task, then hand off a brief pointer "
+            "to the implementer (do NOT edit files): " + t},
+  {"id": "impl", "runner": "sonnet", "needs": ["architect"], "pack": False,
+   "receives": ["repo://cookiecutter/extensions.py", "repo://cookiecutter/environment.py"],
+   "doing": "Implement exactly this, editing only cookiecutter/extensions.py and "
+            "cookiecutter/environment.py: " + t + " Do not run tests; just edit, "
+            "then record your handoff."},
 ]}
-JSON
+json.dump(d, open(sys.argv[1], "w"))
+PY
   ( cd "$REPO" && timeout -k 30 900 pigeon coordinate s1a.tasks.json \
       --skip-permissions --telemetry --budget-usd 3 ) > "$rdir/run" 2>&1
   local man; man="$(ls -t "$REPO"/.pigeon/coordinate/runs/*.json 2>/dev/null | head -1)"

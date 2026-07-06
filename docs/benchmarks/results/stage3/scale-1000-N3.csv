@@ -1,0 +1,5 @@
+# Stage 3 scale=1000 clean ledger, 2026-07-06, sonnet + pack retrieval.
+scale,trial,accept_rc,turns,cost_usd,wall_s,packed_account
+1000,1,0,18,0.8467,144,1
+1000,2,0,22,0.997,177,1
+1000,3,0,18,0.5188,133,1

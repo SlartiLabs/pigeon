@@ -83,6 +83,8 @@ ready-to-run, gated on operator go + spend (and, for Stage 2, agy re-auth).
   fact absent from every visible trace, plus the mandatory no-code guessing baseline arm.
   `validate.py` proves real + silent + external + no-trace (5/5). Pilot before confirm.
 
+**Live-run results (2026-07-06):** Stage 1a cost ([`results/stage1a-cost.md`](results/stage1a-cost.md), `fig_s1a_cost.png`), Stage 3 scale ([`results/stage3-scale.md`](results/stage3-scale.md), `fig_s3_scale.png`), Stage 4 base-rate ([`results/stage4-base-rate.md`](results/stage4-base-rate.md)), Stage 5 pilot ([`results/stage5-deep-real-pilot.md`](results/stage5-deep-real-pilot.md), `fig_s5_gate3.png`).
+
 ## Tier-A launch harness ([`tier-a/`](tier-a/))
 
 The with-vs-without cost method behind Experiment 1, plus the launch-gating machinery.
