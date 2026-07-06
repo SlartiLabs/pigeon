@@ -105,18 +105,45 @@ def judge_stub(reconstruction: str, constraint: str) -> bool:
     return len(toks) > 0 and hit / len(toks) >= 0.34
 
 
-def judge_live(constraint: Constraint, repo_root: Path):  # pragma: no cover
-    """LIVE recoverability check (real spend). Gated: wire to a runner before use.
+def _claude(prompt: str, model: str = "sonnet", timeout: int = 240) -> str:
+    """One-shot claude call, returning stdout text. Wired for Stage 4 --live."""
+    import subprocess  # noqa: PLC0415
+    p = subprocess.run(
+        ["claude", "-p", prompt, "--model", model, "--dangerously-skip-permissions"],
+        capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
+    return (p.stdout or "").strip()
 
-    Intended: route build_recovery_prompt(...) through the pointers-only runner
-    (e.g. pigeon coordinate / a sonnet call), then a semantic-match judge on whether the
-    reconstruction covers ``constraint.text``. Returns (recoverable: bool, reconstruction).
-    """
-    raise NotImplementedError(
-        "judge_live is intentionally unwired: running is a per-constraint model eval "
-        "(real spend), not passive logging. Wire to a runner and pass --live with an "
-        "explicit spend decision. Default paths (--dry-run/--selftest) cost nothing."
+
+def judge_live(constraint: Constraint, repo_root: Path, model: str = "sonnet"):
+    """LIVE recoverability check (real spend). Two model calls:
+
+    1. RECONSTRUCT — a pointers-only receiver sees ONLY the pointed-at code (never
+       the carried constraint) and lists the non-obvious constraints it can derive.
+    2. JUDGE — a separate semantic-match call rules whether that reconstruction
+       COVERS ``constraint.text``. Returns (recoverable: bool | None, reconstruction).
+
+    The judge is a semantic-match model, not a held-out functional grader — this is
+    the SOFT probe the module docstring is explicit about. None on an unparseable
+    verdict (counted as unjudged, not silently as recoverable)."""
+    recon = _claude(build_recovery_prompt(constraint, repo_root), model=model)
+    if not recon:
+        return None, recon
+    judge_prompt = (
+        "A re-implementer, seeing ONLY the code, produced this list of constraints:\n\n"
+        f"{recon[:6000]}\n\n"
+        "Question: does that list COVER the following specific constraint — i.e. would "
+        "the re-implementer have honoured it without being told?\n\n"
+        f"CONSTRAINT: {constraint.text}\n\n"
+        "Answer with exactly one word on the first line: YES (covered/recoverable) or "
+        "NO (missed/not recoverable). Then one sentence of justification."
     )
+    verdict = _claude(judge_prompt, model=model)
+    first = verdict.splitlines()[0].strip().upper() if verdict else ""
+    if first.startswith("YES"):
+        return True, recon
+    if first.startswith("NO"):
+        return False, recon
+    return None, recon
 
 
 def run(path: Path, repo_root: Path, live: bool) -> dict:
