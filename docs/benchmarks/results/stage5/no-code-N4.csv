@@ -1,0 +1,6 @@
+# Stage 5 pilot clean ledger (no-code arm), 2026-07-06, sonnet runner.
+trial,arm,accept_rc,turns,cost_usd,wall_s,jpy_ok,bhd_ok
+1,no-code-baseline,0,7,0.3388,40,1,1
+2,no-code-baseline,0,7,0.3475,46,1,1
+3,no-code-baseline,0,6,0.2827,35,1,1
+4,no-code-baseline,0,6,0.1554,36,1,1

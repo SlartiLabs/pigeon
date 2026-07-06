@@ -1,0 +1,6 @@
+# Stage 5 pilot clean ledger (pointers-only arm), 2026-07-06, sonnet runner.
+trial,arm,accept_rc,turns,cost_usd,wall_s,jpy_ok,bhd_ok
+1,pointers-only,0,14,0.6593,94,1,1
+2,pointers-only,0,21,0.7918,123,1,1
+3,pointers-only,0,19,0.4122,113,1,1
+4,pointers-only,0,14,0.652,95,1,1
