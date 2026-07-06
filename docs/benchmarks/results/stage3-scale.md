@@ -6,7 +6,7 @@ different question from Stage 5 (which tests whether a trace stays unrecoverable
 when fully seen). Recoverability is held constant (the canonical `account.py` is
 byte-identical at every scale via `scale-generator.py`); only decoy count varies.
 
-## Result (sonnet + pack, N=3 screen per point)
+## Result (sonnet + pack; N=3 screen, N=11 confirm at 5000)
 
 | Repo size | recovery (grader pass) | pack surfaced `account.py` | mean cost |
 |---|---|---|---|
@@ -14,7 +14,12 @@ byte-identical at every scale via `scale-generator.py`); only decoy count varies
 | 50 | 3/3 | 3/3 | $0.86 |
 | 200 | 3/3 | 3/3 | $0.74 |
 | 1000 | 3/3 | 3/3 | $0.79 |
-| **5000** | **2/3** | **3/3** | $0.82 |
+| **5000** | **10/11** (screen 2/3 + confirm 8/8) | **11/11** | $0.68 |
+
+The screen's 2/3 at 5000 triggered a confirm tier (N=8) on that decisive point:
+it came back **8/8**, so the combined N=11 is **recovery 10/11** (95% CP CI
+[0.587, 0.998]) with **pack surfacing the trace 11/11** ([0.715, 1.0]). The lone
+miss was variance, not a cliff.
 
 ## Reading: retrieval did NOT degrade in the tested range
 
@@ -23,12 +28,13 @@ context bundle — held at 3/3 at every scale, including 5000 files.** ripgrep
 retrieval surfaced `ledger/account.py` in all 15 trials. So there is **no
 retrieval-ranking cutoff** in the tested range.
 
-The single recovery miss at 5000 (2/3) is **not** a retrieval failure: `pack`
-surfaced the trace in that trial too (`packed_account=1`), so the agent had the
-legacy boundary in context and still produced a non-matching `to_wire`. That is
-an implementation / context-dilution miss (a larger bundle competing for
-attention) or N=3 variance — a different failure mode from the retrieval-ranking
-one this stage targets.
+The single recovery miss at 5000 (now 1/11 after the confirm tier) is **not** a
+retrieval failure: `pack` surfaced the trace in that trial too
+(`packed_account=1`), so the agent had the legacy boundary in context and still
+produced a non-matching `to_wire`. That is an implementation / context-dilution
+miss (a larger bundle competing for attention) or variance — a different failure
+mode from the retrieval-ranking one this stage targets. The N=8 confirm on this
+exact point was a clean 8/8, so the screen's 2/3 was noise.
 
 ## Verdict (kill-criterion, per plan)
 
@@ -43,9 +49,10 @@ break sooner.
 
 ## Honest limitations
 
-- **N=3 screen tier.** The 5000-point 2/3 would need confirm-tier N (8+) to
-  separate context-dilution from variance; but since retrieval itself held 3/3,
-  the decisive metric for *this* stage did not degrade regardless.
+- **N=3 screen (N=11 at the decisive 5000 point).** The confirm tier resolved the
+  screen's 2/3 to 8/8 (10/11 combined); retrieval held 11/11 there. The smaller
+  scale points remain N=3 screen — recovery held 3/3, so none was decisive enough
+  to confirm.
 - **Semi-synthetic decoys.** The generator's decoys share vocabulary but are
   templated; a hand-crafted near-duplicate of `account.py` would be a harder
   ranking test.

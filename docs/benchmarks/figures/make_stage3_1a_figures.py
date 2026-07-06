@@ -29,7 +29,7 @@ def _rows(path):
 
 def fig_scale():
     pts=[]
-    for f in sorted(glob.glob(str(S3/"scale-*-N3.csv")), key=lambda p:int(p.split("scale-")[1].split("-")[0])):
+    for f in sorted(glob.glob(str(S3/"scale-*-N*.csv")), key=lambda p:int(p.split("scale-")[1].split("-")[0])):
         rows=_rows(f); n=len(rows)
         if not n: continue
         scale=int(rows[0]["scale"]); rec=sum(1 for r in rows if r["accept_rc"]=="0")
@@ -47,7 +47,7 @@ def fig_scale():
         ax.set_xscale("log"); ax.set_xticks(xs); ax.set_xticklabels([str(x) for x in xs])
         ax.set_ylim(0,1.15); ax.set_yticks(np.arange(0,1.01,0.25))
         ax.set_xlabel("synthetic repository size (files, log scale)")
-        ax.set_ylabel("rate (N=3 screen per point)")
+        ax.set_ylabel("rate (N=3 screen; N=11 confirm at 5000)")
         ax.axhline(1.0,color=FAINT,lw=1,zorder=1); ax.legend(loc="lower left",frameon=False,fontsize=9)
         retrieval_held = all(p==1.0 for p in pk)   # did pack ALWAYS surface account.py?
         rec_held = all(r==1.0 for r in rec)
@@ -55,9 +55,9 @@ def fig_scale():
             note=("Recovery AND retrieval hold to the largest tested scale — no failure point found:\n"
                   "honest reading is NOT tested large enough, not 'scale does not matter'.")
         elif retrieval_held:
-            note=("Pack surfaced the trace at EVERY scale (blue, to 5000) — retrieval never degraded.\n"
-                  "The lone recovery miss at 5000 came WITH the trace in context (implementation /\n"
-                  "context-dilution, N=3 variance), NOT a retrieval-ranking cutoff. No retrieval failure found.")
+            note=("Pack surfaced the trace at EVERY scale (blue) — retrieval never degraded, incl. 11/11 at 5000.\n"
+                  "Recovery at 5000 confirmed at N=11 = 10/11 (screen 2/3 + confirm 8/8): the one miss is\n"
+                  "variance / context-dilution WITH the trace present, NOT a retrieval-ranking cutoff. No failure found.")
         else:
             note="Retrieval itself degrades at scale — a pack-ranking cutoff."
         fig.text(0.5,0.02,note,ha="center",fontsize=8,color=MUTE)
