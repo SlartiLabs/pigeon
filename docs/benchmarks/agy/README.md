@@ -33,12 +33,20 @@ This report consolidates all trial results, mechanism checks, canonical token co
 
 ## 📊 Summary Comparison Across All Arms
 
-| Benchmark Run | Arm / Model Split | N | Pass Rate (`accept_rc==0`) | Total Canonical Tokens | Estimated Total Cost (USD) | Persisted Artifact Path |
+Est. cost is the **canonical-recount estimate** (`o200k_base` tokens x the verified
+2026-07-07 rate snapshot: agy/Gemini-3.5-Flash $1.50/$9.00, sonnet $3/$15 per Mtok),
+regenerated from the prior placeholder rates (agy was $0.30/$2.50, ~4x low). It is
+NOT a bill: the transcript is argv+stdout only, so it undercounts the input the
+agents read via tools; the per-trial `cost_usd` in the sections below is the
+*measured* sonnet-architect spend and is much larger. Token counts are unchanged
+(same tokenizer).
+
+| Benchmark Run | Arm / Model Split | N | Pass Rate (`accept_rc==0`) | Total Canonical Tokens | Est. Cost (USD, recount) | Persisted Artifact Path |
 |---|---|---|---|---|---|---|
-| **All-Gemini Necessity** | `with-derived-agy` (`agy` + `agy`) | 8 | **7 / 8 (87.5%)** | 11,553 tok | $0.0219 | [`./nec-wd-allagy`](./nec-wd-allagy) |
-| **Necessity (With-Derived)** | `with-derived-agy` (`sonnet` + `agy`) | 8 | **0 / 8 (0.0%)** | 9,391 tok | $0.0640 | [`./nec-with-derived`](./nec-with-derived) |
-| **Necessity (Pointers-Only)** | `pointers-only-agy` (`sonnet` + `agy`) | 8 | **0 / 8 (0.0%)** | 8,077 tok | $0.0619 | [`./nec-pointers-only`](./nec-pointers-only) |
-| **Exp-5 Recoverability** | `with-derived-agy` (`sonnet` + `agy`) | 12 | **0 / 12 (0.0%)** | 15,924 tok | $0.1137 | [`./exp5-with-derived`](./exp5-with-derived) |
+| **All-Gemini Necessity** | `with-derived-agy` (`agy` + `agy`) | 8 | **7 / 8 (87.5%)** | 11,553 tok | $0.0801 | [`./nec-wd-allagy`](./nec-wd-allagy) |
+| **Necessity (With-Derived)** | `with-derived-agy` (`sonnet` + `agy`) | 8 | **0 / 8 (0.0%)** | 9,391 tok | $0.0900 | [`./nec-with-derived`](./nec-with-derived) |
+| **Necessity (Pointers-Only)** | `pointers-only-agy` (`sonnet` + `agy`) | 8 | **0 / 8 (0.0%)** | 8,077 tok | $0.0785 | [`./nec-pointers-only`](./nec-pointers-only) |
+| **Exp-5 Recoverability** | `with-derived-agy` (`sonnet` + `agy`) | 12 | **0 / 12 (0.0%)** | 15,924 tok | $0.1582 | [`./exp5-with-derived`](./exp5-with-derived) |
 
 ---
 
@@ -134,7 +142,7 @@ This report consolidates all trial results, mechanism checks, canonical token co
 
 1. **`agy` Telemetry & Retokenization Fix:**
    - Updated `_price_row` in [`canonical-retokenize.py`](../instruments/canonical-retokenize.py#L124) to fall back to task `runner` when `model` is empty.
-   - Added `"agy": { "in": 0.30, "out": 2.50 }` in [`prices.template.json`](../instruments/prices.template.json#L6).
+   - Added an `"agy"` rate to [`prices.template.json`](../instruments/prices.template.json) (placeholder $0.30/$2.50 at the time; later verified and corrected to $1.50/$9.00 on 2026-07-07, which the Est. Cost column above reflects).
    - Embedded automatic canonical retokenization into benchmark scripts ([`run-stage2-forkA-agy.sh`](../substrates/forkA-necessity/run-stage2-forkA-agy.sh#L103) & [`run-stage2-agy-pilot.sh`](../substrates/exp5-natural/run-stage2-agy-pilot.sh#L131)).
 
 2. **Config Flag Compatibility:**
