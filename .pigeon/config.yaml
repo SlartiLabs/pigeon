@@ -158,3 +158,17 @@ coordinate:
     # mimo --format json is opencode-shaped (tokens:{...}+cost) → _opencode_parser
     # handles it; VERIFIED end-to-end (live mimo run measured 43100 tok, 2026-06-20).
     mimo: [--format, json]
+  # ESTIMATE-ONLY pricing for the transcript-recount fallback (untelemetered
+  # runners like agy). Results are flagged `estimated: true` and are NOT
+  # measurements — the transcript is argv+stdout only (agent-read context is
+  # uncounted) and these rates are a stated snapshot, not a bill. VERIFY the rates
+  # before citing any derived cost. USD per million tokens; key matches a model
+  # substring.
+  fallback_pricing:
+    snapshot: "2026-07-06 (rates UNVERIFIED — confirm against provider pricing)"
+    rates:
+      sonnet:         {in: 3.0,  out: 15.0}
+      opus:           {in: 15.0, out: 75.0}
+      gemini-3.1-pro: {in: 1.25, out: 10.0}
+      gemini-3.5-flash: {in: 0.30, out: 2.50}
+      agy:            {in: 0.30, out: 2.50}

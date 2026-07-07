@@ -179,6 +179,26 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
                 "agy": [],
                 "opencode": [],
             },
+            # ESTIMATE-ONLY pricing for the transcript-recount fallback: when a
+            # runner emits no machine-readable usage (agy/opencode) but telemetry
+            # was requested, the run loop recounts the teed transcript and prices
+            # it with this table. The result is flagged ``estimated: true`` and is
+            # NOT a measurement — the transcript is argv+stdout only, so input the
+            # agent read via its own tools is uncounted, and the rate is a stated
+            # snapshot, not a bill. USD per MILLION tokens; keys match a substring
+            # of the model/runner name. Set ``snapshot`` to the date you verified
+            # the rates. Kept in config (not hardcoded) so it can't silently drift
+            # and the operator can override per project.
+            "fallback_pricing": {
+                "snapshot": "unset",
+                "rates": {
+                    "sonnet": {"in": 3.0, "out": 15.0},
+                    "opus": {"in": 15.0, "out": 75.0},
+                    "gemini-3.1-pro": {"in": 1.25, "out": 10.0},
+                    "gemini-3.5-flash": {"in": 0.30, "out": 2.50},
+                    "agy": {"in": 0.30, "out": 2.50},
+                },
+            },
             # Three-tier timeout ladder (all null by default → byte-identical to
             # today's blocking drain; no behavior change unless configured):
             #   idle_timeout_s   — kill after N seconds of no stdout (progress guard)

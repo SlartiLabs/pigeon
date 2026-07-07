@@ -1337,6 +1337,7 @@ def _run_task(
     cwd: Path | None = None,
     budget: BudgetTracker | None = None,
     procs: dict[str, subprocess.Popen] | None = None,
+    telemetry_requested: bool = False,
 ) -> tuple[int, str | None]:
     """Spawn one runner; prefix-stream merged stdout/stderr and tee to a log.
 
@@ -1468,7 +1469,54 @@ def _run_task(
     except ValueError:
         transcript_ref = str(log_path)
     telemetry = _extract_telemetry("\n".join(tail))
-    if telemetry:
+    if not telemetry:
+        if telemetry_requested:
+            # Fallback for untelemetered runners (e.g. agy, opencode) by recounting log_path.
+            try:
+                log_text = log_path.read_text(encoding="utf-8", errors="replace")
+                log_lines = log_text.splitlines()
+                prompt = ""
+                if log_lines and log_lines[0].startswith("$ "):
+                    prompt = log_lines[0][2:]
+                    log_lines = log_lines[1:]
+                if log_lines and log_lines[-1].startswith("# exit"):
+                    log_lines = log_lines[:-1]
+                body = "\n".join(log_lines)
+                
+                encoding = config.tokens_cfg.get("encoding", "cl100k_base")
+                cp = tokens.count_tokens(prompt, encoding)
+                cc = tokens.count_tokens(body, encoding)
+                total = cp + cc
+                if total > 0:
+                    # ESTIMATE, not a measurement: the transcript is argv+stdout,
+                    # so context the agent read via its own tools is uncounted,
+                    # and the rate is an operator-set snapshot (config), not a
+                    # provider bill. Flagged so downstream never sums it as
+                    # measured cost (see est_usd_canonical for the fair unit).
+                    fp = config.coordinate_cfg.get("fallback_pricing", {}) or {}
+                    rates_tbl = fp.get("rates", {}) or {}
+                    model_lower = (model or runner or "").lower()
+                    rate = next((v for k, v in rates_tbl.items()
+                                 if k.lower() in model_lower), {"in": 0.0, "out": 0.0})
+                    cost_usd = round(cp / 1e6 * rate.get("in", 0.0)
+                                     + cc / 1e6 * rate.get("out", 0.0), 6)
+                    split = {
+                        "input_tokens": cp, "output_tokens": cc,
+                        "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0,
+                    }
+                    telemetry = {
+                        "usage": dict(split),
+                        "total_tokens": total,
+                        "total_cost_usd": cost_usd,
+                        "usage_canonical": dict(split),
+                        "transcript": transcript_ref,
+                        "estimated": True,
+                        "method": "transcript-recount",
+                        "pricing_snapshot": fp.get("snapshot", "unset"),
+                    }
+            except Exception:
+                pass
+    else:
         # Also archive the token/cache split in the same four canonical fields
         # regardless of vendor, so within-run comparisons are vendor-uniform.
         telemetry["usage_canonical"] = normalize_usage(telemetry["usage"])
@@ -1488,10 +1536,18 @@ def _run_task(
             event["model"] = model
         if "total_cost_usd" in telemetry:
             event["cost_usd"] = telemetry["total_cost_usd"]
+        if telemetry.get("estimated"):
+            # carry the estimate provenance into metrics.jsonl so an aggregator
+            # can separate estimated cost from measured, never blend them.
+            event["estimated"] = True
+            event["method"] = telemetry.get("method")
+            event["pricing_snapshot"] = telemetry.get("pricing_snapshot")
         tokens.record(config, event)
+        est = telemetry.get("estimated")
+        kind = "estimated, transcript-recount" if est else "measured"
         cost = f" cost=${telemetry['total_cost_usd']}" if "total_cost_usd" in telemetry else ""
         with _print_lock:
-            print(f"[{task_id}] telemetry: {telemetry['total_tokens']} tokens (measured){cost}")
+            print(f"[{task_id}] telemetry: {telemetry['total_tokens']} tokens ({kind}){cost}")
     if recorder:
         fields: dict[str, Any] = dict(
             status=_classify_status(rc, kill_reason),
@@ -1732,7 +1788,8 @@ def run_coordinate(
             rc, _kill_reason = _run_task(tid, cmd, config, log_path, recorder,
                                          sid=sid, runner=task["runner"],
                                          model=task.get("model") or "", budget=budget,
-                                         procs=running_procs)
+                                         procs=running_procs,
+                                         telemetry_requested=task.get("telemetry", telemetry))
             return rc
         try:
             wt_dir, branch, base = _worktree_setup(config, run_id, tid)
@@ -1746,7 +1803,8 @@ def run_coordinate(
         rc, _kill_reason = _run_task(tid, cmd, config, log_path, recorder,
                                      sid=sid, runner=task["runner"],
                                      model=task.get("model") or "", cwd=wt_dir,
-                                     budget=budget, procs=running_procs)
+                                     budget=budget, procs=running_procs,
+                                     telemetry_requested=task.get("telemetry", telemetry))
         try:
             info, harvested = _worktree_finish(config, tid, wt_dir, branch, run_id, base)
         except RuntimeError as exc:

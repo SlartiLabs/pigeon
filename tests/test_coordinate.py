@@ -749,6 +749,31 @@ def test_telemetry_recorded_in_manifest_and_metrics(repo):
     assert agent_runs[0]["cost_usd"] == 0.0123
     assert agent_runs[0]["usage_canonical"]["input_tokens"] == 100
     assert agent_runs[0]["transcript"].endswith("spender.log")
+    # a NATIVELY measured run is never flagged estimated
+    assert "estimated" not in telem
+    assert "estimated" not in agent_runs[0]
+
+
+def test_fallback_telemetry_is_flagged_estimated(repo):
+    # A runner that prints plain text (no usage report) but has telemetry
+    # requested triggers the transcript-recount fallback. The result MUST declare
+    # itself an estimate so an aggregator never blends it with measured cost.
+    cfg = _setup(repo, runners={"py": _PY_OK})
+    tasks = _write_tasks(repo.root, _spec(tasks=[
+        {"id": "a", "runner": "py", "doing": "x", "telemetry": True},
+    ]))
+    assert co.run_coordinate(tasks, cfg) == 0
+    run = co.list_runs(cfg, sid="co1")[0]
+    telem = run["tasks"]["a"]["telemetry"]
+    assert telem["estimated"] is True
+    assert telem["method"] == "transcript-recount"
+    assert "pricing_snapshot" in telem
+    assert telem["total_tokens"] > 0                 # recounted from the log
+    assert telem["transcript"].endswith("a.log")
+    # provenance also reaches metrics.jsonl
+    events = [json.loads(l) for l in cfg.metrics.read_text(encoding="utf-8").splitlines()]
+    ar = [e for e in events if e.get("kind") == "agent_run" and e["task"] == "a"]
+    assert ar and ar[0]["estimated"] is True and ar[0]["method"] == "transcript-recount"
 
 
 def test_telemetry_flags_appended_only_when_requested(repo, capsys):
