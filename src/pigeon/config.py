@@ -189,14 +189,19 @@ def default_config(contract_dir: str = LEGACY_CONTRACT_DIR) -> dict[str, Any]:
             # of the model/runner name. Set ``snapshot`` to the date you verified
             # the rates. Kept in config (not hardcoded) so it can't silently drift
             # and the operator can override per project.
+            # Verified 2026-07-07 (Gemini: ai.google.dev/gemini-api/docs/pricing;
+            # Claude: claude-api model table). USD per MILLION tokens. Gemini
+            # 3.1 Pro has input-size tiers (<=200k: 2/12, >200k: 4/18); the flat
+            # table uses the <=200k tier. Sonnet is standard $3/$15 (intro $2/$10
+            # runs through 2026-08-31). agy defaults to Gemini 3.5 Flash.
             "fallback_pricing": {
-                "snapshot": "unset",
+                "snapshot": "2026-07-07",
                 "rates": {
                     "sonnet": {"in": 3.0, "out": 15.0},
-                    "opus": {"in": 15.0, "out": 75.0},
-                    "gemini-3.1-pro": {"in": 1.25, "out": 10.0},
-                    "gemini-3.5-flash": {"in": 0.30, "out": 2.50},
-                    "agy": {"in": 0.30, "out": 2.50},
+                    "opus": {"in": 5.0, "out": 25.0},
+                    "gemini-3.1-pro": {"in": 2.0, "out": 12.0},
+                    "gemini-3.5-flash": {"in": 1.5, "out": 9.0},
+                    "agy": {"in": 1.5, "out": 9.0},
                 },
             },
             # Three-tier timeout ladder (all null by default → byte-identical to
