@@ -28,8 +28,11 @@ def cp(x,n,a=0.05):
 def load(name):
     rows=[r for r in csv.DictReader([l for l in (DATA/name).read_text().splitlines() if not l.startswith("#")])]
     x=sum(1 for r in rows if r["accept_rc"]=="0"); n=len(rows)
-    costs=[float(r["cost_usd"]) for r in rows if r["cost_usd"] not in ("","NA")]
-    return x,n,costs
+    # Standardized token unit: the o200k_base recount of the archived transcripts
+    # (tokenizer-independent, cross-model). Preferred over the measured USD spend,
+    # which is provider- and rate-snapshot-dependent.
+    toks=[float(r["canon_total"]) for r in rows if r.get("canon_total") not in ("","NA",None)]
+    return x,n,toks
 
 def _despine(ax,keep=("left","bottom")):
     for s in ("top","right","left","bottom"): ax.spines[s].set_visible(s in keep)
@@ -50,14 +53,15 @@ def main():
     ax.annotate("no separation\n= substrate guessable\n(GATE 3: redesign)",xy=(1,1.0),xytext=(0.5,0.55),
                 ha="center",fontsize=8.5,color=DERIVED,style="italic")
     _despine(ax)
-    # cost panel
-    for i,(lbl,(x,n,costs),col) in enumerate(arms):
-        if costs:
-            m=float(np.mean(costs))
+    # volume panel — standardized tokens (o200k_base recount), not USD
+    for i,(lbl,(x,n,toks),col) in enumerate(arms):
+        if toks:
+            m=float(np.mean(toks))
             ax2.bar(i,m,width=0.55,color=col,edgecolor=INK,linewidth=1.1)
-            ax2.text(i,m+0.01,f"${m:.2f}",ha="center",va="bottom",fontsize=9)
+            ax2.text(i,m+18,f"{m:,.0f}",ha="center",va="bottom",fontsize=9)
     ax2.set_xticks([0,1]); ax2.set_xticklabels([a[0] for a in arms])
-    ax2.set_ylabel("mean cost / trial (USD)"); ax2.set_title("...but paid more to get there",fontsize=10.5)
+    ax2.set_ylabel("mean standardized tokens / trial\n(o200k_base recount)")
+    ax2.set_title("...but spent more to get there",fontsize=10.5)
     _despine(ax2)
     fig.suptitle("Stage 5 pilot — the deep-real substrate is defeated by training priors",
                  fontsize=12.5,fontweight="bold",y=0.99)

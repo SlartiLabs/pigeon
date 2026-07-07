@@ -9,14 +9,22 @@ same model (sonnet), same task.
 
 ## Result (N=8 per arm, both arms 8/8 success)
 
-| Arm | mean cost/task | bootstrap 95% CI |
-|---|---|---|
-| naive (single call) | **$0.200** | [$0.156, $0.254] |
-| pigeon (coordinate) | **$0.644** | [$0.530, $0.765] |
+The reported unit is the **standardized token**: the `o200k_base` recount of the
+wire (argv prompt + stdout body), applied uniformly to both arms, so the number is
+tokenizer-independent and carries no pricing-snapshot dependency. Measured USD is
+retained as corroboration only.
 
-**Difference (pigeon − naive): +$0.445 / task, 95% CI [+$0.350, +$0.545]** — the
-interval is **entirely positive and excludes zero**. pigeon costs ~**3.2×** the
-naive single call on this task.
+| Arm | mean tokens/task | bootstrap 95% CI | (measured USD) |
+|---|---|---|---|
+| naive (single call) | **548 tok** | [534, 563] | $0.166 |
+| pigeon (coordinate) | **1238 tok** | [1207, 1278] | $0.670 |
+
+**Difference (pigeon − naive): +690 tok / task, 95% CI [+653, +732]** — the interval
+is **entirely positive and excludes zero**. pigeon spends ~**2.3×** the naive single
+call's wire volume on this task. The measured USD agrees in direction (+$0.50/task);
+it is a larger ratio there only because provider billing includes tool-read/cache
+context that is off-wire and so uncounted in the standardized token — which is
+exactly why the tokenizer-independent recount is the honest cross-arm unit.
 
 ## Reading
 
@@ -49,7 +57,9 @@ reasoning), never token savings.
   default," not the full held-out functional grader + pytest regression of
   Exp-1; both arms hit 8/8, so success does not confound the cost comparison.
 
-Ledger: `stage1a-cost-N8.csv`. Figure: `../figures/fig_s1a_cost.png`. Runner:
-`../instruments/run-stage1a-cost.sh`.
+Ledger: `stage1a-cost-N8.csv` (the `canon_total` column is the standardized token).
+Figure: `../figures/fig_s1a_cost.png`. Runner: `../instruments/run-stage1a-cost.sh`;
+the ledger's `canon_total` is rebuilt from a run's persisted transcripts by
+`../instruments/build-stage1a-token-ledger.py`.
 
 _Commits are the operator's._

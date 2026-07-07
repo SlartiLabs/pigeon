@@ -72,6 +72,11 @@ PY
   ( cd "$REPO" && timeout -k 30 900 pigeon coordinate s1a.tasks.json \
       --skip-permissions --telemetry --budget-usd 3 ) > "$rdir/run" 2>&1
   local man; man="$(ls -t "$REPO"/.pigeon/coordinate/runs/*.json 2>/dev/null | head -1)"
+  # Persist the manifest + raw per-hop transcripts so the token recount can run
+  # later (per-hop telemetry.total_tokens + canonical-retokenize on the logs).
+  cp "$man" "$rdir/manifest.json" 2>/dev/null
+  mkdir -p "$rdir/.pigeon/coordinate"
+  cp -r "$REPO/.pigeon/coordinate/logs" "$rdir/.pigeon/coordinate/logs" 2>/dev/null
   python3 - "$man" <<'PY' 2>/dev/null || echo "NA NA"
 import json,sys
 try: d=json.load(open(sys.argv[1]))

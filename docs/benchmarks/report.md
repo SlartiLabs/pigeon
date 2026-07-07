@@ -612,14 +612,20 @@ Report: `results/stage3-scale.md`.
 
 **Figure 15.** Experiment 1 rerun at N=8 per arm (cookiecutter `shoutcase` task at
 the Exp-1 base SHA; naive single call vs pigeon two-hop `coordinate`), the precision
-upgrade the plan asked for. naive **$0.200** [.156,.254], pigeon **$0.644**
-[.530,.765]; the paired difference is **+$0.445 with a bootstrap 95% CI [+0.350,
-+0.545]**, entirely positive. The decisive question the plan posed, does the
-difference-CI include a comfortably negative (saving) region, answers **no**:
-coordination overhead is a measurable cost, not a saving. This is the powered form
-of the Exp-1 null; on this small task the ratio is ~3.2×, which will compress on
-larger tasks as fixed overhead amortizes but will not flip sign. cookiecutter only
-(marshmallow's Exp-1 grader was not committed). Report: `results/stage1a-cost.md`.
+upgrade the plan asked for. The reported unit is the **standardized token** (the
+`o200k_base` recount of the wire = argv prompt + stdout body, applied uniformly, so
+the number is tokenizer-independent and not confounded by any pricing snapshot).
+naive **548 tok/task** [534, 563], pigeon **1238 tok/task** [1207, 1278]; the
+difference is **+690 tok with a bootstrap 95% CI [+653, +732]**, entirely positive.
+The decisive question the plan posed, does the difference-CI include a comfortably
+negative (saving) region, answers **no**: the second hop's wire volume is a
+measurable cost, not a saving. This is the powered form of the Exp-1 null; on this
+small task the ratio is ~2.3×, which will compress on larger tasks as fixed overhead
+amortizes but will not flip sign. The measured USD spend agrees in direction (naive
+$0.16, pigeon $0.67 mean), but is a provider-billed, rate-snapshot-dependent number
+and the recount deliberately undercounts (tool-read context is off-wire); the
+standardized token is the honest cross-arm unit. cookiecutter only (marshmallow's
+Exp-1 grader was not committed). Report: `results/stage1a-cost.md`.
 
 ### 9.4 Stage 4, base-rate probe (softer evidence, and here, not estimable)
 
@@ -650,7 +656,8 @@ is precisely why the no-code baseline was made a hard requirement; without it,
 pointers-only 4/4 would have been misread as recovery. The deep-real question
 remains open and needs a substrate whose deciding fact is *prior-independent*
 (Fork-A got this for free via arbitrary keys). Side-note in the right panel:
-pointers-only paid ~2× ($0.63 vs $0.28) to reach the answer it would have guessed.
+pointers-only spent ~2× (**1252 vs 604** standardized o200k_base tokens per trial;
+measured USD agreed, $0.63 vs $0.28) to reach the answer it would have guessed.
 Report: `results/stage5-deep-real-pilot.md`.
 
 ---

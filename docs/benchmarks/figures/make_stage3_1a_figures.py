@@ -72,31 +72,38 @@ def _boot_ci(xs,B=5000):
     means=xs[idx].mean(1); return float(xs.mean()),float(np.percentile(means,2.5)),float(np.percentile(means,97.5))
 
 def fig_cost():
-    f=pathlib.Path.home()/"stage1a-clean"/"results.csv"
+    # Standardized-token ledger (o200k_base wire recount, canon_total column),
+    # committed so the figure is reproducible from repo data — the raw transcripts
+    # live outside the repo.
+    f=HERE.parent/"results"/"stage1a-cost-N8.csv"
     fig,ax=plt.subplots(figsize=(7.6,4.8))
     if f.is_file():
-        rows=[r for r in csv.DictReader(f.read_text().splitlines())]
+        rows=[r for r in csv.DictReader([l for l in f.read_text().splitlines() if not l.startswith("#")])]
         arms={"naive":[],"pigeon":[]}
         for r in rows:
-            if r["cost_usd"] not in ("","NA"): arms[r["arm"]].append(float(r["cost_usd"]))
+            if r.get("canon_total") not in ("","NA",None): arms[r["arm"]].append(float(r["canon_total"]))
         labels=[("naive\n(single call)",BASE),("pigeon\n(coordinate)",DERIVED)]
+        hi_max=0
         for i,(lab,col) in enumerate(labels):
             key="naive" if i==0 else "pigeon"; xs=arms[key]
             if not xs:
                 ax.text(i,0.1,"no valid\ntrials",ha="center",color=MUTE,style="italic"); continue
-            m,lo,hi=_boot_ci(xs)
+            m,lo,hi=_boot_ci(xs); hi_max=max(hi_max,max(xs))
             ax.bar(i,m,width=0.55,color=col,edgecolor=INK,linewidth=1.1,zorder=3)
             ax.errorbar(i,m,yerr=[[m-lo],[hi-m]],fmt="none",ecolor=INK,elinewidth=1.4,capsize=6,capthick=1.4,zorder=4)
-            ax.text(i,hi+0.01,f"${m:.3f}",ha="center",va="bottom",fontsize=10,fontweight="bold")
+            ax.text(i,hi+12,f"{m:,.0f}",ha="center",va="bottom",fontsize=10,fontweight="bold")
             for x in xs: ax.plot(i+np.random.default_rng(1).uniform(-0.12,0.12),x,"o",color=INK,ms=3,alpha=0.4,zorder=5)
         ax.set_xticks([0,1]); ax.set_xticklabels([l for l,_ in labels])
-        ax.set_ylabel("cost per task (USD)")
+        ax.set_ylabel("standardized tokens per task\n(o200k_base wire recount)")
+        ax.set_ylim(0,hi_max*1.18 if hi_max else 1)
         if arms["naive"] and arms["pigeon"]:
             dm=np.mean(arms["pigeon"])-np.mean(arms["naive"])
-            fig.text(0.5,0.01,f"pigeon − naive = ${dm:+.3f}/task. Coordination overhead is a cost, "
+            fig.text(0.5,0.05,f"pigeon − naive = {dm:+,.0f} tok/task. The second hop's wire volume is a cost, "
                      "not a saving — the powered form of 'cost is a null'.",ha="center",fontsize=8,color=MUTE)
-    ax.set_title("Stage 1a — cost: naive vs pigeon (N=8, bootstrap 95% CI)",fontsize=11,fontweight="bold")
-    _despine(ax); fig.tight_layout(rect=(0,0.04,1,1))
+            fig.text(0.5,0.015,"Standardized token = o200k_base recount of argv prompt + stdout body (cross-agent wire "
+                     "volume), not a provider bill: tool-read context is uncounted.",ha="center",fontsize=7,color=MUTE,style="italic")
+    ax.set_title("Stage 1a — wire volume: naive vs pigeon (N=8, bootstrap 95% CI)",fontsize=11,fontweight="bold")
+    _despine(ax); fig.tight_layout(rect=(0,0.10,1,1))
     out=HERE/"fig_s1a_cost.png"; fig.savefig(out); print("wrote",out)
 
 if __name__=="__main__":
