@@ -1,0 +1,39 @@
+$ timeout -k 30 900 agy -p 'You are sub-agent '"'"'to_wire'"'"' in pigeon session '"'"'s2-exp5-wd'"'"'. Read your handoff at .pigeon/handoffs/s2-exp5-wd-3.json and follow the protocol in AGENTS.md. Treat every entry in the handoff '"'"'constraints'"'"' object as a hard rule. Do only the '"'"'doing'"'"' step, then record your result with `pigeon handoff` (from '"'"'to_wire'"'"' to '"'"'Coordinator'"'"').
+
+## Carried reasoning (state.derived from upstream)
+The upstream carrier recorded reasoning you CANNOT cheaply re-derive from the code. Treat each as a hard rule; point at the code for everything else.
+
+**from `architect`:**
+- constraint: Same external partner as to_legacy: reuse wire keys '"'"'acct'"'"'/'"'"'cents'"'"'/'"'"'ts'"'"', not Python field names name/balance_cents/created
+- constraint: '"'"'ts'"'"' stays epoch seconds as int (UTC), not an ISO datetime string
+- constraint: to_wire must omit '"'"'note'"'"' key entirely when note is None, not emit note: null
+- constraint: from_wire must be lenient: cents as int or numeric string, ts as int or float, missing note -> None
+- constraint: Do not edit ledger/account.py; architect only records findings, implementer applies them' --dangerously-skip-permissions --json
+flags provided but not defined: -json
+Usage of agy:
+  --add-dir                       Add a directory to the workspace (repeatable) (default [])
+  -c                              Short alias for --continue
+  --continue                      Continue the most recent conversation
+  --conversation                  Resume a previous conversation by ID
+  --dangerously-skip-permissions  Auto-approve all tool permission requests without prompting
+  -i                              Short alias for --prompt-interactive
+  --log-file                      Override CLI log file path
+  --model                         Model for the current CLI session
+  --new-project                   Create a new project for this session
+  -p                              Short alias for --print
+  --print                         Run a single prompt non-interactively and print the response
+  --print-timeout                 Timeout for print mode wait (default 5m0s)
+  --project                       Project ID for the current CLI session
+  --prompt                        Alias for --print
+  --prompt-interactive            Run an initial prompt interactively and continue the session
+  --sandbox                       Run in a sandbox with terminal restrictions enabled
+
+Available subcommands:
+  changelog       Show changelog and release notes
+  help            Show help for subcommands
+  install         Configure environment paths and shell settings
+  models          List available models
+  plugin          Manage plugins (install, uninstall, list, enable, disable)
+  plugins         Alias for plugin
+  update          Update CLI
+# exit 2

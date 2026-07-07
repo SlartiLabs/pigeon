@@ -1,0 +1,9 @@
+trial,arm,accept_rc,turns,cost_usd,wall_s,recv_fired,injected,used_contract
+1,pointers-only-agy,1,8,0.3243,37,1,0,0
+2,pointers-only-agy,1,8,0.328,35,1,0,0
+3,pointers-only-agy,1,4,0.115,44,1,0,0
+4,pointers-only-agy,1,4,0.0892,26,1,0,0
+5,pointers-only-agy,1,6,0.1106,32,1,0,0
+6,pointers-only-agy,1,5,0.271,39,1,0,0
+7,pointers-only-agy,1,5,0.1103,29,1,0,0
+8,pointers-only-agy,1,8,0.162,42,1,0,0
