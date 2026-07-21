@@ -14,8 +14,8 @@ from pathlib import Path
 
 from .config import Config
 
-GEN_MARKER = "<!-- agentctx:generated — DO NOT EDIT -->"
-SOURCE_MARKER = "<!-- agentctx:source"  # followed by: <rel> sha256:<fp> -->
+GEN_MARKER = "<!-- pigeon:generated — DO NOT EDIT -->"
+SOURCE_MARKER = "<!-- pigeon:source"  # followed by: <rel> sha256:<fp> -->
 
 
 def source_fingerprint(canonical: Path) -> str:
